@@ -1144,44 +1144,76 @@ case 'alive': {
 // ════════════ SONG ════════════
 
 case 'song':
-case 'ytmp3': {
+case 'ytmp3':
+case 'music':
+case 'yta': {
     try {
         const query = args.join(' ');
-        if (!query) return reply("🎵 *Plz Send Me A Song Name !*");
+        if (!query) return reply("🎵 *කරුණාකර සින්දුවක නමක් හෝ YouTube ලින්ක් එකක් ලබා දෙන්න!*\n💡 උදා: `.song master sir` හෝ `.song <youtube link>`");
 
         try { await socket.sendMessage(sender, { react: { text: '🔎', key: msg.key } }); } catch (_) {}
 
-        const search = await yts(query);
-        const video = search.videos[0]; 
+        // WhiteShadow YT APIs & Token
+        const API_TOKEN = "VK4fry";
+        const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
+        const YT_DOWNLOAD_API = "https://whiteshadow-x-api.onrender.com/api/download/ytmp3";
 
-        if (!video) return reply("❌ *I Cant Find It !*");
+        let youtubeUrl = null;
+        let songTitle = "Sadew-MD Audio";
 
-        const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-        const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+        // 1. Check if input is a YouTube Link
+        const regex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i;
+        const match = query.match(regex);
 
-        const caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
-                        `> *\`🎵 𝚃𝙸𝚃𝙻𝙴 :\`* ${video.title}\n` +
-                        `> *\`👤 𝙲𝙷𝙰𝙽𝙽𝙴𝙻 :\`* ${video.author.name}\n` +
-                        `> *\`⏱️ 𝙳𝚄𝚁𝙰𝚃𝙸𝙾𝙽 :\`* ${video.timestamp}\n` +
-                        `> *\`👀 𝚅𝙸𝙴𝚆𝚂 :\`* ${video.views.toLocaleString()}\n` +
-                        `> *\`📅 𝙳𝙰𝚃𝙴 :\`* ${slDate}\n` +
-                        `> *\`⌚ 𝚃𝙸𝙼𝙴 :\`* ${slTimeNow}\n\n` +
-                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+        if (match) {
+            // It's a link
+            youtubeUrl = match[0].trim();
+            reply("🔗 _YouTube link detected. Fetching data from server..._");
+        } else {
+            // It's a name search
+            reply(`🔍 _Searching YouTube for: "${query}"..._`);
+            const searchRes = await axios.get(`${YT_SEARCH_API}?q=${encodeURIComponent(query)}&apitoken=${API_TOKEN}`);
+            
+            if (searchRes.data && searchRes.data.success && searchRes.data.result.length > 0) {
+                youtubeUrl = searchRes.data.result[0].url;
+                songTitle = searchRes.data.result[0].title || songTitle;
+            }
+        }
 
+        if (!youtubeUrl) {
+            try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+            return reply("❌ *Error:* සින්දුව හෝ වීඩියෝව සොයා ගැනීමට නොහැකි විය!");
+        }
+
+        // 2. Download 320kbps MP3
+        reply("📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Extracting 320kbps High-Quality MP3..._");
+        
+        let audioDownloadUrl = null;
+        const dlRes = await axios.get(`${YT_DOWNLOAD_API}?url=${encodeURIComponent(youtubeUrl)}&quality=320&apitoken=${API_TOKEN}`);
+
+        if (dlRes.data && dlRes.data.success && dlRes.data.result) {
+            audioDownloadUrl = dlRes.data.result.download_url;
+            songTitle = dlRes.data.result.title || songTitle;
+        }
+
+        if (!audioDownloadUrl) {
+            try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+            return reply("❌ *Error:* සේවාදායකයේ බිඳවැටීමක් හේතුවෙන් ඕඩියෝ එක ලබා ගැනීමට නොහැකි විය.");
+        }
+
+        try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
+
+        // Send Details Caption
+        const captionMsg = `✨ *_👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥_ Music System* ✨\n\n📌 *Title:* ${songTitle}\n💿 *Quality:* 320kbps Ultra-High Quality\n🚀 *Status:* downloading...`;
+        await reply(captionMsg);
+
+        // 3. Send Audio File
+        const cleanFileName = songTitle.replace(/[\\/:*?"<>|]/g, "_").slice(0, 60) + ".mp3";
+        
         await socket.sendMessage(sender, {
-            image: { url: video.thumbnail },
-            caption: caption,
-            contextInfo: arabianCtx()
-        }, { quoted: msg });
-
-        const ytRes = await axios.get(`https://ytdl-new-dxz.vercel.app/api/ytmp3?url=${encodeURIComponent(video.url)}`);
-        const downloadUrl = ytRes.data.download_url || ytRes.data.result || ytRes.data.url;
-
-        if (!downloadUrl) return reply("❌ *I cant get MP3 !*");
-
-        await socket.sendMessage(sender, {
-            audio: { url: downloadUrl },
+            audio: { url: audioDownloadUrl },
             mimetype: 'audio/mpeg',
+            fileName: cleanFileName,
             ptt: false
         }, { quoted: msg });
 
@@ -1189,7 +1221,8 @@ case 'ytmp3': {
 
     } catch (e) {
         console.log("SONG CMD ERROR:", e);
-        reply("❌ *Error: " + e.message + "*");
+        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+        reply("❌ *Sadew-MD Internal Error:* " + e.message);
     }
     break;
 }
