@@ -1643,44 +1643,20 @@ case 'akira': {
     break;
 }
 
-// ════════════ SADEW MINI WORM-GPT (WITH HACK ANIMATION) ════════════
+// ════════════ SADEW MINI WORM-GPT (SAFE VERSION) ════════════
 
+case 'darkai':
 case 'wormgpt':
-case 'darkai': {
+case 'ai': {
     try {
         const query = args.join(' ');
-        if (!query) return reply("❌ *කරුණාකර ප්‍රශ්නයක් හෝ විධානයක් ඇතුළත් කරන්න.*\n\n💡 උදා: `.wormgpt write a hacking script`");
+        if (!query) return reply("❌ *කරුණාකර ප්‍රශ්නයක් හෝ විධානයක් ඇතුළත් කරන්න.*\n\n💡 උදා: `.darkai write a hacking script`");
 
         const from = msg.key.remoteJid;
-        
-        // 💀 හැකින් Loading Animation එකේ පියවර ටික
-        const steps = [
-            '👾 *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 𝗦𝘁𝗮𝗿𝘁𝗶𝗻𝗴...* 👾',
-            '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ᴅᴀʀᴋ ᴛᴏᴏʟꜱ...` 🛠️',
-            '`ʙʏᴘᴀꜱꜱɪɴɢ ꜱᴇᴄᴜʀɪᴛʏ ᴘʀᴏᴛᴏᴄᴏʟꜱ...` 🌐',
-            '```[##........] 20%``` ⏳',
-            '```[#####.....] 50%``` ⏳',
-            '```[########..] 80%``` ⏳',
-            '```[##########] 100%``` ✅',
-            '🔓 *𝗦𝘆𝘀𝘁𝗲𝗺 𝗕𝗿𝗲𝗮𝗰𝗵: 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹!* 🔓',
-            '📡 *𝗙𝗲𝘁𝗰𝗵𝗶𝗻𝗴 𝗗𝗮𝘁𝗮 𝗳𝗿𝗼𝗺 𝗪𝗼𝗿𝗺𝗚𝗣𝗧...*'
-        ];
 
-        // 💀 රිඇක්ෂන් එක දැමීම
+        // 💀 රිඇක්ෂන් එක දැමීම සහ ආරක්ෂිත එක Loading මැසේජ් එකක් යැවීම
         await socket.sendMessage(from, { react: { text: '💀', key: msg.key } });
-
-        // ⏳ පළමු මැසේජ් එක යැවීම
-        let initialMsg = await socket.sendMessage(from, { text: steps[0] }, { quoted: msg });
-
-        // 🔄 Animation එක ප්ලේ කිරීම (තත්පර 0.8 ක පරතරයක් සහිතව)
-        for (let i = 1; i < steps.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 800)); 
-
-            await socket.sendMessage(from, {
-                text: steps[i],
-                edit: initialMsg.key
-            });
-        }
+        let initialMsg = await socket.sendMessage(from, { text: '👾 *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴...* ⏳' }, { quoted: msg });
 
         // 🌐 WolfApis හරහා WormGPT වෙතින් පිළිතුර ලබා ගැනීම
         const WOLF_API_KEY = "wxa_f_4e840b5e42";
@@ -1697,7 +1673,7 @@ case 'darkai': {
                                      `${aiReply}\n\n` +
                                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗔𝗗𝗘𝗪 𝜗𝜚⋆*`;
 
-                // අවසාන පිළිතුරෙන් අර Loading Message එක Edit කිරීම
+                // එක පාරක් විතරක් මැසේජ් එක Edit කිරීම (එතකොට WhatsApp එකෙන් ලොග් අවුට් කරන්නේ නෑ)
                 await socket.sendMessage(from, {
                     text: finalMessage,
                     edit: initialMsg.key
