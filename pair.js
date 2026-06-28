@@ -27,17 +27,17 @@ const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
   const images = [
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
-    'https://i.ibb.co/nsvyKzHq/tourl-1779693358584.jpg',
-    'https://i.ibb.co/nqr1zs58/tourl-1779693359381.jpg',
-    'https://i.ibb.co/hFgRrkHG/tourl-1779693362084.jpg',
-    'https://i.ibb.co/b5BGG3qy/tourl-1779693381594.jpg',
-    'https://i.ibb.co/Xxwq0KbL/tourl-1779693384509.jpg',
-    'https://i.ibb.co/p60X2gCY/tourl-1779693391761.jpg',
-    'https://i.ibb.co/8LDKt9St/tourl-1779693394059.jpg',
-    'https://i.ibb.co/5XSxSGrd/tourl-1779693398804.jpg',
-    'https://i.ibb.co/NdJ2LFJp/tourl-1779693402284.jpg',
-    'https://i.ibb.co/rKRD8cCT/tourl-1779693404589.jpg',
-    'https://i.ibb.co/4nVwLGXm/tourl-1779693406982.jpg'
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg'
   ]; 
 
 const akira = images[Math.floor(Math.random() * images.length)];
@@ -73,7 +73,7 @@ const config = {
     PREFIX: '.',
     MAX_RETRIES: 3,
     ADMIN_LIST_PATH: './admin.json',
-    AKIRA_IMG: 'https://i.ibb.co/FZjptLY/tourl-1779693358137.jpg',
+    AKIRA_IMG: 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
     NEWSLETTER_JID: '120363419619460838@newsletter',
     NEWSLETTER_LIST: [
         '120363425584831057@newsletter',
@@ -81,8 +81,8 @@ const config = {
     ],
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
-    OWNER_NUMBER: '94761480834',
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029VbAp1d6HVvTSFTYtco0T'
+    OWNER_NUMBER: '94753518443',
+    CHANNEL_LINK: 'https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21'
 };
 
 const replyFq = (text) => reply(text);
