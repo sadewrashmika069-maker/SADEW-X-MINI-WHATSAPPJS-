@@ -1322,7 +1322,7 @@ case 'playvid': {
     break;
 }
 
-// ════════════ HIDDEN DOWNLOADER ENGINE (BUFFER SYSTEM) ════════════
+// ════════════ HIDDEN DOWNLOADER ENGINE (FILE SYSTEM) ════════════
 
 case 'viddl': {
     try {
@@ -1336,112 +1336,103 @@ case 'viddl': {
         let downloadUrl = "";
         let videoTitle = "Sadew-MD Video";
 
-        // --- 1st API (Primary: ZANTA-MD ytmp4-v2 - Direct GoogleVideo Link) ---
-        // මේකෙන් දෙන Direct ලින්ක් එක මැදින් කැඩෙන්නේ නෑ
+        // --- 1st API (ZANTA-MD V1 Tunnel Link) ---
         try {
-            const zantaV2Url = `https://api.zanta-mini.store/api/ytmp4-v2?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}`;
-            const res1 = await axios.get(zantaV2Url);
-            
-            if (res1.data && res1.data.success && res1.data.result && res1.data.result.links && res1.data.result.links.download) {
-                downloadUrl = res1.data.result.links.download;
+            const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
+            const res1 = await axios.get(zantaApiUrl);
+            if (res1.data && res1.data.success && res1.data.result && res1.data.result.download_url) {
+                downloadUrl = res1.data.result.download_url;
                 videoTitle = res1.data.result.title || videoTitle;
-                console.log("[SADEW-MD] Primary API (v2) Success!");
             } else {
                 throw new Error("Primary API Failed");
             }
         } catch (err1) {
-            console.log("[SADEW-MD] Primary API Failed. Trying 2nd API...");
-            
-            // --- 2nd API (Fallback: ZANTA-MD ytdl - Tunnel Link) ---
+            // --- 2nd API (YTDL-DXZ) ---
             try {
-                const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
-                const res2 = await axios.get(zantaApiUrl);
-                
-                if (res2.data && res2.data.success && res2.data.result && res2.data.result.download_url) {
-                    downloadUrl = res2.data.result.download_url;
-                    videoTitle = res2.data.result.title || videoTitle;
-                    console.log("[SADEW-MD] Fallback 1 (v1) Success!");
-                } else {
-                    throw new Error("Fallback 1 Failed");
+                const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
+                const res2 = await axios.get(dxzApiUrl);
+                if (res2.data) {
+                    downloadUrl = res2.data.video_url || res2.data.download_url || res2.data.url;
+                    videoTitle = res2.data.title || videoTitle;
                 }
             } catch (err2) {
-                console.log("[SADEW-MD] Fallback 1 Failed. Trying 3rd API...");
-
-                // --- 3rd API (Fallback: YTDL-DXZ) ---
-                try {
-                    const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
-                    const res3 = await axios.get(dxzApiUrl);
-                    
-                    if (res3.data) {
-                        downloadUrl = res3.data.video_url || res3.data.download_url || res3.data.url;
-                        videoTitle = res3.data.title || videoTitle;
-                        console.log("[SADEW-MD] Fallback 2 Success!");
-                    }
-                } catch (err3) {
-                    console.log("[SADEW-MD] All APIs Failed.");
-                }
+                console.log("[SADEW-MD] All APIs Failed.");
             }
         }
 
         if (!downloadUrl) {
-            return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය. පසුව නැවත උත්සාහ කරන්න!*");
+            return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය!*");
         }
 
-        // 🔴 වීඩියෝව සම්පූර්ණයෙන්ම Download කරගැනීම (Limits ඉවත් කර ඇත) 🔴
-        let videoBuffer;
+        reply("⏳ _වීඩියෝව බාගත වෙමින් පවතී. කරුණාකර රැඳී සිටින්න..._");
+
+        // 🔴 මෙතන තමයි අලුත් සිස්ටම් එක (Temporary File එකකට Save කිරීම) 🔴
+        const fs = require('fs');
+        const path = require('path');
+        const crypto = require('crypto');
+        
+        // අහඹු නමකින් තාවකාලික ෆයිල් එකක් හදනවා
+        const tempFileName = `Akira_Vid_${crypto.randomBytes(4).toString('hex')}.mp4`;
+        const tempFilePath = path.join(__dirname, tempFileName);
+
         try {
-            const vidResponse = await axios.get(downloadUrl, { 
-                responseType: 'arraybuffer',
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
-                timeout: 120000, // තත්පර 120ක් දෙනවා ලොකු වීඩියෝ වලට
+            // වීඩියෝව Stream එකක් විදිහට සර්වර් එකට ගන්නවා
+            const response = await axios({
+                method: 'GET',
+                url: downloadUrl,
+                responseType: 'stream',
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'video/mp4,video/*,*/*'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
             });
-            videoBuffer = Buffer.from(vidResponse.data);
+
+            // ෆයිල් එකට ලියනවා
+            const writer = fs.createWriteStream(tempFilePath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            // ෆයිල් සයිස් එක බලනවා (5MB/1MB ට අඩු නම් Error එකක් යවනවා)
+            const stats = fs.statSync(tempFilePath);
+            const fileSizeInMB = stats.size / (1024 * 1024);
             
-            // ෆයිල් සයිස් එක චෙක් කිරීම (1MB ට වඩා අඩු නම් ඒක Corrupt ෆයිල් එකක්)
-            const fileSizeMB = videoBuffer.length / (1024 * 1024);
-            if (fileSizeMB < 1) { 
-                 throw new Error("Downloaded file is too small (Corrupted).");
+            if (fileSizeInMB < 1) {
+                if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+                throw new Error("File is too small or corrupted.");
             }
-        } catch (downloadErr) {
-            console.log("BUFFER DOWNLOAD ERROR:", downloadErr.message);
-            // Buffer එක අවුල් ගියොත්, කෙලින්ම URL එකෙන් යවන්න ට්‍රයි කරනවා (Last Chance Fallback)
+
             const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
             const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
-            let fallbackCaption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n🎬 *TITLE :* ${videoTitle}\n📽️ *QUALITY :* ${quality}p\n__________________________\n\n📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
-            
+
+            let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
+                          `🎬 *TITLE :* ${videoTitle}\n` +
+                          `📽️ *QUALITY :* ${quality}p\n` +
+                          `⚖️ *SIZE :* ${fileSizeInMB.toFixed(2)} MB\n` +
+                          `__________________________\n\n` +
+                          `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
+                          `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+
+            // WhatsApp එකට යැවීම
             await socket.sendMessage(sender, {
-                video: { url: downloadUrl },
+                video: fs.readFileSync(tempFilePath),
                 mimetype: 'video/mp4',
-                caption: fallbackCaption,
+                caption: caption,
                 fileName: `Akira_Video_${quality}p.mp4`
             }, { quoted: msg });
+
+            // යවලා ඉවර වුණාට පස්සේ ෆයිල් එක සර්වර් එකෙන් මකලා දානවා (RAM එක පිරෙන්නේ නෑ)
+            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+
             try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-            return;
+
+        } catch (downloadError) {
+            console.error("FILE DOWNLOAD ERROR:", downloadError);
+            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+            return reply("❌ *Error: වීඩියෝව Download කිරීමේදී දෝෂයක් මතු විය!*");
         }
-
-        const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-        const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
-
-        let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
-                      `🎬 *TITLE :* ${videoTitle}\n` +
-                      `📽️ *QUALITY :* ${quality}p\n` +
-                      `__________________________\n\n` +
-                      `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
-
-        await socket.sendMessage(sender, {
-            video: videoBuffer, 
-            mimetype: 'video/mp4',
-            caption: caption,
-            fileName: `Akira_Video_${quality}p.mp4`
-        }, { quoted: msg });
-
-        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
     } catch (e) {
         console.log("VIDDL CMD ERROR:", e);
