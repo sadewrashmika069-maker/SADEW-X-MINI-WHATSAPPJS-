@@ -1322,21 +1322,22 @@ case 'playvid': {
     break;
 }
 
-// ════════════ HIDDEN DOWNLOADER ENGINE (FILE SYSTEM) ════════════
+// ════════════ HIDDEN DOWNLOADER ENGINE (FFMPEG COMPATIBLE) ════════════
 
 case 'viddl': {
+    let inputPath, outputPath;
     try {
         if (!args[0] || !args[1]) return;
         const url = args[0];
         const quality = args[1];
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
-        reply(`📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Downloading ${quality}p Video..._`);
+        reply(`📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Downloading & Converting ${quality}p Video..._`);
 
         let downloadUrl = "";
         let videoTitle = "Sadew-MD Video";
 
-        // --- 1st API (ZANTA-MD V1 Tunnel Link) ---
+        // --- 1st API (ZANTA-MD) ---
         try {
             const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
             const res1 = await axios.get(zantaApiUrl);
@@ -1347,7 +1348,7 @@ case 'viddl': {
                 throw new Error("Primary API Failed");
             }
         } catch (err1) {
-            // --- 2nd API (YTDL-DXZ) ---
+            // --- 2nd API (DXZ) ---
             try {
                 const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
                 const res2 = await axios.get(dxzApiUrl);
@@ -1360,83 +1361,87 @@ case 'viddl': {
             }
         }
 
-        if (!downloadUrl) {
-            return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය!*");
-        }
+        if (!downloadUrl) return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය!*");
 
-        reply("⏳ _වීඩියෝව බාගත වෙමින් පවතී. කරුණාකර රැඳී සිටින්න..._");
-
-        // 🔴 මෙතන තමයි අලුත් සිස්ටම් එක (Temporary File එකකට Save කිරීම) 🔴
         const fs = require('fs');
         const path = require('path');
         const crypto = require('crypto');
-        
-        // අහඹු නමකින් තාවකාලික ෆයිල් එකක් හදනවා
-        const tempFileName = `Akira_Vid_${crypto.randomBytes(4).toString('hex')}.mp4`;
-        const tempFilePath = path.join(__dirname, tempFileName);
 
-        try {
-            // වීඩියෝව Stream එකක් විදිහට සර්වර් එකට ගන්නවා
-            const response = await axios({
-                method: 'GET',
-                url: downloadUrl,
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
+        // අහඹු නමකින් Temporary ෆයිල්ස් 2ක් හදනවා
+        const tempId = crypto.randomBytes(4).toString('hex');
+        inputPath = path.join(__dirname, `input_${tempId}.mp4`);
+        outputPath = path.join(__dirname, `output_${tempId}.mp4`);
 
-            // ෆයිල් එකට ලියනවා
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
+        // 1. මුලින්ම වීඩියෝව සර්වර් එකට Download කිරීම
+        const response = await axios({
+            method: 'GET',
+            url: downloadUrl,
+            responseType: 'stream',
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
 
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+        const writer = fs.createWriteStream(inputPath);
+        response.data.pipe(writer);
 
-            // ෆයිල් සයිස් එක බලනවා (5MB/1MB ට අඩු නම් Error එකක් යවනවා)
-            const stats = fs.statSync(tempFilePath);
-            const fileSizeInMB = stats.size / (1024 * 1024);
-            
-            if (fileSizeInMB < 1) {
-                if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-                throw new Error("File is too small or corrupted.");
-            }
+        await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+        });
 
-            const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-            const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+        reply("⚙️ _වීඩියෝව WhatsApp සඳහා සකසමින් පවතී..._");
 
-            let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
-                          `🎬 *TITLE :* ${videoTitle}\n` +
-                          `📽️ *QUALITY :* ${quality}p\n` +
-                          `⚖️ *SIZE :* ${fileSizeInMB.toFixed(2)} MB\n` +
-                          `__________________________\n\n` +
-                          `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                          `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+        // 2. FFmpeg මගින් WhatsApp සඳහා සහය දක්වන (H.264) Format එකට හැරවීම
+        await new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .outputOptions([
+                    '-c:v libx264',       // WhatsApp වලට අත්‍යවශ්‍ය Video Codec එක
+                    '-c:a aac',           // WhatsApp වලට අත්‍යවශ්‍ය Audio Codec එක
+                    '-preset ultrafast',  // ඉක්මනින් Convert වෙන්න
+                    '-crf 28',            // Quality එක බැලන්ස් කරන්න
+                    '-movflags +faststart' // Play වෙන්න පටන් ගන්න පුළුවන් වෙන්න
+                ])
+                .save(outputPath)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    console.error("FFMPEG ERROR:", err);
+                    reject(err);
+                });
+        });
 
-            // WhatsApp එකට යැවීම
-            await socket.sendMessage(sender, {
-                video: fs.readFileSync(tempFilePath),
-                mimetype: 'video/mp4',
-                caption: caption,
-                fileName: `Akira_Video_${quality}p.mp4`
-            }, { quoted: msg });
+        const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+        const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-            // යවලා ඉවර වුණාට පස්සේ ෆයිල් එක සර්වර් එකෙන් මකලා දානවා (RAM එක පිරෙන්නේ නෑ)
-            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+        let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
+                      `🎬 *TITLE :* ${videoTitle}\n` +
+                      `📽️ *QUALITY :* ${quality}p\n` +
+                      `__________________________\n\n` +
+                      `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
+                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-            try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+        // 3. Convert කරපු MP4 එක WhatsApp වෙත යැවීම
+        await socket.sendMessage(sender, {
+            video: fs.readFileSync(outputPath),
+            mimetype: 'video/mp4',
+            caption: caption,
+            fileName: `Akira_Video_${quality}p.mp4`
+        }, { quoted: msg });
 
-        } catch (downloadError) {
-            console.error("FILE DOWNLOAD ERROR:", downloadError);
-            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-            return reply("❌ *Error: වීඩියෝව Download කිරීමේදී දෝෂයක් මතු විය!*");
-        }
+        // 4. යැව්වට පස්සේ සර්වර් එකේ ඉඩ ඉතුරු වෙන්න Temporary Files මකා දැමීම
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+
+        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
     } catch (e) {
         console.log("VIDDL CMD ERROR:", e);
         reply("❌ *ERROR: මෙම වීඩියෝව ඩවුන්ලෝඩ් කළ නොහැක!*");
+        
+        // Error එකක් ආවත් Temporary Files මකලා දාන්න
+        const fs = require('fs');
+        try {
+            if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+            if (outputPath && fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+        } catch (err) {}
     }
     break;
 }
