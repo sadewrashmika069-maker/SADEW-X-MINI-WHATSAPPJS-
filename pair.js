@@ -1643,6 +1643,92 @@ case 'akira': {
     break;
 }
 
+// ════════════ SADEW MINI WORM-GPT (WITH HACK ANIMATION) ════════════
+
+case 'wormgpt':
+case 'darkai': {
+    try {
+        const query = args.join(' ');
+        if (!query) return reply("❌ *කරුණාකර ප්‍රශ්නයක් හෝ විධානයක් ඇතුළත් කරන්න.*\n\n💡 උදා: `.wormgpt write a hacking script`");
+
+        const from = msg.key.remoteJid;
+        
+        // 💀 හැකින් Loading Animation එකේ පියවර ටික
+        const steps = [
+            '👾 *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 𝗦𝘁𝗮𝗿𝘁𝗶𝗻𝗴...* 👾',
+            '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ᴅᴀʀᴋ ᴛᴏᴏʟꜱ...` 🛠️',
+            '`ʙʏᴘᴀꜱꜱɪɴɢ ꜱᴇᴄᴜʀɪᴛʏ ᴘʀᴏᴛᴏᴄᴏʟꜱ...` 🌐',
+            '```[##........] 20%``` ⏳',
+            '```[#####.....] 50%``` ⏳',
+            '```[########..] 80%``` ⏳',
+            '```[##########] 100%``` ✅',
+            '🔓 *𝗦𝘆𝘀𝘁𝗲𝗺 𝗕𝗿𝗲𝗮𝗰𝗵: 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹!* 🔓',
+            '📡 *𝗙𝗲𝘁𝗰𝗵𝗶𝗻𝗴 𝗗𝗮𝘁𝗮 𝗳𝗿𝗼𝗺 𝗪𝗼𝗿𝗺𝗚𝗣𝗧...*'
+        ];
+
+        // 💀 රිඇක්ෂන් එක දැමීම
+        await socket.sendMessage(from, { react: { text: '💀', key: msg.key } });
+
+        // ⏳ පළමු මැසේජ් එක යැවීම
+        let initialMsg = await socket.sendMessage(from, { text: steps[0] }, { quoted: msg });
+
+        // 🔄 Animation එක ප්ලේ කිරීම (තත්පර 0.8 ක පරතරයක් සහිතව)
+        for (let i = 1; i < steps.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 800)); 
+
+            await socket.sendMessage(from, {
+                text: steps[i],
+                edit: initialMsg.key
+            });
+        }
+
+        // 🌐 WolfApis හරහා WormGPT වෙතින් පිළිතුර ලබා ගැනීම
+        const WOLF_API_KEY = "wxa_f_4e840b5e42";
+        const targetUrl = `https://apis.xwolf.space/api/ai/wormgpt?q=${encodeURIComponent(query)}&key=${WOLF_API_KEY}`;
+        
+        const response = await axios.get(targetUrl, { timeout: 40000 });
+
+        if (response.data) {
+            const aiReply = response.data.result || response.data.response || response.data.reply;
+
+            if (aiReply) {
+                // ✨ SADEW MINI ලස්සන Format එක
+                const finalMessage = `*↳ ❝ [👾 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 👾] ¡! ❞*\n\n` +
+                                     `${aiReply}\n\n` +
+                                     `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗔𝗗𝗘𝗪 𝜗𝜚⋆*`;
+
+                // අවසාන පිළිතුරෙන් අර Loading Message එක Edit කිරීම
+                await socket.sendMessage(from, {
+                    text: finalMessage,
+                    edit: initialMsg.key
+                });
+                
+                await socket.sendMessage(from, { react: { text: '✅', key: msg.key } });
+
+            } else {
+                await socket.sendMessage(from, { 
+                    text: `❌ *WormGPT Raw Response:* \n\n${JSON.stringify(response.data, null, 2)}`,
+                    edit: initialMsg.key
+                });
+            }
+        } else {
+            await socket.sendMessage(from, { 
+                text: "❌ *Error:* API සේවාදායකයෙන් හිස් ප්‍රතිචාරයක් ලැබුණි.",
+                edit: initialMsg.key
+            });
+            await socket.sendMessage(from, { react: { text: '❌', key: msg.key } });
+        }
+
+    } catch (e) {
+        console.log("WORM-GPT ERROR:", e);
+        try { 
+            await socket.sendMessage(msg.key.remoteJid, { text: `❌ *WormGPT API Error:* ${e.message}` });
+            await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); 
+        } catch (_) {}
+    }
+    break;
+}
+					
 // ════════════ VV ════════════
         
 case 'vv': {
