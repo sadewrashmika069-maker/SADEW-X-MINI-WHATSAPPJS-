@@ -26,7 +26,7 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
   const images = [
-    'https://i.ibb.co/FZjptLY/tourl-1779693358137.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
     'https://i.ibb.co/nsvyKzHq/tourl-1779693358584.jpg',
     'https://i.ibb.co/nqr1zs58/tourl-1779693359381.jpg',
     'https://i.ibb.co/hFgRrkHG/tourl-1779693362084.jpg',
