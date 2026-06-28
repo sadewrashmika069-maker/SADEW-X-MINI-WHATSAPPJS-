@@ -86,6 +86,9 @@ const config = {
 };
 
 const replyFq = (text) => reply(text);
+
+if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
+
 const activeSockets = new Map();
 const socketCreationTime = new Map();
 const socketHandlersMap = new Map();
