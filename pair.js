@@ -1,8 +1,7 @@
-/*                                                                                                                                    
-  AKIRA GIRL MD MINI BOT - MULTI SESSION SUPPORT
+/* AKIRA GIRL MD MINI BOT - MULTI SESSION SUPPORT
   DEVELOPED BY CHAMOD TECH OFC
   FULLY ENC AND PRIVET SOURCE CODE    
-  Code Ussai #akak - Thawa #akada balanne                                                                    
+  Code Ussai #akak - Thawa #akada balanne                                                                             
 */
 
 const express = require('express');
@@ -111,14 +110,16 @@ const SessionSchema = new mongoose.Schema({
         default: Date.now
     }
 });
-const Session = mongoose.model('Session', SessionSchema);
+
+// මෙතන Session වෙනුවට SessionNew කියලා දුන්නා පරණ අවුල් ඩේටා අයින් වෙන්න
+const Session = mongoose.model('SessionNew', SessionSchema); 
 
 async function connectMongoDB() {
     try {
-        const mongoUri = process.env.MONGO_URI || 'mongodb+srv://sadewrashmika069_db_user:NWaUu0Jjyx8BrCcl@cluster0.yqmgml7.mongodb.net/?appName=Cluster0';
+        const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sadewrashmika069_db_user:NWaUu0Jjyx8BrCcl@cluster0.yqmgml7.mongodb.net/?appName=Cluster0';
         await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
+            bufferCommands: false,
+            serverSelectionTimeoutMS: 5000 
         });
         console.log('Connected to MongoDB');
     } catch (error) {
@@ -360,7 +361,7 @@ async function setupMessageHandlers(socket) {
     socket.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg.message || msg.key.remoteJid === 'status@broadcast' || msg.key.remoteJid === config.NEWSLETTER_JID) return;
-               
+                
         const senderNumber = msg.key.participant ? msg.key.participant.split('@')[0] : msg.key.remoteJid.split('@')[0];
         const botNumber = jidNormalizedUser(socket.user.id).split('@')[0];
         const isReact = msg.message.reactionMessage;
@@ -652,8 +653,10 @@ async function EmpirePair(number, res) {
             version,
             auth: state,
             logger: pino({ level: "silent" }),
-            browser: ["Ubuntu", "Chrome", "20.0.04"],
+            browser: ["Mac OS", "Safari", "10.15.7"], // Browser Spoofing එකතු කලා
             printQRInTerminal: false,
+            syncFullHistory: false,      // පරණ මැසේජ් ඔක්කොම ඩවුන්ලෝඩ් වෙන එක නවත්තනවා
+            markOnlineOnConnect: false   // ලොග් වෙද්දී බර අඩු කරනවා
         });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
@@ -811,7 +814,7 @@ const recentCallers = new Set();
 const type = getContentType(msg.message);
         if (!msg.message) return;
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
-                                                       const m = sms(socket, msg);                                                
+                                                       const m = sms(socket, msg);                                              
 const quoted =
             type == "extendedTextMessage" &&
             msg.message.extendedTextMessage.contextInfo != null
@@ -906,7 +909,7 @@ function getUptime() {
     
     return dDisplay + hDisplay + mDisplay + sDisplay;
 }
-		
+        
 const ARABIAN_THUMB_G = 'https://files.catbox.moe/5ztdoe.jpeg';
 const arabianCtxGlobal = {
   forwardingScore: 999,
@@ -961,11 +964,11 @@ const downloadQuotedMedia = async (quoted) => {
 
   const sendReply = text => socket.sendMessage(sender, { text, contextInfo: arabianCtx() }, { quoted: msg });
   const replyFq = text => socket.sendMessage(sender, { text, contextInfo: arabianCtx() }, { quoted: fq });
-		
+        
         try {       
             switch (command) {
 
-	// ════════════ MENU ════════════
+    // ════════════ MENU ════════════
 
         case 'menu':
         case 'list':
@@ -1053,7 +1056,7 @@ ${readMore}
       }, { quoted: msg });
 
       break;
-		}					
+        }                   
             
     // ════════════ PING ════════════
       
@@ -1066,11 +1069,11 @@ ${readMore}
       await socket.sendMessage(sender, {
         image: { url: akira },
         caption: `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗣𝗶𝗻𝗴 🎀] ¡! ❞*\n\n` +
-			     `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
+             `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
                  `┃₊❏❜ ⋮🏓 𝙿𝙾𝙽𝙶 : _pong!_\n` +
                  `┃₊❏❜ ⋮⚡ 𝚂𝙿𝙴𝙴𝙳 : ${ms}ms\n` +
                  `┃₊❏❜ ⋮⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴 : ${getUptime()}\n` +
-			     `┗━━━━━°⌜ \`赤い糸 ⌟°━━━━━┛\n\n` +
+             `┗━━━━━°⌜ \`赤い糸 ⌟°━━━━━┛\n\n` +
                  `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`,
         contextInfo: arabianCtx()
       }, { quoted: msg });
@@ -1119,14 +1122,14 @@ case 'alive': {
       const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
       const sysInfo = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
-		              `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
+              `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
                       `┃ *⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴:* ${uptime}\n` +
                       `┃ *📟 𝚁𝙰𝙼 𝚄𝚂𝙰𝙶𝙴:* ${ramUsage} MB / ${totalRam} GB\n` +
                       `┃ *📦 𝙽𝙾𝙳𝙴 𝚅𝙴𝚁:* ${nodeVersion}\n` +
                       `┃ *💻 𝙿𝙻𝙰𝚃𝙵𝙾𝚁𝙼:* ${platform}\n` +
                       `┃ *📅 𝙳𝙰𝚃𝙴:* ${slDate}\n` +
                       `┃ *⌚ 𝚃𝙸𝙼𝙴:* ${slTimeNow}\n` +
-		              `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n` +
+              `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n` +
                       `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
       await socket.sendMessage(sender, {
@@ -1136,7 +1139,7 @@ case 'alive': {
       }, { quoted: msg });
 
       break;
-	}
+    }
 
 // ════════════ SONG ════════════
 
@@ -1191,7 +1194,7 @@ case 'ytmp3': {
     break;
 }
 
-					
+                    
 // ════════════ VIDEO ════════════
 
 case 'video':
@@ -1249,10 +1252,10 @@ case 'playvid': {
         try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
     break;
-}			
+}           
 
 // ════════════ FACEBOOK ════════════
-					
+                    
 case 'fb':
 case 'facebook': {
     try {
@@ -1419,7 +1422,7 @@ case 'akira': {
 }
 
 // ════════════ VV ════════════
-		
+        
 case 'vv': {
       const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
       if (!quoted) return reply(`Reply to a view-once message with *.vv*`);
@@ -1529,7 +1532,7 @@ case 'wtype': {
 }
 
 
-					
+                    
 // ════════════ GIMP ════════════
 
 case 'gimg':
@@ -1565,7 +1568,7 @@ case 'img': {
 
 > *𝗔esthetic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`
         },
-		  { quoted: msg }
+          { quoted: msg }
       );
     } else {
       await reply(`I cant find it !`);
@@ -1750,7 +1753,7 @@ case 'add': {
     }
 
 // ════════════ TAGADMIN ════════════
-												 
+                                                
     case 'tagadmin': {
       if (!isGroup) return reply('This command only works in groups.');
       try {
@@ -1910,7 +1913,7 @@ case 'seticon': {
     }
     break;
 }
-					
+                    
 
     // ════════════ LINKGROUP ════════════
     case 'linkgroup': {
@@ -1942,7 +1945,7 @@ case 'seticon': {
         await socket.groupLeave(sender);
       } catch (e) { await reply(`leave failed: ${e.message}`); }
       break;
-	}
+    }
 
 // ════════════ HENTAI ════════════
 
@@ -2030,7 +2033,7 @@ case 'fancytext': {
         styledMsg += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, { 
-			image: { url: akira }, 
+            image: { url: akira }, 
             text: styledMsg
         }, { quoted: msg });
 
@@ -2054,7 +2057,7 @@ case 'fancytext': {
     await socket.sendMessage(sender, { react: { text: '🥷', key: msg.key } });
 
     await socket.sendMessage(sender, {
-		image: { url: akira }, 
+        image: { url: akira }, 
         contacts: {
             displayName: ownerName,
             contacts: [{
@@ -2073,7 +2076,7 @@ case 'fancytext': {
     });
 
     break;
-				}
+                }
 
 // ════════════ LVCAL ════════════
 
@@ -2159,7 +2162,7 @@ case 'hack': {
             await socket.sendMessage(from, {
                 text: steps[i],
                 edit: initialMsg.key,
-				contextInfo: arabianCtx() 
+                contextInfo: arabianCtx() 
             });
         }
 
@@ -2171,7 +2174,7 @@ case 'hack': {
 }
 
         }
-		}catch (error) {
+        }catch (error) {
             console.error('Command handler error:', error);
             await socket.sendMessage(sender, {
                 text: `❌ ERROR\nAn error occurred: ${error.message}`,
