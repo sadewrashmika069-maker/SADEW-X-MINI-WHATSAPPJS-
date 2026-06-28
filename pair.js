@@ -1127,7 +1127,7 @@ case 'alive': {
     const minutes = Math.floor((uptime % 3600) / 60);
     const seconds = Math.floor(uptime % 60);
 
-    const title = '*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗔𝗹𝗶𝘃𝗲 🎀] ¡! ❞*';
+    const title = '*↳ ❝ [🎀 *SADEW*𝗔𝗹𝗶𝘃𝗲 🎀] ¡! ❞*';
     const content = `*⊹₊⟡⋆ ⋮ Ａｂｏｕｔ ᶻ 𝗓 𐰁 .ᐟ*\n` +
                     `➜ This is a lightweight, stable WhatsApp bot designed to run 24/7. It is allowing users and group admins to fine-tune the bot’s behavior.\n\n` +
                     `*⊹₊⟡⋆ ⋮ Ｄｅｐｌｏｙ ᶻ 𝗓 𐰁 .ᐟ*\n` +
@@ -1507,7 +1507,7 @@ case 'facebook': {
     break;
 }
 
-// ════════════ TIKTOK ════════════
+// ════════════ TIKTOK (HD DOWNLOADER) ════════════
 
 case 'tiktok':
 case 'tt': {
@@ -1515,47 +1515,88 @@ case 'tt': {
         const query = args.join(' ');
         if (!query) return reply("🔗 *Send me a tiktok link !*");
         
-        if (!query.includes('tiktok.com')) {
+        const tiktokRegex = /(tiktok\.com|vt\.tiktok\.com)/;
+        if (!tiktokRegex.test(query)) {
             return reply("❌ *This is not valid tiktok link !*");
         }
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
 
-        const ttRes = await axios.get(`https://www.movanest.xyz/v2/tiktok?url=${encodeURIComponent(query)}`);
-        
-        if (!ttRes.data.status || !ttRes.data.results) {
+        const https = require("https");
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+        // TikWM API එක භාවිතා කිරීම
+        const apiUrl = `https://tikwm.com/api/?url=${encodeURIComponent(query)}`;
+        const response = await axios.get(apiUrl, { httpsAgent, timeout: 15000 });
+        const data = response.data;
+
+        if (!data || !data.data) {
             return reply("❌ *I cant get video !*");
         }
 
-        const videoData = ttRes.data.results;
-        const videoUrl = videoData.no_watermark || videoData.watermark; // Watermark නැති ලින්ක් එකට මුල් තැන දේ
+        // ⚡ HD තිබුණොත් ඒක ගන්නවා, නැත්නම් Normal එක ගන්නවා
+        const videoUrl = data.data.hdplay || data.data.play;
+        if (!videoUrl) throw new Error("No video URL found.");
 
-        const response = await axios.get(videoUrl, { 
+        const isHD = data.data.hdplay ? "High Quality (HD) ✅" : "Normal Quality ⚠️";
+        const title = data.data.title || "TikTok Video";
+
+        const videoStream = await axios.get(videoUrl, {
+            httpsAgent,
             responseType: 'arraybuffer',
+            timeout: 20000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
             }
         });
-        const videoBuffer = Buffer.from(response.data);
+        
+        const videoBuffer = Buffer.from(videoStream.data);
         const fileSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
 
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
+        // Akira Girl ලස්සන Caption එක
         const caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗧𝗶𝗸𝗧𝗼𝗸 🎀] ¡! ❞*\n\n` +
-                        `🎬 *TITLE :* ${videoData.title || 'TikTok Video'}\n` +
+                        `🎬 *TITLE :* ${title}\n` +
+                        `✨ *QUALITY :* ${isHD}\n` +
                         `⚖️ *SIZE :* ${fileSizeMB} MB\n` +
                         `🚫 *WATERMARK :* No\n` +
                         `__________________________\n\n` +
                         `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
                         `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        await socket.sendMessage(sender, {
-            video: videoBuffer,
-            mimetype: 'video/mp4',
-            caption: caption,
-            fileName: `tiktok_video_${slTimeNow}.mp4`
-        }, { quoted: msg });
+        // 16MB වලට වඩා වැඩි නම් Document එකක් විදිහට යවනවා (Quality එක අඩුවෙන එක නවත්තන්න)
+        if (videoBuffer.length > 16 * 1024 * 1024) {
+            await socket.sendMessage(sender, {
+                document: videoBuffer,
+                mimetype: "video/mp4",
+                fileName: `tiktok_HD_${slTimeNow}.mp4`,
+                caption: caption
+            }, { quoted: msg });
+        } else {
+            // 16MB ට අඩු නම් සාමාන්‍ය Video එකක් විදිහට යවනවා
+            await socket.sendMessage(sender, {
+                video: videoBuffer,
+                mimetype: 'video/mp4',
+                caption: caption,
+                fileName: `tiktok_HD_${slTimeNow}.mp4`
+            }, { quoted: msg });
+        }
+
+        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+    } catch (e) {
+        console.log("TIKTOK CMD ERROR:", e);
+        let errorMsg = e.message.includes("timeout")
+            ? "❌ *Timeout:* Server took too long."
+            : "❌ *Known Error*";
+        reply(errorMsg);
+        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+    }
+    break;
+}
+
 
         try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
