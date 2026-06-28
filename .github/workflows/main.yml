@@ -16,16 +16,13 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '24.x'
+        node-version: '20.x'
 
     - name: Install Dependencies
       run: npm install
 
-    - name: Install Localtunnel
-      run: npm install -g localtunnel
-     
     - name: Start Bot and Web Server
       run: |
         node index.js &
-        sleep 50
-        lt --port 8000 --print-requests
+        sleep 15
+        npx localtunnel --port 8000 --local-host 127.0.0.1
