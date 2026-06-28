@@ -1,7 +1,7 @@
 /* AKIRA GIRL MD MINI BOT - MULTI SESSION SUPPORT
   DEVELOPED BY CHAMOD TECH OFC
   FULLY ENC AND PRIVET SOURCE CODE    
-  Code Ussai #akak - Thawa #akada balanne                                                                             
+  Code Ussai #akak - Thawa #akada balanne                                                                                                      
 */
 
 const express = require('express');
@@ -114,7 +114,6 @@ const SessionSchema = new mongoose.Schema({
     }
 });
 
-// මෙතන Session වෙනුවට SessionNew කියලා දුන්නා පරණ අවුල් ඩේටා අයින් වෙන්න
 const Session = mongoose.model('SessionNew', SessionSchema); 
 
 async function connectMongoDB() {
@@ -875,6 +874,40 @@ const quoted =
         if (!isOwner && isGroup && sessionConfig.MODE === 'inbox') return;
         if (!isOwner && !isGroup && sessionConfig.MODE === 'groups') return;
 
+        // ════════════ NO-PREFIX REPLY CATCHER ════════════
+        if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
+            const replyText = text.trim();
+            const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
+
+            if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
+                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; 
+
+                    if (targetUrl) {
+                        const buttonMessage = {
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                            footer: '👑 SADEW-X-MINI 👑',
+                            buttons: [
+                                { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
+                            ],
+                            headerType: 1
+                        };
+                        
+                        delete global.sadewVideoSearch[sender];
+                        return await socket.sendMessage(msg.key.remoteJid, buttonMessage, { quoted: msg });
+                    }
+                } else {
+                    return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
+                }
+            }
+        }
+        // ════════════════════════════════════════════════
+
         if (!isCmd) return;
 
         const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
@@ -923,11 +956,11 @@ const arabianCtxGlobal = {
     serverMessageId: 143,
   },
   externalAdReply: {
-    title                : '🎀 𝗔𝗸𝗶𝗿𝗮 𝗕𝘆 𝐂𝗵𝗮𝗺𝗼𝗱𝐳 🇱🇰',
-    body                 : '𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐁𝐨𝐭 𝐐𝐮𝐞𝐞𝐧 💘',
-    thumbnailUrl         : ARABIAN_THUMB_G,
-    sourceUrl            : 'mini.gotukolaya.site',
-    mediaType            : 1,
+    title                 : '🎀 𝗔𝗸𝗶𝗿𝗮 𝗕𝘆 𝐂𝗵𝗮𝗺𝗼𝗱𝐳 🇱🇰',
+    body                  : '𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐁𝐨𝐭 𝐐𝐮𝐞𝐞𝐧 💘',
+    thumbnailUrl          : ARABIAN_THUMB_G,
+    sourceUrl             : 'mini.gotukolaya.site',
+    mediaType             : 1,
     renderLargerThumbnail: true,
   },
 };
@@ -1059,7 +1092,7 @@ ${readMore}
       }, { quoted: msg });
 
       break;
-        }                   
+        }                    
             
     // ════════════ PING ════════════
       
@@ -1289,45 +1322,6 @@ case 'playvid': {
     break;
 }
 
-// ════════════ SEARCH LIST REPLY CATCHER ════════════
-// අංකයට රිප්ලයි කරාම Button 4 එන්න හදපු සිස්ටම් එක
-
-case '1': case '2': case '3': case '4': case '5': {
-    try {
-        // මේක Reply එකක්ද කියලා චෙක් කරනවා
-        if (!msg.message.extendedTextMessage || !msg.message.extendedTextMessage.contextInfo || !msg.message.extendedTextMessage.contextInfo.quotedMessage) return;
-        
-        const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
-        const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
-
-        // ඒ Reply කරලා තියෙන්නේ අපේ Video Search List එකටද කියලා බලනවා
-        if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*")) {
-            const num = parseInt(command);
-            const urls = quotedText.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+/gi);
-            
-            if (urls && urls[num - 1]) {
-                const targetUrl = urls[num - 1];
-                
-                const buttonMessage = {
-                    text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
-                    footer: '👑 SADEW-X-MINI 👑',
-                    buttons: [
-                        { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
-                        { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p SD' }, type: 1 },
-                        { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
-                        { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
-                    ],
-                    headerType: 1
-                };
-                return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
-            }
-        }
-    } catch (e) {
-        console.log("REPLY HANDLER ERROR:", e);
-    }
-    break;
-}
-
 // ════════════ HIDDEN DOWNLOADER ENGINE (API FALLBACK) ════════════
 
 case 'viddl': {
@@ -1403,52 +1397,6 @@ case 'viddl': {
     break;
 }
 
-// ════════════ NO-PREFIX REPLY CATCHER (මේක තමයි අන්තිමට එන්න ඕනේ) ════════════
-default: {
-    try {
-        // රිප්ලයි කරපු මැසේජ් එකක්ද කියලා බලනවා
-        if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
-            
-            // මැසේජ් එකේ තියෙන්නේ මොකක්ද කියලා ගන්නවා (Prefix නැතුව)
-            const replyText = (msg.message.extendedTextMessage.text || msg.message.conversation || "").trim();
-            const quotedText = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation || msg.message.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage?.text || "";
-
-            // ඒක අපේ Video Search List එකක්ද සහ අංකයක්ද (1-5) කියලා බලනවා
-            if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
-                
-                // JID Memory එකෙන් මෙයාමද සර්ච් කරේ කියලා බලනවා
-                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
-                    const num = parseInt(replyText);
-                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; // මතක තියාගත්ත ලින්ක් එක ගන්නවා
-
-                    if (targetUrl) {
-                        const buttonMessage = {
-                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
-                            footer: '👑 SADEW-X-MINI 👑',
-                            buttons: [
-                                { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
-                                { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
-                                { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
-                                { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
-                            ],
-                            headerType: 1
-                        };
-                        
-                        // වැඩේ සාර්ථක වුනාට පස්සේ Memory එක clear කරනවා (ආරක්ෂාවට)
-                        delete global.sadewVideoSearch[sender];
-                        
-                        return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
-                    }
-                } else {
-                    return reply("❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න! (ඔබට අන් අයගේ Search වලට Reply කළ නොහැක)*");
-                }
-            }
-        }
-    } catch (e) {
-        console.log("REPLY CATCHER ERROR:", e);
-    }
-    break;
-}
 // ════════════ FACEBOOK ════════════
                     
 case 'fb':
@@ -2352,7 +2300,7 @@ case 'hack': {
         let initialMsg = await socket.sendMessage(from, { text: steps[0] }, { quoted: msg });
 
         for (let i = 1; i < steps.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // තත්පර 1ක ප්‍රමදයක්
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
 
             await socket.sendMessage(from, {
                 text: steps[i],
