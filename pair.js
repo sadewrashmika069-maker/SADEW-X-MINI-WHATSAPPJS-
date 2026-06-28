@@ -1336,30 +1336,31 @@ case 'viddl': {
         let downloadUrl = "";
         let videoTitle = "Sadew-MD Video";
 
-        // --- 1st API (Primary: ZANTA-MD ytdl - Quality Supported) ---
+        // --- 1st API (Primary: ZANTA-MD ytmp4-v2 - Direct GoogleVideo Link) ---
+        // මේකෙන් දෙන Direct ලින්ක් එක මැදින් කැඩෙන්නේ නෑ
         try {
-            const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
-            const res1 = await axios.get(zantaApiUrl);
+            const zantaV2Url = `https://api.zanta-mini.store/api/ytmp4-v2?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}`;
+            const res1 = await axios.get(zantaV2Url);
             
-            if (res1.data && res1.data.success && res1.data.result && res1.data.result.download_url) {
-                downloadUrl = res1.data.result.download_url;
+            if (res1.data && res1.data.success && res1.data.result && res1.data.result.links && res1.data.result.links.download) {
+                downloadUrl = res1.data.result.links.download;
                 videoTitle = res1.data.result.title || videoTitle;
-                console.log("[SADEW-MD] Primary API Success!");
+                console.log("[SADEW-MD] Primary API (v2) Success!");
             } else {
                 throw new Error("Primary API Failed");
             }
         } catch (err1) {
             console.log("[SADEW-MD] Primary API Failed. Trying 2nd API...");
             
-            // --- 2nd API (Fallback: ZANTA-MD ytmp4-v2 - Direct GoogleVideo Link) ---
+            // --- 2nd API (Fallback: ZANTA-MD ytdl - Tunnel Link) ---
             try {
-                const zantaV2Url = `https://api.zanta-mini.store/api/ytmp4-v2?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}`;
-                const res2 = await axios.get(zantaV2Url);
+                const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
+                const res2 = await axios.get(zantaApiUrl);
                 
-                if (res2.data && res2.data.success && res2.data.result && res2.data.result.links && res2.data.result.links.download) {
-                    downloadUrl = res2.data.result.links.download;
+                if (res2.data && res2.data.success && res2.data.result && res2.data.result.download_url) {
+                    downloadUrl = res2.data.result.download_url;
                     videoTitle = res2.data.result.title || videoTitle;
-                    console.log("[SADEW-MD] Fallback 1 (v2) Success!");
+                    console.log("[SADEW-MD] Fallback 1 (v1) Success!");
                 } else {
                     throw new Error("Fallback 1 Failed");
                 }
@@ -1386,21 +1387,41 @@ case 'viddl': {
             return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය. පසුව නැවත උත්සාහ කරන්න!*");
         }
 
-        reply("⏳ _වීඩියෝව සැකසෙමින් පවතී. කරුණාකර රැඳී සිටින්න..._");
-
-        // 🔴 මෙතන තමයි වෙනස් කරේ: URL එක කෙලින්ම දෙන්නේ නැතුව Buffer එකක් විදිහට Download කරනවා 🔴
+        // 🔴 වීඩියෝව සම්පූර්ණයෙන්ම Download කරගැනීම (Limits ඉවත් කර ඇත) 🔴
         let videoBuffer;
         try {
             const vidResponse = await axios.get(downloadUrl, { 
                 responseType: 'arraybuffer',
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+                timeout: 120000, // තත්පර 120ක් දෙනවා ලොකු වීඩියෝ වලට
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'video/mp4,video/*,*/*'
                 }
             });
             videoBuffer = Buffer.from(vidResponse.data);
+            
+            // ෆයිල් සයිස් එක චෙක් කිරීම (1MB ට වඩා අඩු නම් ඒක Corrupt ෆයිල් එකක්)
+            const fileSizeMB = videoBuffer.length / (1024 * 1024);
+            if (fileSizeMB < 1) { 
+                 throw new Error("Downloaded file is too small (Corrupted).");
+            }
         } catch (downloadErr) {
             console.log("BUFFER DOWNLOAD ERROR:", downloadErr.message);
-            return reply("❌ *Error: වීඩියෝව Download කිරීමේදී දෝෂයක් මතු විය!*");
+            // Buffer එක අවුල් ගියොත්, කෙලින්ම URL එකෙන් යවන්න ට්‍රයි කරනවා (Last Chance Fallback)
+            const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+            const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+            let fallbackCaption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n🎬 *TITLE :* ${videoTitle}\n📽️ *QUALITY :* ${quality}p\n__________________________\n\n📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+            
+            await socket.sendMessage(sender, {
+                video: { url: downloadUrl },
+                mimetype: 'video/mp4',
+                caption: fallbackCaption,
+                fileName: `Akira_Video_${quality}p.mp4`
+            }, { quoted: msg });
+            try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+            return;
         }
 
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
@@ -1413,7 +1434,6 @@ case 'viddl': {
                       `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
                       `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        // 🔴 දැන් WhatsApp එකට යවන්නේ අපි Download කරගත්ත Buffer ෆයිල් එක 🔴
         await socket.sendMessage(sender, {
             video: videoBuffer, 
             mimetype: 'video/mp4',
@@ -1429,7 +1449,6 @@ case 'viddl': {
     }
     break;
 }
-
 // ════════════ FACEBOOK ════════════
                     
 case 'fb':
