@@ -986,7 +986,7 @@ const downloadQuotedMedia = async (quoted) => {
 
       await socket.sendMessage(sender, {
         image: { url: akira },
-        caption: `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗠𝗲𝗻𝘂 🎀] ¡! ❞*
+        caption: `*↳ ❝ [🎀 *SADEW MINI* 🎀] ¡! ❞*
 
 ┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓
 ┃👤 *𝚄𝚂𝙴𝚁* : ${pushname}
@@ -1095,8 +1095,8 @@ case 'alive': {
     const content = `*⊹₊⟡⋆ ⋮ Ａｂｏｕｔ ᶻ 𝗓 𐰁 .ᐟ*\n` +
                     `➜ This is a lightweight, stable WhatsApp bot designed to run 24/7. It is allowing users and group admins to fine-tune the bot’s behavior.\n\n` +
                     `*⊹₊⟡⋆ ⋮ Ｄｅｐｌｏｙ ᶻ 𝗓 𐰁 .ᐟ*\n` +
-                    `➜ *Website:* https://akira.gotukolaya.site`;
-    const footer = '> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*';
+                    `➜ *Website:* https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21`;
+    const footer = '> *𝗔esthatic 𝗤ueen 𝗕y SADEW 𝜗𝜚⋆*';
 
     await socket.sendMessage(sender, {
         image: { url: akira },
@@ -1121,7 +1121,7 @@ case 'alive': {
       const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
       const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-      const sysInfo = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
+      const sysInfo = `*↳ ❝ [🎀 sadew 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
               `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
                       `┃ *⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴:* ${uptime}\n` +
                       `┃ *📟 𝚁𝙰𝙼 𝚄𝚂𝙰𝙶𝙴:* ${ramUsage} MB / ${totalRam} GB\n` +
@@ -1130,7 +1130,7 @@ case 'alive': {
                       `┃ *📅 𝙳𝙰𝚃𝙴:* ${slDate}\n` +
                       `┃ *⌚ 𝚃𝙸𝙼𝙴:* ${slTimeNow}\n` +
               `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n` +
-                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+                      `> *𝗔esthatic 𝗤ueen 𝗕y SADEW 𝜗𝜚⋆*`;
 
       await socket.sendMessage(sender, {
         image: { url: akira },
@@ -1228,65 +1228,165 @@ case 'yta': {
 }
 
                     
-// ════════════ VIDEO ════════════
+// ════════════ SADEW-X-MINI VIDEO DOWNLOADER ════════════
 
 case 'video':
 case 'ytmp4':
 case 'playvid': {
     try {
-        const text = args.join(' ');
-        if (!text) return reply("🎥 *Send me a video name or yt link !*");
+        const query = args.join(' ');
+        if (!query) return reply("🎥 *කරුණාකර වීඩියෝවක නමක් හෝ YouTube ලින්ක් එකක් දෙන්න!*");
 
         try { await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
- 
-        const search = await yts(text);
-        const video = search.videos[0]; 
 
-        if (!video) return reply("❌ *I cant get video*");
+        const API_TOKEN = "VK4fry";
+        const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
+        
+        // 1. පරිශීලකයා දුන්නේ කෙලින්ම ලින්ක් එකක්ද කියලා බලනවා
+        const isUrl = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i.test(query);
+
+        if (isUrl) {
+            // ලින්ක් එකක් නම් කෙලින්ම Quality Buttons ටික යවනවා
+            const url = query.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i)[0];
+            
+            const buttonMessage = {
+                text: `*🎥 Video Link Detected!*\n\n🔗 ${url}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                footer: '👑 SADEW-X-MINI 👑',
+                buttons: [
+                    { buttonId: `.viddl ${url} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                    { buttonId: `.viddl ${url} 480`, buttonText: { displayText: '🎞️ 480p SD' }, type: 1 },
+                    { buttonId: `.viddl ${url} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
+                    { buttonId: `.viddl ${url} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
+                ],
+                headerType: 1
+            };
+            return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
+        }
+
+        // 2. නමක් දුන්නොත් YouTube එකේ සර්ච් කරලා ලිස්ට් එක හදනවා
+        const searchRes = await axios.get(`${YT_SEARCH_API}?q=${encodeURIComponent(query)}&apitoken=${API_TOKEN}`);
+        if (!searchRes.data || !searchRes.data.success || !searchRes.data.result || searchRes.data.result.length === 0) {
+            return reply("❌ *වීඩියෝවක් සොයාගැනීමට නොහැකි විය!*");
+        }
+
+        const topResults = searchRes.data.result.slice(0, 5); // මුල් වීඩියෝ 5 ලබාගැනීම
+        let listText = `*🔍 SADEW-X-MINI VIDEO SEARCH*\n\n`;
+        
+        topResults.forEach((v, index) => {
+            listText += `*${index + 1}.* ${v.title}\n⏱️ Duration: ${v.duration || "N/A"}\n👤 Channel: ${v.channel || v.author || "Unknown"}\n🔗 ${v.url}\n\n`;
+        });
+        
+        listText += `> *ඔබට අවශ්‍ය වීඩියෝවට අදාළ අංකය (1, 2, 3...) මෙම මැසේජ් එකට Reply කරන්න.*`;
+
+        await socket.sendMessage(sender, { text: listText }, { quoted: msg });
+
+    } catch (e) {
+        console.log("VIDEO CMD ERROR:", e);
+        reply("❌ *ERROR: කරුණාකර පසුව නැවත උත්සාහ කරන්න!*");
+        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+    }
+    break;
+}
+
+// ════════════ SEARCH LIST REPLY CATCHER ════════════
+// අංකයට රිප්ලයි කරාම Button 4 එන්න හදපු සිස්ටම් එක
+
+case '1': case '2': case '3': case '4': case '5': {
+    try {
+        // මේක Reply එකක්ද කියලා චෙක් කරනවා
+        if (!msg.message.extendedTextMessage || !msg.message.extendedTextMessage.contextInfo || !msg.message.extendedTextMessage.contextInfo.quotedMessage) return;
+        
+        const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+        const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
+
+        // ඒ Reply කරලා තියෙන්නේ අපේ Video Search List එකටද කියලා බලනවා
+        if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*")) {
+            const num = parseInt(command);
+            const urls = quotedText.match(/https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+/gi);
+            
+            if (urls && urls[num - 1]) {
+                const targetUrl = urls[num - 1];
+                
+                const buttonMessage = {
+                    text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                    footer: '👑 SADEW-X-MINI 👑',
+                    buttons: [
+                        { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                        { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p SD' }, type: 1 },
+                        { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
+                        { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
+                    ],
+                    headerType: 1
+                };
+                return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
+            }
+        }
+    } catch (e) {
+        console.log("REPLY HANDLER ERROR:", e);
+    }
+    break;
+}
+
+// ════════════ HIDDEN DOWNLOADER ENGINE ════════════
+// Button එක එබුවම කාටවත් නොපෙනී Run වෙන කමාන්ඩ් එක (.viddl)
+
+case 'viddl': {
+    try {
+        if (!args[0] || !args[1]) return;
+        
+        const url = args[0];
+        const quality = args[1]; // 720, 480, 360, 144
+
+        try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
+        reply(`📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Downloading ${quality}p Video..._`);
+
+        const API_TOKEN = "VK4fry";
+        const YT_DOWNLOAD_API = "https://whiteshadow-x-api.onrender.com/api/download/ytmp4";
+
+        // WhiteShadow API එක හරහා අදාළ Quality එකට අදාල ලින්ක් එක ගැනීම
+        const dlRes = await axios.get(`${YT_DOWNLOAD_API}?url=${encodeURIComponent(url)}&quality=${quality}&apitoken=${API_TOKEN}`);
+        
+        let downloadUrl = "";
+        let title = "Sadew-MD Video";
+        
+        if (dlRes.data && dlRes.data.success && dlRes.data.result) {
+            downloadUrl = dlRes.data.result.download_url || dlRes.data.result.url;
+            title = dlRes.data.result.title || title;
+        }
+
+        if (!downloadUrl) return reply("❌ *Error: සර්වර් දෝෂයක්. පසුව උත්සාහ කරන්න!*");
+
+        // වීඩියෝව සර්වර් එකට Download කරගැනීම
+        const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+        const videoBuffer = Buffer.from(response.data);
 
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
         let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
-                        `🎬 *TITLE :* ${video.title}\n` +
-                        `👤 *CHANNEL :* ${video.author.name}\n` +
-                        `⏱️ *DURATION :* ${video.timestamp}\n` +
-                        `📽️ *QUALITY :* 360p\n` +
-                        `__________________________\n\n` +
-                        `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+                      `🎬 *TITLE :* ${title}\n` +
+                      `📽️ *QUALITY :* ${quality}p\n` +
+                      `__________________________\n\n` +
+                      `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
+                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
-
-        const ytRes = await axios.get(`https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(video.url)}&quality=360`);
-        
-        const downloadUrl = ytRes.data.video_url || ytRes.data.download_url;
-
-        if (!downloadUrl) {
-            return reply("❌ *API error !*");
-        }
-
-        const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-        const videoBuffer = Buffer.from(response.data);
-
+        // 720p HD එකත් එක්කම WhatsApp එකට යැවීම
         await socket.sendMessage(sender, {
             video: videoBuffer,
             mimetype: 'video/mp4',
             caption: caption,
-            fileName: `${video.title}.mp4`,
-            jpegThumbnail: (await axios.get(video.thumbnail, { responseType: 'arraybuffer' })).data
+            fileName: `${title}_${quality}p.mp4`
         }, { quoted: msg });
 
         try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
 
     } catch (e) {
-        console.log("VIDEO CMD ERROR:", e);
-        reply("❌ *ERROR try again later !*");
+        console.log("VIDDL CMD ERROR:", e);
+        reply("❌ *ERROR: මෙම වීඩියෝව ඩවුන්ලෝඩ් කළ නොහැක!*");
         try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
     break;
-}           
-
+}
 // ════════════ FACEBOOK ════════════
                     
 case 'fb':
