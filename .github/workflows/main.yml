@@ -1,0 +1,26 @@
+name: Run WhatsApp Bot
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x' # Baileys walata hoda 18+
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Start the Bot
+      run: node index.js 
+      # Oyage package.json eke start script ekak thiyenawa nam 'npm start' kiyalath danna puluwan.
