@@ -16,10 +16,12 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '24.x' # Node 24 වලට අප්ඩේට් කර ඇත
 
     - name: Install Dependencies
       run: npm install
 
     - name: Start the Bot
+      env:
+        MONGODB_URI: ${{ secrets.MONGODB_URI }} # ඔයා Settings වල දාපු Secret එක මෙතනින් බොට් එකට දෙනවා
       run: node index.js
