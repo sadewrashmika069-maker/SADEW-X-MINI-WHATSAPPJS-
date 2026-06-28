@@ -23,12 +23,3 @@ jobs:
 
     - name: Install Localtunnel
       run: npm install -g localtunnel
-
-    - name: Start Bot and Web Server
-      env:
-        # මතක ඇතුව කලින් කිව්ව වගේ MongoDB URL එක මෙතනට දෙන්නම ඕනේ. නැත්නම් වෙබ් එක රන් වෙන්න කලින් ක්‍රෑෂ් වෙනවා!
-        MONGODB_URI: ${{ secrets.MONGODB_URI }} 
-      run: |
-        node index.js &
-        sleep 15
-        lt --port 8000
