@@ -23,3 +23,8 @@ jobs:
 
     - name: Install Localtunnel
       run: npm install -g localtunnel
+      - name: Start Bot and Web Server
+      run: |
+        node index.js &
+        sleep 15
+        lt --port 8000
