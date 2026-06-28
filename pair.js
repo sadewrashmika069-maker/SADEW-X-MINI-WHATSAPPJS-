@@ -1245,19 +1245,16 @@ case 'playvid': {
         const API_TOKEN = "VK4fry";
         const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
         
-        // 1. පරිශීලකයා දුන්නේ කෙලින්ම ලින්ක් එකක්ද කියලා බලනවා
         const isUrl = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i.test(query);
 
         if (isUrl) {
-            // ලින්ක් එකක් නම් කෙලින්ම Quality Buttons ටික යවනවා
             const url = query.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i)[0];
-            
             const buttonMessage = {
                 text: `*🎥 Video Link Detected!*\n\n🔗 ${url}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
                 footer: '👑 SADEW-X-MINI 👑',
                 buttons: [
                     { buttonId: `.viddl ${url} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
-                    { buttonId: `.viddl ${url} 480`, buttonText: { displayText: '🎞️ 480p SD' }, type: 1 },
+                    { buttonId: `.viddl ${url} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
                     { buttonId: `.viddl ${url} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
                     { buttonId: `.viddl ${url} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
                 ],
@@ -1266,27 +1263,28 @@ case 'playvid': {
             return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
         }
 
-        // 2. නමක් දුන්නොත් YouTube එකේ සර්ච් කරලා ලිස්ට් එක හදනවා
         const searchRes = await axios.get(`${YT_SEARCH_API}?q=${encodeURIComponent(query)}&apitoken=${API_TOKEN}`);
         if (!searchRes.data || !searchRes.data.success || !searchRes.data.result || searchRes.data.result.length === 0) {
             return reply("❌ *වීඩියෝවක් සොයාගැනීමට නොහැකි විය!*");
         }
 
-        const topResults = searchRes.data.result.slice(0, 5); // මුල් වීඩියෝ 5 ලබාගැනීම
+        const topResults = searchRes.data.result.slice(0, 5); 
         let listText = `*🔍 SADEW-X-MINI VIDEO SEARCH*\n\n`;
         
+        // JID Memory එකට ලින්ක් ටික සේව් කිරීම (සර්ච් කරපු කෙනාගේ sender ID එකට අදාළව)
+        global.sadewVideoSearch[sender] = topResults.map(v => v.url);
+        
         topResults.forEach((v, index) => {
-            listText += `*${index + 1}.* ${v.title}\n⏱️ Duration: ${v.duration || "N/A"}\n👤 Channel: ${v.channel || v.author || "Unknown"}\n🔗 ${v.url}\n\n`;
+            listText += `*${index + 1}.* ${v.title}\n⏱️ Duration: ${v.duration || "N/A"}\n\n`;
         });
         
-        listText += `> *ඔබට අවශ්‍ය වීඩියෝවට අදාළ අංකය (1, 2, 3...) මෙම මැසේජ් එකට Reply කරන්න.*`;
+        listText += `> *ඔබට අවශ්‍ය වීඩියෝවට අදාළ අංකය (1, 2, 3...) මෙම මැසේජ් එකට Reply කරන්න.* (Prefix අවශ්‍ය නැත)`;
 
         await socket.sendMessage(sender, { text: listText }, { quoted: msg });
 
     } catch (e) {
         console.log("VIDEO CMD ERROR:", e);
         reply("❌ *ERROR: කරුණාකර පසුව නැවත උත්සාහ කරන්න!*");
-        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
     break;
 }
@@ -1330,55 +1328,70 @@ case '1': case '2': case '3': case '4': case '5': {
     break;
 }
 
-// ════════════ HIDDEN DOWNLOADER ENGINE ════════════
-// Button එක එබුවම කාටවත් නොපෙනී Run වෙන කමාන්ඩ් එක (.viddl)
+// ════════════ HIDDEN DOWNLOADER ENGINE (API FALLBACK) ════════════
 
 case 'viddl': {
     try {
         if (!args[0] || !args[1]) return;
-        
         const url = args[0];
-        const quality = args[1]; // 720, 480, 360, 144
+        const quality = args[1];
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
         reply(`📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Downloading ${quality}p Video..._`);
 
-        const API_TOKEN = "VK4fry";
-        const YT_DOWNLOAD_API = "https://whiteshadow-x-api.onrender.com/api/download/ytmp4";
-
-        // WhiteShadow API එක හරහා අදාළ Quality එකට අදාල ලින්ක් එක ගැනීම
-        const dlRes = await axios.get(`${YT_DOWNLOAD_API}?url=${encodeURIComponent(url)}&quality=${quality}&apitoken=${API_TOKEN}`);
-        
         let downloadUrl = "";
-        let title = "Sadew-MD Video";
-        
-        if (dlRes.data && dlRes.data.success && dlRes.data.result) {
-            downloadUrl = dlRes.data.result.download_url || dlRes.data.result.url;
-            title = dlRes.data.result.title || title;
+        let videoTitle = "Sadew-MD Video";
+
+        // --- 1st API (Primary: ZANTA-MD) ---
+        try {
+            const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
+            const res1 = await axios.get(zantaApiUrl);
+            
+            if (res1.data && res1.data.success && res1.data.result && res1.data.result.download_url) {
+                downloadUrl = res1.data.result.download_url;
+                videoTitle = res1.data.result.title || videoTitle;
+                console.log("[SADEW-MD] Primary API Success!");
+            } else {
+                throw new Error("Primary API returned invalid data");
+            }
+        } catch (err1) {
+            console.log("[SADEW-MD] Primary API Failed. Rolling back to 2nd API...");
+            
+            // --- 2nd API (Fallback: YTDL-DXZ) ---
+            try {
+                const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
+                const res2 = await axios.get(dxzApiUrl);
+                
+                if (res2.data) {
+                    downloadUrl = res2.data.video_url || res2.data.download_url || res2.data.url;
+                    videoTitle = res2.data.title || videoTitle;
+                    console.log("[SADEW-MD] Fallback API Success!");
+                }
+            } catch (err2) {
+                console.log("[SADEW-MD] Fallback API Failed too.");
+            }
         }
 
-        if (!downloadUrl) return reply("❌ *Error: සර්වර් දෝෂයක්. පසුව උත්සාහ කරන්න!*");
-
-        // වීඩියෝව සර්වර් එකට Download කරගැනීම
-        const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-        const videoBuffer = Buffer.from(response.data);
+        if (!downloadUrl) {
+            return reply("❌ *Error: සර්වර් දෝෂයක්. කරුණාකර පසුව නැවත උත්සාහ කරන්න!*");
+        }
 
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
         let caption = `*↳ ❝ [🎀 𝗔𝗸𝗶𝗿𝗮 𝗚𝗶𝗿𝗹 𝗩𝗶𝗱𝗲𝗼 🎀] ¡! ❞*\n\n` +
-                      `🎬 *TITLE :* ${title}\n` +
+                      `🎬 *TITLE :* ${videoTitle}\n` +
                       `📽️ *QUALITY :* ${quality}p\n` +
                       `__________________________\n\n` +
                       `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
                       `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        // 720p HD එකත් එක්කම WhatsApp එකට යැවීම
+        // Direct stream
         await socket.sendMessage(sender, {
-            video: videoBuffer,
+            video: { url: downloadUrl },
             mimetype: 'video/mp4',
             caption: caption,
-            fileName: `${title}_${quality}p.mp4`
+            fileName: `Akira_Video_${quality}p.mp4`
         }, { quoted: msg });
 
         try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
@@ -1386,7 +1399,53 @@ case 'viddl': {
     } catch (e) {
         console.log("VIDDL CMD ERROR:", e);
         reply("❌ *ERROR: මෙම වීඩියෝව ඩවුන්ලෝඩ් කළ නොහැක!*");
-        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+    }
+    break;
+}
+
+// ════════════ NO-PREFIX REPLY CATCHER (මේක තමයි අන්තිමට එන්න ඕනේ) ════════════
+default: {
+    try {
+        // රිප්ලයි කරපු මැසේජ් එකක්ද කියලා බලනවා
+        if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
+            
+            // මැසේජ් එකේ තියෙන්නේ මොකක්ද කියලා ගන්නවා (Prefix නැතුව)
+            const replyText = (msg.message.extendedTextMessage.text || msg.message.conversation || "").trim();
+            const quotedText = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation || msg.message.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage?.text || "";
+
+            // ඒක අපේ Video Search List එකක්ද සහ අංකයක්ද (1-5) කියලා බලනවා
+            if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
+                
+                // JID Memory එකෙන් මෙයාමද සර්ච් කරේ කියලා බලනවා
+                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; // මතක තියාගත්ත ලින්ක් එක ගන්නවා
+
+                    if (targetUrl) {
+                        const buttonMessage = {
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                            footer: '👑 SADEW-X-MINI 👑',
+                            buttons: [
+                                { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
+                            ],
+                            headerType: 1
+                        };
+                        
+                        // වැඩේ සාර්ථක වුනාට පස්සේ Memory එක clear කරනවා (ආරක්ෂාවට)
+                        delete global.sadewVideoSearch[sender];
+                        
+                        return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
+                    }
+                } else {
+                    return reply("❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න! (ඔබට අන් අයගේ Search වලට Reply කළ නොහැක)*");
+                }
+            }
+        }
+    } catch (e) {
+        console.log("REPLY CATCHER ERROR:", e);
     }
     break;
 }
