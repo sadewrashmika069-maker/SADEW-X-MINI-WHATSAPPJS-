@@ -1322,7 +1322,7 @@ case 'playvid': {
     break;
 }
 
-// ════════════ HIDDEN DOWNLOADER ENGINE (API FALLBACK) ════════════
+// ════════════ HIDDEN DOWNLOADER ENGINE (BUFFER SYSTEM) ════════════
 
 case 'viddl': {
     try {
@@ -1336,7 +1336,7 @@ case 'viddl': {
         let downloadUrl = "";
         let videoTitle = "Sadew-MD Video";
 
-        // --- 1st API (Primary: ZANTA-MD) ---
+        // --- 1st API (Primary: ZANTA-MD ytdl - Quality Supported) ---
         try {
             const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
             const res1 = await axios.get(zantaApiUrl);
@@ -1346,28 +1346,61 @@ case 'viddl': {
                 videoTitle = res1.data.result.title || videoTitle;
                 console.log("[SADEW-MD] Primary API Success!");
             } else {
-                throw new Error("Primary API returned invalid data");
+                throw new Error("Primary API Failed");
             }
         } catch (err1) {
-            console.log("[SADEW-MD] Primary API Failed. Rolling back to 2nd API...");
+            console.log("[SADEW-MD] Primary API Failed. Trying 2nd API...");
             
-            // --- 2nd API (Fallback: YTDL-DXZ) ---
+            // --- 2nd API (Fallback: ZANTA-MD ytmp4-v2 - Direct GoogleVideo Link) ---
             try {
-                const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
-                const res2 = await axios.get(dxzApiUrl);
+                const zantaV2Url = `https://api.zanta-mini.store/api/ytmp4-v2?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}`;
+                const res2 = await axios.get(zantaV2Url);
                 
-                if (res2.data) {
-                    downloadUrl = res2.data.video_url || res2.data.download_url || res2.data.url;
-                    videoTitle = res2.data.title || videoTitle;
-                    console.log("[SADEW-MD] Fallback API Success!");
+                if (res2.data && res2.data.success && res2.data.result && res2.data.result.links && res2.data.result.links.download) {
+                    downloadUrl = res2.data.result.links.download;
+                    videoTitle = res2.data.result.title || videoTitle;
+                    console.log("[SADEW-MD] Fallback 1 (v2) Success!");
+                } else {
+                    throw new Error("Fallback 1 Failed");
                 }
             } catch (err2) {
-                console.log("[SADEW-MD] Fallback API Failed too.");
+                console.log("[SADEW-MD] Fallback 1 Failed. Trying 3rd API...");
+
+                // --- 3rd API (Fallback: YTDL-DXZ) ---
+                try {
+                    const dxzApiUrl = `https://ytdl-new-dxz.vercel.app/api/ytmp4?url=${encodeURIComponent(url)}&quality=${quality}`;
+                    const res3 = await axios.get(dxzApiUrl);
+                    
+                    if (res3.data) {
+                        downloadUrl = res3.data.video_url || res3.data.download_url || res3.data.url;
+                        videoTitle = res3.data.title || videoTitle;
+                        console.log("[SADEW-MD] Fallback 2 Success!");
+                    }
+                } catch (err3) {
+                    console.log("[SADEW-MD] All APIs Failed.");
+                }
             }
         }
 
         if (!downloadUrl) {
-            return reply("❌ *Error: සර්වර් දෝෂයක්. කරුණාකර පසුව නැවත උත්සාහ කරන්න!*");
+            return reply("❌ *Error: වීඩියෝ ලින්ක් එක ලබාගැනීමට නොහැකි විය. පසුව නැවත උත්සාහ කරන්න!*");
+        }
+
+        reply("⏳ _වීඩියෝව සැකසෙමින් පවතී. කරුණාකර රැඳී සිටින්න..._");
+
+        // 🔴 මෙතන තමයි වෙනස් කරේ: URL එක කෙලින්ම දෙන්නේ නැතුව Buffer එකක් විදිහට Download කරනවා 🔴
+        let videoBuffer;
+        try {
+            const vidResponse = await axios.get(downloadUrl, { 
+                responseType: 'arraybuffer',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+                }
+            });
+            videoBuffer = Buffer.from(vidResponse.data);
+        } catch (downloadErr) {
+            console.log("BUFFER DOWNLOAD ERROR:", downloadErr.message);
+            return reply("❌ *Error: වීඩියෝව Download කිරීමේදී දෝෂයක් මතු විය!*");
         }
 
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
@@ -1380,9 +1413,9 @@ case 'viddl': {
                       `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
                       `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        // Direct stream
+        // 🔴 දැන් WhatsApp එකට යවන්නේ අපි Download කරගත්ත Buffer ෆයිල් එක 🔴
         await socket.sendMessage(sender, {
-            video: { url: downloadUrl },
+            video: videoBuffer, 
             mimetype: 'video/mp4',
             caption: caption,
             fileName: `Akira_Video_${quality}p.mp4`
