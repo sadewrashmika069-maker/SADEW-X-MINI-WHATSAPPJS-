@@ -16,12 +16,19 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '24.x' # Node 24 වලට අප්ඩේට් කර ඇත
+        node-version: '24.x'
 
     - name: Install Dependencies
       run: npm install
 
-    - name: Start the Bot
+    - name: Install Localtunnel
+      run: npm install -g localtunnel
+
+    - name: Start Bot and Web Server
       env:
-        MONGODB_URI: ${{ secrets.MONGODB_URI }} # ඔයා Settings වල දාපු Secret එක මෙතනින් බොට් එකට දෙනවා
-      run: node index.js
+        # මතක ඇතුව කලින් කිව්ව වගේ MongoDB URL එක මෙතනට දෙන්නම ඕනේ. නැත්නම් වෙබ් එක රන් වෙන්න කලින් ක්‍රෑෂ් වෙනවා!
+        MONGODB_URI: ${{ secrets.MONGODB_URI }} 
+      run: |
+        node index.js &
+        sleep 15
+        lt --port 8000
