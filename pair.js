@@ -1508,6 +1508,7 @@ case 'facebook': {
 }
 
 // ════════════ TIKTOK (HD DOWNLOADER) ════════════
+// ════════════ TIKTOK (HD DOWNLOADER) ════════════
 
 case 'tiktok':
 case 'tt': {
@@ -1592,17 +1593,6 @@ case 'tt': {
             ? "❌ *Timeout:* Server took too long."
             : "❌ *Known Error*";
         reply(errorMsg);
-        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-    }
-    break;
-}
-
-
-        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-
-    } catch (e) {
-        console.log("TIKTOK CMD ERROR:", e);
-        reply("❌ *Known Error*");
         try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
     break;
