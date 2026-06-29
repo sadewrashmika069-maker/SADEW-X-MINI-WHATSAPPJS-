@@ -1100,7 +1100,7 @@ const downloadQuotedMedia = async (quoted) => {
         try {       
             switch (command) {
 
-// ════════════ DYNAMIC MENU ════════════
+// ════════════ DYNAMIC BUTTON MENU ════════════
 
 case 'menu':
 case 'list':
@@ -1118,41 +1118,48 @@ case 'panel': {
     mainMenu += `┃📅 *𝙳𝙰𝚃𝙴* : ${slDate}\n`;
     mainMenu += `┃⌚ *𝚃𝙸𝙼𝙴* : ${slTimeNow}\n`;
     mainMenu += `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n`;
-    
-    mainMenu += `┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━\n`;
-    mainMenu += `┣⪼ ❖ 1. 📥 Download Cmds✿\n`;
-    mainMenu += `┣⪼ ❖ 2. 🧠 AI Commands✿\n`;
-    mainMenu += `┣⪼ ❖ 3. 👥 Group Manage✿\n`;
-    mainMenu += `┣⪼ ❖ 4. ⚙️ Main Commands✿\n`;
-    mainMenu += `┣⪼ ❖ 5. 🔧 Tools & Edits✿\n`;
-    mainMenu += `┣⪼ ❖ 6. 🎭 Fun Commands✿\n`;
-    mainMenu += `┣⪼ ❖ 7. 🎵 Song & Music✿\n`;
-    mainMenu += `┗━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    mainMenu += `📌 *ඉදිරියට යාමට අදාළ අංකය (1-7) මෙම මැසේජ් එකට Reply කරන්න.*\n\n`;
+    mainMenu += `👇 *පහතින් ඇති බොත්තම Click කර මෙනුව තෝරන්න* 👇\n`;
     mainMenu += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+
+    // 📌 මේක තමයි Menu 8 එන List Button එක
+    const sections = [
+        {
+            title: "🔮 SADEW MENU CATEGORIES",
+            rows: [
+                {title: "📥 1. DOWNLOAD CMDS", rowId: "sadew_cat_1"},
+                {title: "🧠 2. AI COMMANDS", rowId: "sadew_cat_2"},
+                {title: "👥 3. GROUP MANAGE", rowId: "sadew_cat_3"},
+                {title: "⚙️ 4. MAIN COMMANDS", rowId: "sadew_cat_4"},
+                {title: "🔧 5. TOOLS & EDITS", rowId: "sadew_cat_5"},
+                {title: "🎭 6. FUN COMMANDS", rowId: "sadew_cat_6"},
+                {title: "🎵 7. SONG & MUSIC", rowId: "sadew_cat_7"},
+                {title: "👑 8. OWNER AREA", rowId: "sadew_cat_8"}
+            ]
+        }
+    ];
+
+    const listMessage = {
+        text: mainMenu,
+        footer: "👑 SADEW MINI 👑",
+        title: "🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 🎀",
+        buttonText: "TAP TO OPEN MENU 👆",
+        sections
+    };
 
     const menuImageUrl = config.MENU_IMAGE_URL || "https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg";
 
-    const sentMsg = await socket.sendMessage(sender, {
+    // 1. පින්තූරය මුලින් යවනවා
+    await socket.sendMessage(sender, {
         image: { url: menuImageUrl },
-        caption: mainMenu,
+        caption: "> *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗜𝗡𝗧𝗘𝗥𝗔𝗖𝗧𝗜𝗩𝗘 𝗠𝗘𝗡𝗨*",
         contextInfo: arabianCtx()
     }, { quoted: msg });
 
-    // ID එක සේව් කිරීම (මෙනු එකට රිප්ලයි කරන එක අල්ලගන්න)
-    if (!global.menuContexts) global.menuContexts = {};
-    global.menuContexts[sender] = { 
-        step: "main_menu", 
-        quotedId: sentMsg.key.id 
-    };
-
-    // විනාඩි 5කින් Auto Clear වෙන්න හදනවා (Memory Leak වෙන්නේ නැති වෙන්න)
-    setTimeout(() => {
-        if (global.menuContexts[sender]) delete global.menuContexts[sender];
-    }, 5 * 60 * 1000);
-
+    // 2. List Button එක යවනවා
+    await socket.sendMessage(sender, listMessage);
+    
     break;
-}            
+}
     // ════════════ PING ════════════
       
     case 'ping': {
