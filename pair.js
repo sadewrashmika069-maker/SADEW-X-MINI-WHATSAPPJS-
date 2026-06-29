@@ -926,43 +926,58 @@ const quoted =
             { num: 7, name: "SONG", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg", icon: "🎵", cmds: ["song", "ytmp3", "play"] }
         ];
 
-        // ════════════ NO-PREFIX REPLY CATCHER ════════════
+       // ════════════ GLOBAL CATEGORY LIST ════════════
+        if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
+        const defaultImg = config.MENU_IMAGE_URL || "https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg";
+        
+        const categoriesList = [
+            { num: 1, name: "DOWNLOAD", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010878/zanta_media_uploads/k6btsgegjtnjuykb7g7f.jpg", icon: "📥", cmds: ["video", "fb", "tt"] },
+            { num: 2, name: "AI", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010845/zanta_media_uploads/j4lvxxlc48np5muhyn1a.jpg", icon: "🧠", cmds: ["akira", "wormgpt", "darkai"] },
+            { num: 3, name: "GROUP", image: defaultImg, icon: "👥", cmds: ["tagall", "hidetag", "add", "kick", "tagadmin", "promote", "demote", "lockgroup", "unlockgroup", "mute", "unmute", "setname", "setdesc", "seticon", "linkgroup", "revokelink", "leave"] },
+            { num: 4, name: "MAIN", image: defaultImg, icon: "⚙️", cmds: ["menu", "system", "ping", "alive"] },
+            { num: 5, name: "TOOLS", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010867/zanta_media_uploads/snnqp75qm9iuzouz6piu.jpg", icon: "🔧", cmds: ["vv", "sticker", "fancy", "getdp", "npm", "img", "mode"] },
+            { num: 6, name: "FUN", image: defaultImg, icon: "🎭", cmds: ["lvcal", "hentai", "hack"] },
+            { num: 7, name: "SONG", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg", icon: "🎵", cmds: ["song", "ytmp3", "play"] },
+            { num: 8, name: "OWNER", image: defaultImg, icon: "👑", cmds: ["owner", "active"] }
+        ];
+
+        // ════════════ BUTTON & REPLY CATCHER ════════════
+        const replyText = text ? text.trim() : "";
+
+        // --- 1. LIST MENU BUTTON CLICK CATCHER ---
+        if (replyText.startsWith("sadew_cat_")) {
+            let num = parseInt(replyText.split("_")[2]);
+            let selectedCat = categoriesList.find(c => c.num === num);
+            
+            if (selectedCat) {
+                let catMenu = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 ${selectedCat.name} 🎀] ¡! ❞*\n\n`;
+                catMenu += `╭─⊹₊⟡⋆『 \`${selectedCat.name} 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ\n`;
+                selectedCat.cmds.forEach(cmd => { catMenu += `│₊❏❜ ⋮ •${cmd}\n`; });
+                catMenu += `╰──────────────────<𝟑 .ᐟ\n\n`;
+                catMenu += `💡 _නැවත ප්‍රධාන මෙනුවට යාමට .menu භාවිත කරන්න._\n\n`;
+                catMenu += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+
+                return await socket.sendMessage(msg.key.remoteJid, {
+                    image: { url: selectedCat.image },
+                    caption: catMenu,
+                    contextInfo: {
+                        forwardingScore: 999,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid  : "120363419619460838@newsletter",
+                            newsletterName : '🦋 ₊˚ ⊹ 𝐀 𝐊 𝐈 𝐑 𝐀  𝐌 𝐃 ⊹ ˚₊ 𝜗𝜚',
+                            serverMessageId: 123,
+                        }
+                    }
+                }, { quoted: msg });
+            }
+        }
+
+        // --- 2. VIDEO SEARCH REPLY CATCHER ---
         if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
-            const replyText = text.trim();
             const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
             const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
-            const quotedId = msg.message.extendedTextMessage.contextInfo.stanzaId; 
 
-            // --- 1. MENU REPLY CATCHER ---
-            if (global.menuContexts[sender] && global.menuContexts[sender].quotedId === quotedId) {
-                let num = parseInt(replyText);
-                if (!isNaN(num) && num >= 1 && num <= 7) {
-                    let selectedCat = categoriesList.find(c => c.num === num);
-                    if (selectedCat) {
-                        let catMenu = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 ${selectedCat.name} 🎀] ¡! ❞*\n\n`;
-                        catMenu += `╭─⊹₊⟡⋆『 \`${selectedCat.name} 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ\n`;
-                        
-                        selectedCat.cmds.forEach(cmd => {
-                            catMenu += `│₊❏❜ ⋮ •${cmd}\n`;
-                        });
-                        
-                        catMenu += `╰──────────────────<𝟑 .ᐟ\n\n`;
-                        catMenu += `💡 _නැවත ප්‍රධාන මෙනුවට යාමට .menu භාවිත කරන්න._\n\n`;
-                        catMenu += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
-
-                        await socket.sendMessage(msg.key.remoteJid, {
-                            image: { url: selectedCat.image },
-                            caption: catMenu,
-                            contextInfo: arabianCtx()
-                        }, { quoted: msg });
-
-                        delete global.menuContexts[sender]; 
-                        return; 
-                    }
-                }
-            }
-
-            // --- 2. VIDEO SEARCH REPLY CATCHER ---
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
                 if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
                     const num = parseInt(replyText);
@@ -988,12 +1003,9 @@ const quoted =
                 }
             }
         }
-        // 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆
-
-
+        // ════════════════════════════════════════════════
 
         if (!isCmd) return;
-
         const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
