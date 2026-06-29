@@ -908,6 +908,92 @@ const quoted =
         }
         // ════════════════════════════════════════════════
 
+		// 👇 මෙන්න මේ ටික if (!isCmd) return; එකට හරියටම උඩින් Paste කරන්න 👇
+
+        // ════════════ GLOBAL MENU & VIDEO STATE ════════════
+        if (!global.menuContexts) global.menuContexts = {};
+        if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
+
+        const defaultImg = config.MENU_IMAGE_URL || "https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg";
+        
+        const categoriesList = [
+            { num: 1, name: "DOWNLOAD", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010878/zanta_media_uploads/k6btsgegjtnjuykb7g7f.jpg", icon: "📥", cmds: ["video", "fb", "tt"] },
+            { num: 2, name: "AI", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010845/zanta_media_uploads/j4lvxxlc48np5muhyn1a.jpg", icon: "🧠", cmds: ["akira", "wormgpt", "darkai"] },
+            { num: 3, name: "GROUP", image: defaultImg, icon: "👥", cmds: ["tagall", "hidetag", "add", "kick", "tagadmin", "promote", "demote", "lockgroup", "unlockgroup", "mute", "unmute", "setname", "setdesc", "seticon", "linkgroup", "revokelink", "leave"] },
+            { num: 4, name: "MAIN", image: defaultImg, icon: "⚙️", cmds: ["menu", "system", "ping", "alive", "owner"] },
+            { num: 5, name: "TOOLS", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010867/zanta_media_uploads/snnqp75qm9iuzouz6piu.jpg", icon: "🔧", cmds: ["vv", "sticker", "fancy", "getdp", "npm", "img", "mode"] },
+            { num: 6, name: "FUN", image: defaultImg, icon: "🎭", cmds: ["lvcal", "hentai", "hack"] },
+            { num: 7, name: "SONG", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg", icon: "🎵", cmds: ["song", "ytmp3", "play"] }
+        ];
+
+        // ════════════ NO-PREFIX REPLY CATCHER ════════════
+        if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
+            const replyText = text.trim();
+            const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
+            const quotedId = msg.message.extendedTextMessage.contextInfo.stanzaId; 
+
+            // --- 1. MENU REPLY CATCHER ---
+            if (global.menuContexts[sender] && global.menuContexts[sender].quotedId === quotedId) {
+                let num = parseInt(replyText);
+                if (!isNaN(num) && num >= 1 && num <= 7) {
+                    let selectedCat = categoriesList.find(c => c.num === num);
+                    if (selectedCat) {
+                        let catMenu = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 ${selectedCat.name} 🎀] ¡! ❞*\n\n`;
+                        catMenu += `╭─⊹₊⟡⋆『 \`${selectedCat.name} 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ\n`;
+                        
+                        selectedCat.cmds.forEach(cmd => {
+                            catMenu += `│₊❏❜ ⋮ •${cmd}\n`;
+                        });
+                        
+                        catMenu += `╰──────────────────<𝟑 .ᐟ\n\n`;
+                        catMenu += `💡 _නැවත ප්‍රධාන මෙනුවට යාමට .menu භාවිත කරන්න._\n\n`;
+                        catMenu += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
+
+                        await socket.sendMessage(msg.key.remoteJid, {
+                            image: { url: selectedCat.image },
+                            caption: catMenu,
+                            contextInfo: arabianCtx()
+                        }, { quoted: msg });
+
+                        delete global.menuContexts[sender]; 
+                        return; 
+                    }
+                }
+            }
+
+            // --- 2. VIDEO SEARCH REPLY CATCHER ---
+            if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
+                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; 
+
+                    if (targetUrl) {
+                        const buttonMessage = {
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                            footer: '👑 SADEW-X-MINI 👑',
+                            buttons: [
+                                { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 144`, buttonText: { displayText: '⬇️ 144p' }, type: 1 }
+                            ],
+                            headerType: 1
+                        };
+                        delete global.sadewVideoSearch[sender];
+                        return await socket.sendMessage(msg.key.remoteJid, buttonMessage, { quoted: msg });
+                    }
+                } else {
+                    return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
+                }
+            }
+        }
+        // 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆
+
+        if (!isCmd) return; // <--- ඔයාගේ කෝඩ් එකේ දැනට තියෙන පේළිය
+        const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
+        // ...
+
         if (!isCmd) return;
 
         const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
@@ -1004,96 +1090,59 @@ const downloadQuotedMedia = async (quoted) => {
         try {       
             switch (command) {
 
-    // ════════════ MENU ════════════
+// ════════════ DYNAMIC MENU ════════════
 
-        case 'menu':
-        case 'list':
-        case 'panel': {
-      try { await socket.sendMessage(sender, { react: { text: '🎀', key: msg.key } }); } catch (_) {}
-      
-      const start = Date.now();
-      const ms    = Date.now() - start;
-      const pushname = msg.pushName || 'User';
-      const readMore = String.fromCharCode(8206).repeat(4000);
-      
+case 'menu':
+case 'list':
+case 'panel': {
+    try { await socket.sendMessage(sender, { react: { text: '🎀', key: msg.key } }); } catch (_) {}
+    
+    const pushname = msg.pushName || 'User';
+    const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+    const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-      const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
-      const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+    let mainMenu = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗠𝗘𝗡𝗨 🎀] ¡! ❞*\n\n`;
+    mainMenu += `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n`;
+    mainMenu += `┃👤 *𝚄𝚂𝙴𝚁* : ${pushname}\n`;
+    mainMenu += `┃📦 *𝚅𝙴𝚁𝚂𝙸𝙾𝙽* : V1\n`;
+    mainMenu += `┃📅 *𝙳𝙰𝚃𝙴* : ${slDate}\n`;
+    mainMenu += `┃⌚ *𝚃𝙸𝙼𝙴* : ${slTimeNow}\n`;
+    mainMenu += `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n`;
+    
+    mainMenu += `┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━\n`;
+    mainMenu += `┣⪼ ❖ 1. 📥 Download Cmds✿\n`;
+    mainMenu += `┣⪼ ❖ 2. 🧠 AI Commands✿\n`;
+    mainMenu += `┣⪼ ❖ 3. 👥 Group Manage✿\n`;
+    mainMenu += `┣⪼ ❖ 4. ⚙️ Main Commands✿\n`;
+    mainMenu += `┣⪼ ❖ 5. 🔧 Tools & Edits✿\n`;
+    mainMenu += `┣⪼ ❖ 6. 🎭 Fun Commands✿\n`;
+    mainMenu += `┣⪼ ❖ 7. 🎵 Song & Music✿\n`;
+    mainMenu += `┗━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    mainMenu += `📌 *ඉදිරියට යාමට අදාළ අංකය (1-7) මෙම මැසේජ් එකට Reply කරන්න.*\n\n`;
+    mainMenu += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-      await socket.sendMessage(sender, {
-        image: { url: akira },
-        caption: `*↳ ❝ [🎀 *SADEW MINI* 🎀] ¡! ❞*
+    const menuImageUrl = config.MENU_IMAGE_URL || "https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg";
 
-┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓
-┃👤 *𝚄𝚂𝙴𝚁* : ${pushname}
-┃📦 *𝚅𝙴𝚁𝚂𝙸𝙾𝙽* : V1
-┃📅 *𝙳𝙰𝚃𝙴* : ${slDate}
-┃⌚ *𝚃𝙸𝙼𝙴* : ${slTimeNow}
-┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛
-
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐌𝐚𝐢𝐧 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •menu ➜ ɢᴇᴛ ᴄᴍᴅ ʟɪꜱᴛ
-│₊❏❜ ⋮ •system ➜ ɢᴇᴛ ꜱʏꜱᴛᴇᴍ ɪɴꜰᴏ
-│₊❏❜ ⋮ •ping ➜ ɢᴇᴛ ʙᴏᴛ ꜱᴘᴇᴇᴅ
-│₊❏❜ ⋮ •alive ➜ ᴄʜᴇᴄᴋ ʙᴏᴛ ᴀʟɪᴠᴇ
-│₊❏❜ ⋮ •owner ➜ ɢᴇᴛ ᴏᴡɴᴇʀ ɪɴꜰᴏ
-╰──────────────────<𝟑 .ᐟ
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐃𝐰𝐧 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •song ➜ ᴅᴏᴡɴʟᴏʀᴅ ꜱᴏɴɢ
-│₊❏❜ ⋮ •video ➜ ᴅᴏᴡɴʟᴏʀᴅ ᴠɪᴅᴇᴏ
-│₊❏❜ ⋮ •fb ➜ ᴅᴏᴡɴʟᴏʀᴅ ꜰʙ ᴠɪᴅᴇᴏ
-│₊❏❜ ⋮ •tt ➜ ᴅᴏᴡɴʟᴏʀᴅ ᴛᴛ ᴠɪᴅᴇᴏ
-╰──────────────────<𝟑 .ᐟ
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐓𝐨𝐨𝐥 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •vv ➜ ᴅᴇᴄʀʏᴘᴛ ᴏɴᴇ ᴛɪᴍᴇ ꜰɪʟᴇ
-│₊❏❜ ⋮ •sticker ➜ ᴄᴏɴᴠᴇᴛʀ ᴛᴏ ꜱᴛᴋ
-│₊❏❜ ⋮ •fancy ➜ ᴄᴏɴᴠᴇᴛ ᴛᴏ ꜰᴀɴᴄʏ ᴛᴇxᴛ
-│₊❏❜ ⋮ •getdp ➜ ɢᴇᴛ ᴡʜ ᴘʀᴏꜰɪʟᴇ 4ᴛᴏ
-│₊❏❜ ⋮ •npm ➜ ꜱᴇᴀʀᴄʜ ɴᴘᴍ ᴘᴋɢꜱ
-│₊❏❜ ⋮ •img ➜ ꜱᴇᴀʀᴄʜ ɪᴍɢꜱ
-│₊❏❜ ⋮ •mode ➜ ᴄʜᴀɴɢᴇ ʙᴏᴛ ᴍᴏᴅᴇ
-╰──────────────────<𝟑 .ᐟ
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐆𝐫𝐨𝐮𝐩 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •tagall ➜ ᴛᴀɢᴀʟʟ ᴍᴇᴍʙᴇʀꜱ
-│₊❏❜ ⋮ •hidetag ➜ ᴛᴀɢᴀʟʟ ᴍᴇᴍ ꜱɪʟᴇɴᴛʟʏ
-│₊❏❜ ⋮ •add ➜ ᴀᴅᴅ ᴍᴇᴍʙᴇʀ
-│₊❏❜ ⋮ •kick ➜ ᴋɪᴄᴋ ᴍᴇᴍʙᴇʀ
-│₊❏❜ ⋮ •tagadmin ➜ ᴛᴀɢ ᴀʟʟ ᴀᴅᴍɪɴꜱ
-│₊❏❜ ⋮ •promote ➜ ᴍᴀᴋᴇ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴ
-│₊❏❜ ⋮ •demote ➜ ᴅɪꜱᴍɪꜱꜱ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴ
-│₊❏❜ ⋮ •lockgroup ➜ ʟᴏᴄᴋ ᴛʜᴇ ɢʀᴏᴜᴘ
-│₊❏❜ ⋮ •unlockgroup ➜ ᴜɴʟᴏᴄᴋ ᴛʜᴇ ɢʀᴏᴜᴘ
-│₊❏❜ ⋮ •mute ➜ ᴍᴜᴛᴇ ᴛʜᴇ ɢʀᴏᴜᴘ
-│₊❏❜ ⋮ •unmute ➜ ᴜɴᴍᴜᴛᴇ ᴛʜᴇ ɢʀᴏᴜᴘ
-│₊❏❜ ⋮ •setname ➜ ꜱᴇᴛ ɢʀᴏᴜᴘ ɴᴀᴍᴇ
-│₊❏❜ ⋮ •setdesc ➜ ꜱᴇᴛ ɢʀᴏᴜᴘ ᴅᴇꜱᴄ
-│₊❏❜ ⋮ •seticon ➜ ꜱᴇᴛ ɢʀᴏᴜᴘ ɪᴄᴏɴ
-│₊❏❜ ⋮ •linkgroup ➜ ɢᴇᴛ ɢʀᴏᴜᴘ ʟɪɴᴋ
-│₊❏❜ ⋮ •revokelink ➜ ʀꜱᴇᴛ ɢʀᴏᴜᴘ ʟɪɴᴋ
-│₊❏❜ ⋮ •leave ➜ ʟᴇᴀᴠᴇ ᴛʜᴇ ɢʀᴏᴜᴘ
-╰──────────────────<𝟑 .ᐟ
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐀𝐈 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •akira ➜ ᴀᴋɪʀᴀ ᴀɪ ɢɪʀʟꜰʀɪᴇɴᴅ
-╰──────────────────<𝟑 .ᐟ
-${readMore}
-╭─⊹₊⟡⋆『 \`𝐅𝐮𝐧 𝐂𝐦𝐝𝐳\` 』𖤐.ᐟ
-│₊❏❜ ⋮ •lvcal ➜ ʟᴏᴠᴇ ᴄᴀʟᴄᴜʟᴀᴛᴇʀ
-│₊❏❜ ⋮ •hentai ➜ ɢᴇᴛ ʜᴇɴᴛᴀɪ ᴠɪᴅᴇᴏ(18+)
-│₊❏❜ ⋮ •hack ➜ ꜱᴇɴᴅ ʜᴀᴄᴋɪɴɢ ᴍꜱɢ
-╰──────────────────<𝟑 .ᐟ
-
-> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`,
+    const sentMsg = await socket.sendMessage(sender, {
+        image: { url: menuImageUrl },
+        caption: mainMenu,
         contextInfo: arabianCtx()
-      }, { quoted: msg });
+    }, { quoted: msg });
 
-      break;
-        }                    
-            
+    // ID එක සේව් කිරීම (මෙනු එකට රිප්ලයි කරන එක අල්ලගන්න)
+    if (!global.menuContexts) global.menuContexts = {};
+    global.menuContexts[sender] = { 
+        step: "main_menu", 
+        quotedId: sentMsg.key.id 
+    };
+
+    // විනාඩි 5කින් Auto Clear වෙන්න හදනවා (Memory Leak වෙන්නේ නැති වෙන්න)
+    setTimeout(() => {
+        if (global.menuContexts[sender]) delete global.menuContexts[sender];
+    }, 5 * 60 * 1000);
+
+    break;
+}            
     // ════════════ PING ════════════
       
     case 'ping': {
