@@ -1236,6 +1236,4 @@ async function setupCommandHandlers(socket, number) {
         const steps = ['🎀 *𝐀𝐤𝐢𝐫𝐚 𝐇𝐚𝐜𝐤 𝐒𝐭𝐚𝐫𝐢𝐧𝐠...* 🎀', '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ʜᴀᴄᴋɪɴɢ ᴛᴏᴏʟꜱ...` 🛠️', '`ᴄᴏɴɴᴇᴄᴛɪɴɢ ᴛᴏ ʀᴇᴍᴏᴛᴇ ꜱᴇʀᴠᴇʀ...` 🌐', '
 http://googleusercontent.com/immersive_entry_chip/0
 
-දැන් මේක තනි ෆයිල් එකක් නිසා ඔයාගේ Railway එකේ කිසිම `SyntaxError` එකක් එන්නේ නෑ. සම්පූර්ණයෙන්ම වැඩ කරයි මචං! (අර Menu Button එකයි, ඔක්කොමයි මේකේ දාලමයි තියෙන්නේ). 
 
-ට්‍රයි කරලා බලලා කියන්නකෝ.
