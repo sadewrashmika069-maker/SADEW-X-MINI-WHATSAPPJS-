@@ -25,8 +25,8 @@ const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const images = [
-    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
-    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg'
+    '[https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg)',
+    '[https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg)'
 ]; 
 const akira = images[Math.floor(Math.random() * images.length)];
 
@@ -61,7 +61,7 @@ const config = {
     PREFIX: '.',
     MAX_RETRIES: 3,
     ADMIN_LIST_PATH: './admin.json',
-    AKIRA_IMG: 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    AKIRA_IMG: '[https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg)',
     NEWSLETTER_JID: '120363419619460838@newsletter',
     NEWSLETTER_LIST: [
         '120363425584831057@newsletter',
@@ -70,7 +70,7 @@ const config = {
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
     OWNER_NUMBER: '94753518443',
-    CHANNEL_LINK: 'https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21'
+    CHANNEL_LINK: '[https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21](https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21)'
 };
 
 if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
@@ -116,7 +116,7 @@ async function uploadToCatbox(stream, fileName) {
         const form = new FormData();
         form.append('reqtype', 'fileupload');
         form.append('fileToUpload', stream, fileName);
-        const res = await axios.post('https://catbox.moe/user/api.php', form, { headers: form.getHeaders(), timeout: 0 });
+        const res = await axios.post('[https://catbox.moe/user/api.php](https://catbox.moe/user/api.php)', form, { headers: form.getHeaders(), timeout: 0 });
         if (!res.data.startsWith('https://')) return null;
         return res.data.trim();
     } catch { return null; }
@@ -221,7 +221,7 @@ function getUptime() {
     return (d > 0 ? `${d}d ` : "") + (h > 0 ? `${h}h ` : "") + (m > 0 ? `${m}m ` : "") + (s > 0 ? `${s}s` : "0s");
 }
 
-const ARABIAN_THUMB_G = 'https://files.catbox.moe/5ztdoe.jpeg';
+const ARABIAN_THUMB_G = '[https://files.catbox.moe/5ztdoe.jpeg](https://files.catbox.moe/5ztdoe.jpeg)';
 const ARABIAN_TITLE = '🦋 ₊˚ ⊹ 𝐀 𝐊 𝐈 𝐑 𝐀  𝐌 𝐃 ⊹ ˚₊ 𝜗𝜚';
 const arabianCtx = () => ({
     forwardingScore: 999,
@@ -233,15 +233,15 @@ const arabianCtx = () => ({
     }
 });
 
-const defaultImg = config.MENU_IMAGE_URL || "https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg";
+const defaultImg = config.MENU_IMAGE_URL || "[https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg)";
 const categoriesList = [
-    { num: 1, name: "DOWNLOAD CMDS", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010878/zanta_media_uploads/k6btsgegjtnjuykb7g7f.jpg", cmds: ["video", "fb", "tt"] },
-    { num: 2, name: "AI COMMANDS", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010845/zanta_media_uploads/j4lvxxlc48np5muhyn1a.jpg", cmds: ["akira", "wormgpt", "darkai"] },
+    { num: 1, name: "DOWNLOAD CMDS", image: "[https://res.cloudinary.com/dqlh378fb/image/upload/v1782010878/zanta_media_uploads/k6btsgegjtnjuykb7g7f.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1782010878/zanta_media_uploads/k6btsgegjtnjuykb7g7f.jpg)", cmds: ["video", "fb", "tt"] },
+    { num: 2, name: "AI COMMANDS", image: "[https://res.cloudinary.com/dqlh378fb/image/upload/v1782010845/zanta_media_uploads/j4lvxxlc48np5muhyn1a.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1782010845/zanta_media_uploads/j4lvxxlc48np5muhyn1a.jpg)", cmds: ["akira", "wormgpt", "darkai"] },
     { num: 3, name: "GROUP MANAGE", image: defaultImg, cmds: ["tagall", "hidetag", "add", "kick", "tagadmin", "promote", "demote", "lockgroup", "unlockgroup", "mute", "unmute", "setname", "setdesc", "seticon", "linkgroup", "revokelink", "leave"] },
     { num: 4, name: "MAIN COMMANDS", image: defaultImg, cmds: ["menu", "system", "ping", "alive"] },
-    { num: 5, name: "TOOLS & EDITS", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010867/zanta_media_uploads/snnqp75qm9iuzouz6piu.jpg", cmds: ["vv", "sticker", "fancy", "getdp", "npm", "img", "mode"] },
+    { num: 5, name: "TOOLS & EDITS", image: "[https://res.cloudinary.com/dqlh378fb/image/upload/v1782010867/zanta_media_uploads/snnqp75qm9iuzouz6piu.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1782010867/zanta_media_uploads/snnqp75qm9iuzouz6piu.jpg)", cmds: ["vv", "sticker", "fancy", "getdp", "npm", "img", "mode"] },
     { num: 6, name: "FUN COMMANDS", image: defaultImg, cmds: ["lvcal", "hentai", "hack"] },
-    { num: 7, name: "SONG & MUSIC", image: "https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg", cmds: ["song", "ytmp3", "play"] },
+    { num: 7, name: "SONG & MUSIC", image: "[https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg](https://res.cloudinary.com/dqlh378fb/image/upload/v1782010855/zanta_media_uploads/hy5xd30khptmco5hcksw.jpg)", cmds: ["song", "ytmp3", "play"] },
     { num: 8, name: "OWNER AREA", image: defaultImg, cmds: ["owner", "active"] }
 ];
 
@@ -711,8 +711,8 @@ async function setupCommandHandlers(socket, number) {
             try { await socket.sendMessage(sender, { react: { text: '🔎', key: msg.key } }); } catch (_) {}
 
             const API_TOKEN = "VK4fry";
-            const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
-            const YT_DOWNLOAD_API = "https://whiteshadow-x-api.onrender.com/api/download/ytmp3";
+            const YT_SEARCH_API = "[https://whiteshadow-x-api.onrender.com/api/search/yt](https://whiteshadow-x-api.onrender.com/api/search/yt)";
+            const YT_DOWNLOAD_API = "[https://whiteshadow-x-api.onrender.com/api/download/ytmp3](https://whiteshadow-x-api.onrender.com/api/download/ytmp3)";
             let youtubeUrl = null; let songTitle = "Sadew-MD Audio";
 
             const match = query.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i);
@@ -1195,7 +1195,7 @@ async function setupCommandHandlers(socket, number) {
     case 'hentai': {
         try { await socket.sendMessage(sender, { react: { text: '🔞', key: msg.key } }); } catch (_) {}
         try {
-            const response = await axios.get('https://www.movanest.xyz/v2/hentai?query=random');
+            const response = await axios.get('[https://www.movanest.xyz/v2/hentai?query=random](https://www.movanest.xyz/v2/hentai?query=random)');
             if (response.data && response.data.result && response.data.result.length > 0) {
                 const randomVideo = response.data.result[Math.floor(Math.random() * response.data.result.length)];
                 await socket.sendMessage(sender, { video: { url: randomVideo.video_1 || randomVideo.video_2 }, caption: `*↳ ❝ [🔞 𝗛𝗲𝗻𝘁𝗮𝗶 𝗥𝗮𝗻𝗱𝗼𝗺 🔞] ¡! ❞*\n\n*₊❏❜ ⋮ 🎬 Title:* ${randomVideo.title}\n*₊❏❜ ⋮ 📁 Category:* ${randomVideo.category}\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*` }, { quoted: msg });
@@ -1233,7 +1233,41 @@ async function setupCommandHandlers(socket, number) {
     }
     case 'hack': {
         const from = msg.key.remoteJid; 
-        const steps = ['🎀 *𝐀𝐤𝐢𝐫𝐚 𝐇𝐚𝐜𝐤 𝐒𝐭𝐚𝐫𝐢𝐧𝐠...* 🎀', '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ʜᴀᴄᴋɪɴɢ ᴛᴏᴏʟꜱ...` 🛠️', '`ᴄᴏɴɴᴇᴄᴛɪɴɢ ᴛᴏ ʀᴇᴍᴏᴛᴇ ꜱᴇʀᴠᴇʀ...` 🌐', '
-http://googleusercontent.com/immersive_entry_chip/0
+        const steps = [
+            '🎀 *𝐀𝐤𝐢𝐫𝐚 𝐇𝐚𝐜𝐤 𝐒𝐭𝐚𝐫𝐢𝐧𝐠...* 🎀', 
+            '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ʜᴀᴄᴋɪɴɢ ᴛᴏᴏʟꜱ...` 🛠️', 
+            '`ᴄᴏɴɴᴇᴄᴛɪɴɢ ᴛᴏ ʀᴇᴍᴏᴛᴇ ꜱᴇʀᴠᴇʀ...` 🌐', 
+            '``' + '`[##] 20%``' + '` ⏳', 
+            '``' + '`[##########] 100%``' + '` ✅', 
+            '🔒 *𝐒ystem 𝐁reach: 𝐒uccessful!* 🔓'
+        ];
+        let initialMsg = await socket.sendMessage(from, { text: steps[0] }, { quoted: msg });
+        for (let i = 1; i < steps.length; i++) {
+            await delay(1000); 
+            await socket.sendMessage(from, { text: steps[i], edit: initialMsg.key, contextInfo: arabianCtx() });
+        }
+        break;
+    }
 
+            }
+        } catch (error) {
+            console.error('Command handler error:', error);
+            await socket.sendMessage(sender, { text: `❌ ERROR\nAn error occurred: ${error.message}` });
+        }
+    });
+}
 
+router.get('/', async (req, res) => {
+    const { number } = req.query;
+    if (!number) return res.status(400).send({ error: 'Number parameter is required' });
+    if (activeSockets.size >= 77) return res.status(429).send({ status: 'limit_reached', message: 'Active connections limit reached.' });
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+    if (activeSockets.has(sanitizedNumber)) return res.status(200).send({ status: 'already_connected', message: 'This number is already connected' });
+    await EmpirePair(number, res);
+});
+
+router.get('/active', (req, res) => { res.status(200).send({ count: activeSockets.size, numbers: Array.from(activeSockets.keys()) }); });
+process.on('exit', () => { activeSockets.forEach((socket, number) => { socket.ws.close(); activeSockets.delete(number); socketCreationTime.delete(number); }); fs.emptyDirSync(SESSION_BASE_PATH); });
+process.on('uncaughtException', (err) => { console.error('Uncaught exception:', err); exec(`pm2 restart ${process.env.PM2_NAME || 'dtz-mini-bot-session'}`); });
+
+module.exports = router;
