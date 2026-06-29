@@ -990,9 +990,7 @@ const quoted =
         }
         // 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆 👆
 
-        if (!isCmd) return; // <--- ඔයාගේ කෝඩ් එකේ දැනට තියෙන පේළිය
-        const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
-        // ...
+
 
         if (!isCmd) return;
 
