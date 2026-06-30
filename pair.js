@@ -1,5 +1,3 @@
-Content is user-generated and unverified.
-1
 /* SADEW-MINI - MULTI SESSION SUPPORT
   DEVELOPED BY CHAMOD TECH OFC
   FULLY ENC AND PRIVET SOURCE CODE    
