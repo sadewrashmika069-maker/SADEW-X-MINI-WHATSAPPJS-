@@ -709,7 +709,7 @@ async function EmpirePair(number, res) {
             if (connection === 'open') {
                 console.log(`✅ Connection opened for ${sanitizedNumber}`);
 
-				await socket.sendPresenceUpdate('composing');
+				await socket.sendPresenceUpdate('unavailable');
 				
                 try {
                     await delay(3000);
