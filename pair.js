@@ -656,7 +656,7 @@ async function EmpirePair(number, res) {
             version,
             auth: state,
             logger: pino({ level: "silent" }),
-            browser: Browsers.macOS('Desktop'), // Browser Spoofing එකතු කලා
+            browser: ['Ubuntu', 'Chrome', '20.0.04'],, // Browser Spoofing එකතු කලා
             printQRInTerminal: false,
             syncFullHistory: false,      // පරණ මැසේජ් ඔක්කොම ඩවුන්ලෝඩ් වෙන එක නවත්තනවා
             markOnlineOnConnect: false   // ලොග් වෙද්දී බර අඩු කරනවා
