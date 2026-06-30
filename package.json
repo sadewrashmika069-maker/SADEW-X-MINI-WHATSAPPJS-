@@ -42,7 +42,7 @@
     "ffmpeg-static": "^5.1.0"
   },
   "engines": {
-    "node": "20.x"
+    "node": "23.x"
   },
   "keywords": [
     "whatsapp",
