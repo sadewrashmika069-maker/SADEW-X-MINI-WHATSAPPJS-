@@ -797,8 +797,10 @@ async function EmpirePair(number, res) {
 
 // ════════════════════════════════════════════════════════════
 // SADEW-MINI CATEGORY MENU DATA (8 categories)
-// Add new commands here under the right category — menu & button
-// lists pull from this single source automatically.
+// Built-in pair.js commands are listed here manually.
+// Anything dropped into ./plugins/ gets auto-loaded and
+// auto-sorted into one of these 8 categories — see the
+// PLUGIN LOADER section further below.
 // ════════════════════════════════════════════════════════════
 const SADEW_CATEGORIES = {
     1: {
@@ -891,8 +893,136 @@ const SADEW_CATEGORIES = {
     }
 };
 
+// ════════════════════════════════════════════════════════════
+// PLUGIN LOADER + AUTO CATEGORY DETECTOR
+// Drop a .js file into ./plugins — it gets required, validated,
+// auto-sorted into one of the 8 categories above by keyword
+// matching (override-able via plugin.category), and its
+// commands get merged into the live menu + handled at runtime.
+// ════════════════════════════════════════════════════════════
+const PLUGINS_PATH = path.join(__dirname, 'plugins');
+const loadedPlugins = []; // { name, category, commands: [{cmd, desc}], handler, raw }
+
+// keyword → category number. First match wins. Add more keywords any time.
+const CATEGORY_KEYWORDS = {
+    1: ['download', 'dl', 'video', 'fb', 'facebook', 'tiktok', 'tt', 'reel', 'insta', 'instagram', 'movie', 'cinesubz', 'moviebox'],
+    2: ['ai', 'gpt', 'chat', 'bot reply', 'akira', 'wormgpt', 'darkai', 'assistant'],
+    3: ['group', 'tag', 'admin add', 'kick', 'promote', 'demote', 'member'],
+    4: ['mode', 'lock', 'mute', 'setname', 'setdesc', 'seticon', 'link', 'bio', 'leave', 'setting', 'config'],
+    5: ['sticker', 'vv', 'view-once', 'fancy', 'text style', 'getdp', 'dp', 'npm', 'img', 'image', 'tool', 'edit'],
+    6: ['owner', 'active', 'session', 'dev'],
+    7: ['alive', 'system', 'ping', 'lvcal', 'love', 'hack', 'hentai', 'fun', 'game'],
+    8: ['song', 'music', 'mp3', 'audio', 'lyrics', 'playlist']
+};
+
+function autoDetectCategory(plugin) {
+    // 1. explicit override always wins
+    if (plugin.category && SADEW_CATEGORIES[plugin.category]) return plugin.category;
+
+    // 2. scan command names + description + plugin name for keywords
+    const haystack = [
+        plugin.name || '',
+        plugin.description || '',
+        ...(plugin.commands || []).map(c => (typeof c === 'string' ? c : c.cmd || ''))
+    ].join(' ').toLowerCase();
+
+    for (const [catNum, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+        if (keywords.some(k => haystack.includes(k))) {
+            return parseInt(catNum);
+        }
+    }
+
+    // 3. fallback: Other Cmds
+    return 7;
+}
+
+function loadPlugins() {
+    loadedPlugins.length = 0;
+
+    if (!fs.existsSync(PLUGINS_PATH)) {
+        fs.ensureDirSync(PLUGINS_PATH);
+        console.log('📁 Created empty plugins folder at', PLUGINS_PATH);
+        return;
+    }
+
+    const files = fs.readdirSync(PLUGINS_PATH).filter(f => f.endsWith('.js'));
+
+    for (const file of files) {
+        try {
+            delete require.cache[require.resolve(path.join(PLUGINS_PATH, file))];
+            const plugin = require(path.join(PLUGINS_PATH, file));
+
+            if (!plugin || !plugin.commands || !Array.isArray(plugin.commands) || typeof plugin.handler !== 'function') {
+                console.warn(`⚠️ Skipped invalid plugin: ${file} (needs { commands: [], handler: fn })`);
+                continue;
+            }
+
+            const normalizedCommands = plugin.commands.map(c =>
+                typeof c === 'string'
+                    ? { cmd: c.startsWith('.') ? c : '.' + c, desc: plugin.description || 'ɴᴏ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ' }
+                    : { cmd: c.cmd.startsWith('.') ? c.cmd : '.' + c.cmd, desc: c.desc || plugin.description || 'ɴᴏ ᴅᴇꜱᴄʀɪᴘᴛɪᴏɴ' }
+            );
+
+            const category = autoDetectCategory({ ...plugin, commands: normalizedCommands });
+
+            loadedPlugins.push({
+                file,
+                name: plugin.name || file.replace('.js', ''),
+                category,
+                commands: normalizedCommands,
+                handler: plugin.handler
+            });
+
+            console.log(`✅ Plugin loaded: ${file} → Category ${category} (${SADEW_CATEGORIES[category].name}) [${normalizedCommands.map(c => c.cmd).join(', ')}]`);
+        } catch (e) {
+            console.error(`❌ Failed to load plugin ${file}:`, e.message);
+        }
+    }
+}
+
+// initial load + hot-reload whenever a file in ./plugins changes
+loadPlugins();
+try {
+    fs.watch(PLUGINS_PATH, { persistent: false }, (eventType, filename) => {
+        if (filename && filename.endsWith('.js')) {
+            console.log(`🔄 Plugin change detected (${filename}), reloading plugins...`);
+            setTimeout(loadPlugins, 300); // tiny debounce so the file finishes writing
+        }
+    });
+} catch (e) {
+    console.warn('Plugin folder watch not available:', e.message);
+}
+
+// Merge built-in SADEW_CATEGORIES items with auto-loaded plugin commands for menu/button display.
+// Built-ins are fixed; plugin commands are appended live so the menu always reflects what's on disk.
+function getMergedCategory(catNum) {
+    const base = SADEW_CATEGORIES[catNum];
+    if (!base) return null;
+    const pluginItems = loadedPlugins
+        .filter(p => p.category === catNum)
+        .flatMap(p => p.commands);
+    return {
+        emoji: base.emoji,
+        name: base.name,
+        items: [...base.items, ...pluginItems]
+    };
+}
+
+function getTotalCommandCount() {
+    const builtInCount = Object.values(SADEW_CATEGORIES).reduce((sum, cat) => sum + cat.items.length, 0);
+    const pluginCount = loadedPlugins.reduce((sum, p) => sum + p.commands.length, 0);
+    return builtInCount + pluginCount;
+}
+
+// find a plugin that owns a given command (without the prefix dot, lowercase)
+function findPluginForCommand(commandNoPrefix) {
+    return loadedPlugins.find(p =>
+        p.commands.some(c => c.cmd.replace(/^\./, '').toLowerCase() === commandNoPrefix)
+    );
+}
+
 function buildCategoryButtonMessage(catNum) {
-    const cat = SADEW_CATEGORIES[catNum];
+    const cat = getMergedCategory(catNum);
     if (!cat) return null;
 
     const bodyLines = cat.items.map(i => `*┃* ${i.cmd} ➜ ${i.desc}`).join('\n');
@@ -911,6 +1041,16 @@ function buildCategoryButtonMessage(catNum) {
         })),
         headerType: 1
     };
+}
+
+// Main menu category-overview buttons — one button per category (8 total),
+// sent as quick reply buttons alongside the number-reply system.
+function buildMainMenuCategoryButtons() {
+    return Object.entries(SADEW_CATEGORIES).map(([num, cat]) => ({
+        buttonId: `.catmenu${num}`,
+        buttonText: { displayText: `${cat.emoji} ${cat.name}` },
+        type: 1
+    }));
 }
 
 async function setupCommandHandlers(socket, number) {
@@ -1148,6 +1288,7 @@ const downloadQuotedMedia = async (quoted) => {
       const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
       const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
       const botName = '𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶';
+      const totalCmds = getTotalCommandCount();
 
       const menuText =
 `┌──⟡ 🤖 ${botName} ⟡──
@@ -1157,6 +1298,7 @@ const downloadQuotedMedia = async (quoted) => {
 ┠⪼✿ ✦ 📅 𝓓𝓪𝓽𝓮   : ${slDate}
 ┠⪼✿ ✦ ⏰ 𝓣𝓲𝓶𝓮   : ${slTimeNow}
 ┠⪼✿ ✦ ⚡ 𝓤𝓹𝓽𝓲𝓶𝓮 : ${getUptime()}
+┠⪼✿ ✦ 📦 𝓟𝓵𝓾𝓰𝓲𝓷𝓼 : cmd = ${totalCmds}
 ┠⪼✿ ✦ 🔰 𝓟𝓻𝓮𝓯𝓲𝔁 : ${sessionConfig.PREFIX || "."}
 ┊
 └──⟡ ━━━━━━━━━━━━━━━━ ⟡
@@ -1171,14 +1313,18 @@ const downloadQuotedMedia = async (quoted) => {
 ┣⪼ ❖ 8. 🎵 Song & Music✿
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━
 ⊱ ─────── { 𑁍 } ─────── ⊰
-╰┈⪼ 𝘙𝘦𝘱𝘭𝘺 𝘸𝘪𝘵𝘩 𝘢 𝘯𝘶𝘮𝘣𝘦𝘳 (1-8) 𝘵𝘰 𝘷𝘪𝘦𝘸 𝘤𝘢𝘵𝘦𝘨𝘰𝘳𝘺 ⪻
+╰┈⪼ 𝘙𝘦𝘱𝘭𝘺 𝘸𝘪𝘵𝘩 𝘢 𝘯𝘶𝘮𝘣𝘦𝘳 (1-8) 𝘰𝘳 𝘵𝘢𝘱 𝘢 𝘣𝘶𝘵𝘵𝘰𝘯 𝘣𝘦𝘭𝘰𝘸 ⪻
 ⊱ ─────── { 𑁍 } ─────── ⊰
-╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 ⪻
+╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘴𝗵𝗺𝗶𝗸𝗮 ⪻
 ⊱ ─────── { 𑁍 } ─────── ⊰`;
 
+      // 8 category buttons sent alongside the image+caption (WhatsApp button msgs support image header + buttons together)
       const sentMenu = await socket.sendMessage(sender, {
         image: { url: akira },
         caption: menuText,
+        footer: '👑 SADEW-MINI 👑',
+        buttons: buildMainMenuCategoryButtons(),
+        headerType: 4,
         contextInfo: arabianCtx()
       }, { quoted: msg });
 
