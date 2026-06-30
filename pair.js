@@ -75,32 +75,7 @@ const config = {
 };
 
 if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
-if (!global.plugins) global.plugins = new Map();
-
-// ════════════ AUTOMATIC PLUGIN LOADER ENGINE ════════════
-const pluginsDir = path.join(__dirname, 'plugins');
-if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir, { recursive: true });
-
-function loadPlugins() {
-    global.plugins.clear();
-    try {
-        const files = fs.readdirSync(pluginsDir).filter(file => file.endsWith('.js'));
-        files.forEach(file => {
-            try {
-                const plugin = require(path.join(pluginsDir, file));
-                if (plugin.cmdName && plugin.execute) {
-                    global.plugins.set(plugin.cmdName.toLowerCase(), plugin);
-                }
-            } catch (e) {
-                console.error(`Error loading plugin ${file}:`, e);
-            }
-        });
-        console.log(`Successfully loaded ${global.plugins.size} external plugins!`);
-    } catch (err) {
-        console.error("Plugin loader system error:", err);
-    }
-}
-loadPlugins();
+if (!global.sadewMenuTracker) global.sadewMenuTracker = {};
 
 const activeSockets = new Map();
 const socketCreationTime = new Map();
