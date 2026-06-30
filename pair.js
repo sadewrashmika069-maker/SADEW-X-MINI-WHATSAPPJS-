@@ -1,6 +1,7 @@
-/* SADEW-MINI BOT - MULTI SESSION SUPPORT
-  DEVELOPED BY SADEW RASHMIKA
+/* SADEW-MINI - MULTI SESSION SUPPORT
+  DEVELOPED BY CHAMOD TECH OFC
   FULLY ENC AND PRIVET SOURCE CODE    
+  Code Ussai #akak - Thawa #akada balanne                                                                                                      
 */
 
 const express = require('express');
@@ -25,6 +26,17 @@ const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
   const images = [
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
+    'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg'
   ]; 
 
@@ -76,6 +88,7 @@ const config = {
 const replyFq = (text) => reply(text);
 
 if (!global.sadewVideoSearch) global.sadewVideoSearch = {};
+if (!global.sadewMenuTracker) global.sadewMenuTracker = {};
 
 const activeSockets = new Map();
 const socketCreationTime = new Map();
@@ -643,10 +656,10 @@ async function EmpirePair(number, res) {
             version,
             auth: state,
             logger: pino({ level: "silent" }),
-            browser: ["Mac OS", "Safari", "10.15.7"], 
+            browser: ["Mac OS", "Safari", "10.15.7"], // Browser Spoofing එකතු කලා
             printQRInTerminal: false,
-            syncFullHistory: false,      
-            markOnlineOnConnect: false   
+            syncFullHistory: false,      // පරණ මැසේජ් ඔක්කොම ඩවුන්ලෝඩ් වෙන එක නවත්තනවා
+            markOnlineOnConnect: false   // ලොග් වෙද්දී බර අඩු කරනවා
         });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
@@ -749,9 +762,9 @@ async function EmpirePair(number, res) {
                     await socket.sendMessage(userJid, {
                         image: { url: config.AKIRA_IMG },
                         caption: formatMessage(
-                            '`*↳ ❝ [🎀 𝗪𝗲𝗹𝗹𝗰𝗼𝗺𝗲 𝗧𝗼 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 🎀] ¡! ❞*`',
-                            `╭─────⊹₊⟡⋆ 𝐈𝐧𝐟𝐨 ⋆⟡₊⊹─────<𝟑 .ᐟ\n┊ 𝜗𝜚⋆ : 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 - V1.0.0\n┊ 𝜗𝜚⋆ : 𝙽𝚄𝙼𝙱𝙴𝚁 - ${number}\n┊ 𝜗𝜚⋆ : 𝙾𝚆𝙽𝙴𝚁 - 𝐱 𝐒𝐚𝐝𝐞𝐰 𝐑𝐚𝐬𝐡𝐦𝐢𝐤𝐚 ִ ࣪𖤐.ᐟ\n╰────────────────────<𝟑 .ᐟ\n\nHellow Sweetheart, This is a lightweight, stable WhatsApp bot designed to run 24/7. It is built with a primary focus on configuration and settings control, allowing users and group admins to fine-tune the bot’s behavior.\n\n₊❏❜ ⋮ Web - https://github.com`,
-                            '𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆'
+                            '`*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗪𝗲𝗹𝗹𝗰𝗼𝗺𝗲 🎀] ¡! ❞*`',
+                            `╭─────⊹₊⟡⋆ 𝐈𝐧𝐟𝐨 ⋆⟡₊⊹─────<𝟑 .ᐟ\n┊ 𝜗𝜚⋆ : 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 - V1.0.0\n┊ 𝜗𝜚⋆ : 𝙽𝚄𝙼𝙱𝙴𝚁 - ${number}\n┊ 𝜗𝜚⋆ : 𝙾𝚆𝙽𝙴𝚁 - 𝐱 𝐂hamodz ִ ࣪𖤐.ᐟ\n╰────────────────────<𝟑 .ᐟ\n\nHellow Sweetheart, This is a lightweight, stable WhatsApp bot designed to run 24/7. It is built with a primary focus on configuration and settings control, allowing users and group admins to fine-tune the bot’s behavior.\n\n₊❏❜ ⋮ Web - https://akira.gotukolaya.site`,
+                            '𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆'
                         )
                     });
                     console.log(`📩 Welcome message sent for ${sanitizedNumber}`);
@@ -782,6 +795,123 @@ async function EmpirePair(number, res) {
     }
 }
 
+// ════════════════════════════════════════════════════════════
+// SADEW-MINI CATEGORY MENU DATA (8 categories)
+// Add new commands here under the right category — menu & button
+// lists pull from this single source automatically.
+// ════════════════════════════════════════════════════════════
+const SADEW_CATEGORIES = {
+    1: {
+        emoji: '📥',
+        name: 'Download Menu',
+        items: [
+            { cmd: '.video', desc: 'ᴅᴏᴡɴʟᴏᴀᴅ ʏᴏᴜᴛᴜʙᴇ ᴠɪᴅᴇᴏ' },
+            { cmd: '.fb', desc: 'ᴅᴏᴡɴʟᴏᴀᴅ ꜰᴀᴄᴇʙᴏᴏᴋ ᴠɪᴅᴇᴏ' },
+            { cmd: '.tt', desc: 'ᴅᴏᴡɴʟᴏᴀᴅ ᴛɪᴋᴛᴏᴋ ᴠɪᴅᴇᴏ' }
+        ]
+    },
+    2: {
+        emoji: '🧠',
+        name: 'AI Commands',
+        items: [
+            { cmd: '.akira', desc: 'ᴀᴋɪʀᴀ ᴀɪ ɢɪʀʟꜰʀɪᴇɴᴅ' },
+            { cmd: '.darkai', desc: 'ᴅᴀʀᴋ ᴀɪ (ᴡᴏʀᴍ-ɢᴘᴛ)' }
+        ]
+    },
+    3: {
+        emoji: '👥',
+        name: 'Group Manage',
+        items: [
+            { cmd: '.tagall', desc: 'ᴛᴀɢ ᴀʟʟ ᴍᴇᴍʙᴇʀꜱ' },
+            { cmd: '.hidetag', desc: 'ᴛᴀɢ ᴀʟʟ ꜱɪʟᴇɴᴛʟʏ' },
+            { cmd: '.add', desc: 'ᴀᴅᴅ ᴍᴇᴍʙᴇʀ' },
+            { cmd: '.kick', desc: 'ʀᴇᴍᴏᴠᴇ ᴍᴇᴍʙᴇʀ' },
+            { cmd: '.promote', desc: 'ᴍᴀᴋᴇ ᴀᴅᴍɪɴ' },
+            { cmd: '.demote', desc: 'ʀᴇᴍᴏᴠᴇ ᴀᴅᴍɪɴ' },
+            { cmd: '.tagadmin', desc: 'ᴛᴀɢ ᴀʟʟ ᴀᴅᴍɪɴꜱ' },
+            { cmd: '.groupinfo', desc: 'ɢʀᴏᴜᴘ ɪɴꜰᴏ' }
+        ]
+    },
+    4: {
+        emoji: '⚙️',
+        name: 'Admin Menu',
+        items: [
+            { cmd: '.mode', desc: 'ᴄʜᴀɴɢᴇ ʙᴏᴛ ᴍᴏᴅᴇ' },
+            { cmd: '.lockgroup', desc: 'ʟᴏᴄᴋ ɢʀᴏᴜᴘ' },
+            { cmd: '.unlockgroup', desc: 'ᴜɴʟᴏᴄᴋ ɢʀᴏᴜᴘ' },
+            { cmd: '.mute', desc: 'ᴍᴜᴛᴇ ɢʀᴏᴜᴘ' },
+            { cmd: '.unmute', desc: 'ᴜɴᴍᴜᴛᴇ ɢʀᴏᴜᴘ' },
+            { cmd: '.setname', desc: 'ꜱᴇᴛ ɢʀᴏᴜᴘ ɴᴀᴍᴇ' },
+            { cmd: '.setdesc', desc: 'ꜱᴇᴛ ɢʀᴏᴜᴘ ᴅᴇꜱᴄ' },
+            { cmd: '.seticon', desc: 'ꜱᴇᴛ ɢʀᴏᴜᴘ ɪᴄᴏɴ' },
+            { cmd: '.linkgroup', desc: 'ɢᴇᴛ ɢʀᴏᴜᴘ ʟɪɴᴋ' },
+            { cmd: '.revokelink', desc: 'ʀᴇꜱᴇᴛ ɢʀᴏᴜᴘ ʟɪɴᴋ' },
+            { cmd: '.bio', desc: 'ꜱᴇᴛ ʙᴏᴛ ʙɪᴏ' },
+            { cmd: '.leave', desc: 'ʟᴇᴀᴠᴇ ɢʀᴏᴜᴘ' }
+        ]
+    },
+    5: {
+        emoji: '🔧',
+        name: 'Tools & Edits',
+        items: [
+            { cmd: '.sticker', desc: 'ᴄᴏɴᴠᴇʀᴛ ᴛᴏ ꜱᴛɪᴄᴋᴇʀ' },
+            { cmd: '.vv', desc: 'ᴅᴇᴄʀʏᴘᴛ ᴠɪᴇᴡ-ᴏɴᴄᴇ' },
+            { cmd: '.fancy', desc: 'ꜰᴀɴᴄʏ ᴛᴇxᴛ ꜱᴛʏʟᴇꜱ' },
+            { cmd: '.getdp', desc: 'ɢᴇᴛ ᴡʜᴀᴛꜱᴀᴘᴘ ᴅᴘ' },
+            { cmd: '.npm', desc: 'ꜱᴇᴀʀᴄʜ ɴᴘᴍ ᴘᴀᴄᴋᴀɢᴇꜱ' },
+            { cmd: '.img', desc: 'ꜱᴇᴀʀᴄʜ ɪᴍᴀɢᴇꜱ' }
+        ]
+    },
+    6: {
+        emoji: '👑',
+        name: 'Owner Area',
+        items: [
+            { cmd: '.owner', desc: 'ɢᴇᴛ ᴏᴡɴᴇʀ ɪɴꜰᴏ' },
+            { cmd: '.active', desc: 'ʟɪꜱᴛ ᴀᴄᴛɪᴠᴇ ꜱᴇꜱꜱɪᴏɴꜱ' }
+        ]
+    },
+    7: {
+        emoji: '📁',
+        name: 'Other Cmds',
+        items: [
+            { cmd: '.alive', desc: 'ᴄʜᴇᴄᴋ ʙᴏᴛ ᴀʟɪᴠᴇ' },
+            { cmd: '.system', desc: 'ɢᴇᴛ ꜱʏꜱᴛᴇᴍ ɪɴꜰᴏ' },
+            { cmd: '.ping', desc: 'ɢᴇᴛ ʙᴏᴛ ꜱᴘᴇᴇᴅ' },
+            { cmd: '.lvcal', desc: 'ʟᴏᴠᴇ ᴄᴀʟᴄᴜʟᴀᴛᴏʀ' },
+            { cmd: '.hack', desc: 'ꜰᴀᴋᴇ ʜᴀᴄᴋ ᴀɴɪᴍᴀᴛɪᴏɴ' },
+            { cmd: '.hentai', desc: 'ʀᴀɴᴅᴏᴍ ʜᴇɴᴛᴀɪ (18+)' }
+        ]
+    },
+    8: {
+        emoji: '🎵',
+        name: 'Song & Music',
+        items: [
+            { cmd: '.song', desc: 'ᴅᴏᴡɴʟᴏᴀᴅ ꜱᴏɴɢ (ᴍᴘ3)' }
+        ]
+    }
+};
+
+function buildCategoryButtonMessage(catNum) {
+    const cat = SADEW_CATEGORIES[catNum];
+    if (!cat) return null;
+
+    const bodyLines = cat.items.map(i => `*┃* ${i.cmd} ➜ ${i.desc}`).join('\n');
+
+    return {
+        text:
+            `*┏━━『 ${cat.emoji} ${cat.name} 』━━*\n` +
+            `${bodyLines}\n` +
+            `*┗━━━━━━━━━━━━━━━━━*\n\n` +
+            `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
+        footer: '👑 SADEW-MINI 👑',
+        buttons: cat.items.slice(0, 3).map(i => ({
+            buttonId: i.cmd,
+            buttonText: { displayText: i.cmd },
+            type: 1
+        })),
+        headerType: 1
+    };
+}
 
 async function setupCommandHandlers(socket, number) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
@@ -804,7 +934,7 @@ const recentCallers = new Set();
 const type = getContentType(msg.message);
         if (!msg.message) return;
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
-                                                       const m = sms(socket, msg);                                     
+                                                       const m = sms(socket, msg);                                              
 const quoted =
             type == "extendedTextMessage" &&
             msg.message.extendedTextMessage.contextInfo != null
@@ -866,7 +996,22 @@ const quoted =
         if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
             const replyText = text.trim();
             const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
-            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.imageMessage?.caption || "";
+            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
+            const quotedStanzaId = msg.message.extendedTextMessage.contextInfo.stanzaId;
+
+            // ── SADEW-MINI MENU CATEGORY REPLY CATCHER ──
+            // Only triggers when replying to the exact .menu message this bot sent (tracked by stanzaId)
+            if (
+                global.sadewMenuTracker[sender] &&
+                global.sadewMenuTracker[sender] === quotedStanzaId &&
+                /^[1-8]$/.test(replyText)
+            ) {
+                const catNum = parseInt(replyText);
+                const buttonMsg = buildCategoryButtonMessage(catNum);
+                if (buttonMsg) {
+                    return await socket.sendMessage(msg.key.remoteJid, buttonMsg, { quoted: msg });
+                }
+            }
 
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
                 if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
@@ -892,36 +1037,6 @@ const quoted =
                 } else {
                     return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
                 }
-            }
-
-            // MENU CATEGORY REPLY CATCHER
-            if (quotedText.includes("┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━") && /^[1-8]$/.test(replyText)) {
-                const cat = parseInt(replyText);
-                let subMenu = '';
-                const header = `╭───⟡ 🤖 𝓢𝓐𝓓𝓔𝓦-𝓜𝓘𝓝𝓘 ⟡───\n┊\n`;
-                const footer = `\n┊\n╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝘚𝘢𝘥𝘦𝘸 𝘙𝘢𝘴𝘩𝘮𝘪𝘬𝘢 ⪻`;
-
-                switch(cat) {
-                    case 1:
-                        subMenu = `┣⪼ ❖ 📥 *𝓓𝓸𝔀𝓷𝓵𝓸𝓪𝓭 𝓜𝓮𝓷𝓾* ✿\n┊\n┣ ❖ .song\n┣ ❖ .video\n┣ ❖ .fb\n┣ ❖ .tiktok\n┣ ❖ .viddl`; break;
-                    case 2:
-                        subMenu = `┣⪼ ❖ 🧠 *𝓐𝓘 𝓒𝓸𝓶𝓶𝓪𝓷𝓭𝓼* ✿\n┊\n┣ ❖ .ai\n┣ ❖ .darkai\n┣ ❖ .akira`; break;
-                    case 3:
-                        subMenu = `┣⪼ ❖ 👥 *𝓖𝓻𝓸𝓾𝓹 𝓜𝓪𝓷𝓪𝓰𝓮* ✿\n┊\n┣ ❖ .tagall\n┣ ❖ .hidetag\n┣ ❖ .add\n┣ ❖ .kick\n┣ ❖ .tagadmin\n┣ ❖ .promote\n┣ ❖ .demote\n┣ ❖ .lockgroup\n┣ ❖ .unlockgroup\n┣ ❖ .mute\n┣ ❖ .unmute\n┣ ❖ .setname\n┣ ❖ .setdesc\n┣ ❖ .seticon\n┣ ❖ .linkgroup\n┣ ❖ .revokelink\n┣ ❖ .leave`; break;
-                    case 4:
-                        subMenu = `┣⪼ ❖ ⚙️ *𝓐𝓭𝓶𝓲𝓷 𝓜𝓮𝓷𝓾* ✿\n┊\n┣ ❖ .mode\n┣ ❖ .groupinfo`; break;
-                    case 5:
-                        subMenu = `┣⪼ ❖ 🔧 *𝓣𝓸𝓸𝓵𝓼 & 𝓔𝓭𝓲𝓽𝓼* ✿\n┊\n┣ ❖ .vv\n┣ ❖ .sticker\n┣ ❖ .fancy\n┣ ❖ .getdp\n┣ ❖ .img\n┣ ❖ .npm\n┣ ❖ .bio`; break;
-                    case 6:
-                        subMenu = `┣⪼ ❖ 👑 *𝓞𝔀𝓷𝓮𝓻 𝓐𝓻𝓮𝓪* ✿\n┊\n┣ ❖ .owner\n┣ ❖ .active\n┣ ❖ .system`; break;
-                    case 7:
-                        subMenu = `┣⪼ ❖ 📁 *𝓞𝓽𝓱𝓮𝓻 𝓒𝓶𝓭𝓼* ✿\n┊\n┣ ❖ .ping\n┣ ❖ .alive\n┣ ❖ .menu\n┣ ❖ .lvcal\n┣ ❖ .hentai\n┣ ❖ .hack`; break;
-                    case 8:
-                        subMenu = `┣⪼ ❖ 🎵 *𝓢𝓸𝓷𝓰 & 𝓜𝓾𝓼𝓲𝓬* ✿\n┊\n┣ ❖ .song\n┣ ❖ .video\n┣ ❖ .playvid\n┣ ❖ .ytmp3\n┣ ❖ .ytmp4`; break;
-                }
-
-                const finalMsg = header + subMenu + footer;
-                return await socket.sendMessage(msg.key.remoteJid, { text: finalMsg }, { quoted: msg });
             }
         }
         // ════════════════════════════════════════════════
@@ -970,11 +1085,11 @@ const arabianCtxGlobal = {
   isForwarded: true,
   forwardedNewsletterMessageInfo: {
     newsletterJid  : '120363419619460838@newsletter',
-    newsletterName : '🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 | 𝗟𝗞 🇱🇰',
+    newsletterName : '🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 | 𝗟𝗞 🇱🇰',
     serverMessageId: 143,
   },
   externalAdReply: {
-    title                 : '🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 🇱🇰',
+    title                 : '🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 🇱🇰',
     body                  : '𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐁𝐨𝐭 𝐐𝐮𝐞𝐞𝐧 💘',
     thumbnailUrl          : ARABIAN_THUMB_G,
     sourceUrl             : 'mini.gotukolaya.site',
@@ -985,7 +1100,7 @@ const arabianCtxGlobal = {
 
   // ── Arabian mystery header ──────────────────────────────────────────────────
   const ARABIAN_TITLE = '🦋 ₊˚ ⊹ 𝐒 𝐀 𝐃 𝐄 𝐖 - 𝐌 𝐈 𝐍 𝐈 ⊹ ˚₊ 𝜗𝜚';
-  const ARABIAN_SUB   = '𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐁𝐨𝐭 𝐁𝐲 𝐒𝐚𝐝𝐞𝐰 💘';
+  const ARABIAN_SUB   = '𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐁𝐨𝐭 𝐐𝐮𝐞𝐞𝐧 💘';
 
   const arabianCtx = () => ({
     forwardingScore: 999,
@@ -1029,50 +1144,51 @@ const downloadQuotedMedia = async (quoted) => {
         case 'panel': {
       try { await socket.sendMessage(sender, { react: { text: '🎀', key: msg.key } }); } catch (_) {}
       
-      const start = Date.now();
-      const ms    = Date.now() - start;
       const pushname = msg.pushName || 'Guest';
-      
       const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
       const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
-      const uptimeStr = getUptime();
-      const botName = '𝓢𝓐𝓓𝓔𝓦-𝓜𝓘𝓝𝓘';
+      const botName = '𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶';
 
-      const menuText = `┌──⟡ 🤖 ${botName} ⟡──
+      const menuText =
+`┌──⟡ 🤖 ${botName} ⟡──
 ┊
 ┠⪼✿ ✦ 👤 𝓝𝓪𝓶𝓮   : ${pushname}
-┠⪼✿ ✦ 🔖 𝓜𝓸𝓭𝓮   : ${sessionConfig.MODE || "Public"}
+┠⪼✿ ✦ 🔖 𝓜𝓸𝓭𝓮   : ${sessionConfig.MODE || "public"}
 ┠⪼✿ ✦ 📅 𝓓𝓪𝓽𝓮   : ${slDate}
 ┠⪼✿ ✦ ⏰ 𝓣𝓲𝓶𝓮   : ${slTimeNow}
-┠⪼✿ ✦ ⚡ 𝓤𝓹𝓽𝓲𝓶𝓮 : ${uptimeStr}
-┠⪼✿ ✦ 📦 𝓟𝓵𝓾𝓰𝓲𝓷𝓼: 45
+┠⪼✿ ✦ ⚡ 𝓤𝓹𝓽𝓲𝓶𝓮 : ${getUptime()}
 ┠⪼✿ ✦ 🔰 𝓟𝓻𝓮𝓯𝓲𝔁 : ${sessionConfig.PREFIX || "."}
 ┊
 └──⟡ ━━━━━━━━━━━━━━━━ ⟡
 ┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━
-┣⪼ ❖ 1. 📥 𝓓𝓸𝔀𝓷𝓵𝓸𝓪𝓭 𝓜𝓮𝓷𝓾 ✿
-┣⪼ ❖ 2. 🧠 𝓐𝓘 𝓒𝓸𝓶𝓶𝓪𝓷𝓭𝓼 ✿
-┣⪼ ❖ 3. 👥 𝓖𝓻𝓸𝓾𝓹 𝓜𝓪𝓷𝓪𝓰𝓮 ✿
-┣⪼ ❖ 4. ⚙️ 𝓐𝓭𝓶𝓲𝓷 𝓜𝓮𝓷𝓾 ✿
-┣⪼ ❖ 5. 🔧 𝓣𝓸𝓸𝓵𝓼 & 𝓔𝓭𝓲𝓽𝓼 ✿
-┣⪼ ❖ 6. 👑 𝓞𝔀𝓷𝓮𝓻 𝓐𝓻𝓮𝓪 ✿
-┣⪼ ❖ 7. 📁 𝓞𝓽𝓱𝓮𝓻 𝓒𝓶𝓭𝓼 ✿
-┣⪼ ❖ 8. 🎵 𝓢𝓸𝓷𝓰 & 𝓜𝓾𝓼𝓲𝓬 ✿
+┣⪼ ❖ 1. 📥 Download Menu✿
+┣⪼ ❖ 2. 🧠 AI Commands✿
+┣⪼ ❖ 3. 👥 Group Manage✿
+┣⪼ ❖ 4. ⚙️ Admin Menu✿
+┣⪼ ❖ 5. 🔧 Tools & Edits✿
+┣⪼ ❖ 6. 👑 Owner Area✿
+┣⪼ ❖ 7. 📁 Other Cmds✿
+┣⪼ ❖ 8. 🎵 Song & Music✿
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━
 ⊱ ─────── { 𑁍 } ─────── ⊰
-╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝘚𝘢𝘥𝘦𝘸 𝘙𝘢𝘴𝘩𝘮𝘪𝘬𝘢 ⪻
+╰┈⪼ 𝘙𝘦𝘱𝘭𝘺 𝘸𝘪𝘵𝘩 𝘢 𝘯𝘶𝘮𝘣𝘦𝘳 (1-8) 𝘵𝘰 𝘷𝘪𝘦𝘸 𝘤𝘢𝘵𝘦𝘨𝘰𝘳𝘺 ⪻
 ⊱ ─────── { 𑁍 } ─────── ⊰
+╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 ⪻
+⊱ ─────── { 𑁍 } ─────── ⊰`;
 
-> *ඔබට අවශ්‍ය category එකට අදාල අංකය (1-8) මෙම පණිවිඩයට Reply කරන්න.*`;
-
-      await socket.sendMessage(sender, {
+      const sentMenu = await socket.sendMessage(sender, {
         image: { url: akira },
         caption: menuText,
         contextInfo: arabianCtx()
       }, { quoted: msg });
 
+      // Track this exact menu message ID so the reply-catcher only fires for replies to THIS message
+      if (sentMenu?.key?.id) {
+          global.sadewMenuTracker[sender] = sentMenu.key.id;
+      }
+
       break;
-        }                   
+        }                    
             
     // ════════════ PING ════════════
       
@@ -1084,13 +1200,13 @@ const downloadQuotedMedia = async (quoted) => {
 
       await socket.sendMessage(sender, {
         image: { url: akira },
-        caption: `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗣𝗶𝗻𝗴 🎀] ¡! ❞*\n\n` +
+        caption: `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄 𝗚𝗶𝗿𝗹 𝗣𝗶𝗻𝗴 🎀] ¡! ❞*\n\n` +
              `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
                  `┃₊❏❜ ⋮🏓 𝙿𝙾𝙽𝙶 : _pong!_\n` +
                  `┃₊❏❜ ⋮⚡ 𝚂𝙿𝙴𝙴𝙳 : ${ms}ms\n` +
                  `┃₊❏❜ ⋮⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴 : ${getUptime()}\n` +
              `┗━━━━━°⌜ \`赤い糸 ⌟°━━━━━┛\n\n` +
-                 `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
+                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
         contextInfo: arabianCtx()
       }, { quoted: msg });
 
@@ -1107,12 +1223,12 @@ case 'alive': {
     const minutes = Math.floor((uptime % 3600) / 60);
     const seconds = Math.floor(uptime % 60);
 
-    const title = '*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗔𝗹𝗶𝘃𝗲 🎀] ¡! ❞*';
+    const title = '*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗔𝗹𝗶𝘃𝗲 🎀] ¡! ❞*';
     const content = `*⊹₊⟡⋆ ⋮ Ａｂｏｕｔ ᶻ 𝗓 𐰁 .ᐟ*\n` +
                     `➜ This is a lightweight, stable WhatsApp bot designed to run 24/7. It is allowing users and group admins to fine-tune the bot’s behavior.\n\n` +
                     `*⊹₊⟡⋆ ⋮ Ｄｅｐｌｏｙ ᶻ 𝗓 𐰁 .ᐟ*\n` +
                     `➜ *Website:* https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21`;
-    const footer = '> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*';
+    const footer = '> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗔𝗗𝗘𝗪 𝜗𝜚⋆*';
 
     await socket.sendMessage(sender, {
         image: { url: akira },
@@ -1137,7 +1253,7 @@ case 'alive': {
       const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
       const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-      const sysInfo = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
+      const sysInfo = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
               `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
                       `┃ *⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴:* ${uptime}\n` +
                       `┃ *📟 𝚁𝙰𝙼 𝚄𝚂𝙰𝙶𝙴:* ${ramUsage} MB / ${totalRam} GB\n` +
@@ -1146,7 +1262,7 @@ case 'alive': {
                       `┃ *📅 𝙳𝙰𝚃𝙴:* ${slDate}\n` +
                       `┃ *⌚ 𝚃𝙸𝙼𝙴:* ${slTimeNow}\n` +
               `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n` +
-                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                      `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗔𝗗𝗘𝗪 𝜗𝜚⋆*`;
 
       await socket.sendMessage(sender, {
         image: { url: akira },
@@ -1202,7 +1318,7 @@ case 'yta': {
         }
 
         // 2. Download 320kbps MP3
-        reply("📥 _*👑𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜🔥*_ Extracting 320kbps High-Quality MP3..._");
+        reply("📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Extracting 320kbps High-Quality MP3..._");
         
         let audioDownloadUrl = null;
         const dlRes = await axios.get(`${YT_DOWNLOAD_API}?url=${encodeURIComponent(youtubeUrl)}&quality=320&apitoken=${API_TOKEN}`);
@@ -1220,7 +1336,7 @@ case 'yta': {
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
 
         // Send Details Caption
-        const captionMsg = `✨ *_👑𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜🔥_ Music System* ✨\n\n📌 *Title:* ${songTitle}\n💿 *Quality:* 320kbps Ultra-High Quality\n🚀 *Status:* downloading...`;
+        const captionMsg = `✨ *_👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥_ Music System* ✨\n\n📌 *Title:* ${songTitle}\n💿 *Quality:* 320kbps Ultra-High Quality\n🚀 *Status:* downloading...`;
         await reply(captionMsg);
 
         // 3. Send Audio File
@@ -1264,7 +1380,7 @@ case 'playvid': {
             const url = query.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i)[0];
             const buttonMessage = {
                 text: `*🎥 Video Link Detected!*\n\n🔗 ${url}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
-                footer: '👑 SADEW-MINI 👑',
+                footer: '👑 SADEW-X-MINI 👑',
                 buttons: [
                     { buttonId: `.viddl ${url} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
                     { buttonId: `.viddl ${url} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
@@ -1312,7 +1428,7 @@ case 'viddl': {
         const quality = args[1];
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
-        reply(`📥 _*👑𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜🔥*_ Downloading & Converting ${quality}p Video..._`);
+        reply(`📥 _*👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥*_ Downloading & Converting ${quality}p Video..._`);
 
         let downloadUrl = "";
         let videoTitle = "Sadew-MD Video";
@@ -1391,19 +1507,19 @@ case 'viddl': {
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-        let caption = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 🎀] ¡! ❞*\n\n` +
+        let caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 🎀] ¡! ❞*\n\n` +
                       `🎬 *TITLE :* ${videoTitle}\n` +
                       `📽️ *QUALITY :* ${quality}p\n` +
                       `__________________________\n\n` +
                       `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                      `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                      `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         // 3. Convert කරපු MP4 එක WhatsApp වෙත යැවීම
         await socket.sendMessage(sender, {
             video: fs.readFileSync(outputPath),
             mimetype: 'video/mp4',
             caption: caption,
-            fileName: `SADEW_Video_${quality}p.mp4`
+            fileName: `Sadew_Video_${quality}p.mp4`
         }, { quoted: msg });
 
         // 4. යැව්වට පස්සේ සර්වර් එකේ ඉඩ ඉතුරු වෙන්න Temporary Files මකා දැමීම
@@ -1461,14 +1577,14 @@ case 'facebook': {
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-        const caption = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 🎀] ¡! ❞*\n\n` +
+        const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 🎀] ¡! ❞*\n\n` +
                         `🎬 *TITLE :* ${videoData.title !== "No video title" ? videoData.title : 'Facebook Video'}\n` +
                         `⏱️ *DURATION :* ${videoData.duration}\n` +
                         `📺 *QUALITY :* ${quality}\n` +
                         `⚖️ *SIZE :* ${fileSizeMB} MB\n` +
                         `__________________________\n\n` +
                         `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                        `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, {
             video: videoBuffer,
@@ -1487,6 +1603,7 @@ case 'facebook': {
     break;
 }
 
+// ════════════ TIKTOK (HD DOWNLOADER) ════════════
 // ════════════ TIKTOK (HD DOWNLOADER) ════════════
 
 case 'tiktok':
@@ -1536,16 +1653,17 @@ case 'tt': {
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-        const caption = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗧𝗶𝗸𝗧𝗼𝗸 🎀] ¡! ❞*\n\n` +
+        // SADEW-MINI ලස්සන Caption එක
+        const caption = `*↳ ❝ [🎀 SADEW 𝗧𝗶𝗸𝗧𝗼𝗸 🎀] ¡! ❞*\n\n` +
                         `🎬 *TITLE :* ${title}\n` +
                         `✨ *QUALITY :* ${isHD}\n` +
                         `⚖️ *SIZE :* ${fileSizeMB} MB\n` +
                         `🚫 *WATERMARK :* No\n` +
                         `__________________________\n\n` +
                         `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                        `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-        // 16MB වලට වඩා වැඩි නම් Document එකක් විදිහට යවනවා
+        // 16MB වලට වඩා වැඩි නම් Document එකක් විදිහට යවනවා (Quality එක අඩුවෙන එක නවත්තන්න)
         if (videoBuffer.length > 40 * 1024 * 1024) {
             await socket.sendMessage(sender, {
                 document: videoBuffer,
@@ -1576,15 +1694,16 @@ case 'tt': {
     break;
 }
 
-// ════════════ AI / AKIRA ════════════
+// ════════════ AKIRA AI ════════════
 
 case 'ai':
 case 'akira': {
     try { await socket.sendMessage(sender, { react: { text: '🍫', key: msg.key } }); } catch (_) {}
     const { NiyoXClient } = require("niyox");
-    const title = "🎀 *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗔𝗶* 🎀";
-    const footer = "> *𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐐𝐮𝐞𝐞𝐧 𝐁𝐲 𝐒𝐚𝐝𝐞𝐰 𝐑𝐚𝐬𝐡𝐦𝐢𝐤𝐚 🌺*";
+    const title = "🎀 *𝗔𝗸𝗶𝗿𝗮 𝗔𝗶 𝗚𝗶𝗿𝗹𝗳𝗿𝗲𝗻𝗱* 🎀";
+    const footer = "> *𝐀𝐞𝐬𝐭𝐡𝐚𝐭𝐢𝐜 𝐐𝐮𝐞𝐞𝐧 𝐁𝐲 𝐂𝐡𝐚𝐦𝐨𝐝 🌺*";
 
+    // ✅ Get user input from various message types
     const q = msg.message?.conversation || 
               msg.message?.extendedTextMessage?.text || 
               msg.message?.imageMessage?.caption || 
@@ -1592,10 +1711,10 @@ case 'akira': {
               '';
 
     if (!q || q.trim() === '') {
-        return await socket.sendMessage(sender, { text: "ඕ කියන්න අනේ මම SADEW-MINI 🎀" }, { quoted: msg });
+        return await socket.sendMessage(sender, { text: "ඕ කියන්න අනේ් මම Akira Girl 🎀" }, { quoted: msg });
     }
 
-    const prompt = `ඔබ සැබෑ ගැහැනු ලමයෙකු මෙන් හැසිරිය යුතුය. ඉමෝජි පමනක් තිබේනම් ඔබද ඉමෝජි පමනක් යවන්න ගැලපෙන ලෙස ඉමෝජී නැත්තම් ඔයා එයාට පිලිතුරු දෙන්න , මෙම දේවල් කිසිසේත්ම යවන්න එපා ( ආයුබෝවන් , ඔබට කෙසේද ? , katha karanna , ඕනේ ? , කොහොමද ? , කෙසේද ? , කැමතිද ? ,) මිනිසුන්ට ඇති හැඟීම්, දැනීම්, සහ සංවේදීතාවය අනුව පිළිතුරු ලබාදිය යුතුය. මැසේජ් එක ලැබෙන භාෂාවට ගැලපෙන ලෙස පිළිතුරු දෙන්න. ඔබ ලබාදිය යුතු පිළිතුරු අකුරු 100 ට වඩා අඩු විය යුතුය. සහ ආයුබෝවන් වගේ වචන බාවිතා කරන්න එපා උදව් අවශ්‍ය  ද අහන්නත් එපා , ඔයා ai ඇසිස්ටන් කෙනෙක් නෙමේ සැබෑ මිනිසෙක් , ඇසිස්ටන් කෙනෙක් වෙන්න එපා , ඔයා ඒ අයට ආදරෙන් කතා කරන්න , ඔයා ගේ නම SADEW-MINI 🎀 , ඔයාගෙන් කවුරු හරි දෙයක් ඇහුවාම ඒක තේරුම් අරගෙන මම දීලා තියෙන පිලිතුරු ඒවට ගැලපෙනවා නම් ඔයා එයාට ඒවා පිලිතුරු විදිහට කියන්න ,  ඔයාව හැදුවේ කවුද කියලා ඇහුවොත් විතරක් ඔයා කියන්නේ මාව හැදුවේ Sadew Rashmika කියලා User Message: ${q}`;
+    const prompt = `ඔබ සැබෑ ගැහැනු ලමයෙකු මෙන් හැසිරිය යුතුය. ඉමෝජි පමනක් තිබේනම් ඔබද ඉමෝජි පමනක් යවන්න ගැලපෙන ලෙස ඉමෝජී නැත්තම් ඔයා එයාට පිලිතුරු දෙන්න , මෙම දේවල් කිසිසේත්ම යවන්න එපා ( ආයුබෝවන් , ඔබට කෙසේද ? , katha karanna , ඕනේ ? , කොහොමද ? , කෙසේද ? , කැමතිද ? ,) මිනිසුන්ට ඇති හැඟීම්, දැනීම්, සහ සංවේදීතාවය අනුව පිළිතුරු ලබාදිය යුතුය. මැසේජ් එක ලැබෙන භාෂාවට ගැලපෙන ලෙස පිළිතුරු දෙන්න. ඔබ ලබාදිය යුතු පිළිතුරු අකුරු 100 ට වඩා අඩු විය යුතුය. සහ ආයුබෝවන් වගේ වචන බාවිතා කරන්න එපා උදව් අවශ්‍ය  ද අහන්නත් එපා , ඔයා ai ඇසිස්ටන් කෙනෙක් නෙමේ සැබෑ මිනිසෙක් , ඇසිස්ටන් කෙනෙක් වෙන්න එපා , ඔයා ඒ අයට ආදරෙන් කතා කරන්න , ඔයා ගේ නම Akira Girl 🎀 , ඔයාගෙන් කවුරු හරි දෙයක් ඇහුවාම ඒක තේරුම් අරගෙන මම දීලා තියෙන පිලිතුරු ඒවට ගැලපෙනවා නම් ඔයා එයාට ඒවා පිලිතුරු විදිහට කියන්න ,  ඔයාව හැදුවේ කවුද කියලා ඇහුවොත් විතරක් ඔයා කියන්නේ මාව හැදුවේ Chamod අයියා කියලා User Message: ${q}`;
 
     try {
         const client = new NiyoXClient({ sessionId: sender, timeout: 15000 });
@@ -1630,9 +1749,11 @@ case 'wormgpt': {
 
         const from = msg.key.remoteJid;
 
+        // 💀 රිඇක්ෂන් එක දැමීම සහ ආරක්ෂිත එක Loading මැසේජ් එකක් යැවීම
         await socket.sendMessage(from, { react: { text: '💀', key: msg.key } });
         let initialMsg = await socket.sendMessage(from, { text: '👾 *𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 𝗣𝗿𝗼𝗰𝗲𝘀𝘀𝗶𝗻𝗴...* ⏳' }, { quoted: msg });
 
+        // 🌐 WolfApis හරහා WormGPT වෙතින් පිළිතුර ලබා ගැනීම
         const WOLF_API_KEY = "wxa_f_4e840b5e42";
         const targetUrl = `https://apis.xwolf.space/api/ai/wormgpt?q=${encodeURIComponent(query)}&key=${WOLF_API_KEY}`;
         
@@ -1642,10 +1763,12 @@ case 'wormgpt': {
             const aiReply = response.data.result || response.data.response || response.data.reply;
 
             if (aiReply) {
+                // ✨ SADEW MINI ලස්සන Format එක
                 const finalMessage = `*↳ ❝ [👾 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗪𝗢𝗥𝗠-𝗚𝗣𝗧 👾] ¡! ❞*\n\n` +
                                      `${aiReply}\n\n` +
-                                     `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                                     `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗔𝗗𝗘𝗪 𝜗𝜚⋆*`;
 
+                // එක පාරක් විතරක් මැසේජ් එක Edit කිරීම (එතකොට WhatsApp එකෙන් ලොග් අවුට් කරන්නේ නෑ)
                 await socket.sendMessage(from, {
                     text: finalMessage,
                     edit: initialMsg.key
@@ -1676,7 +1799,7 @@ case 'wormgpt': {
     }
     break;
 }
-                    
+					
 // ════════════ VV ════════════
         
 case 'vv': {
@@ -1707,15 +1830,15 @@ case 'vv': {
 // ════════════ ACTIVE ════════════
 
     case 'active': {
-      if (!isOwner) return reply('Owner/Dev only.');
+      if (!isOwner && !isDevUser) return reply('Owner/Dev only.');
       
       const sockets = typeof activeSockets !== 'undefined' ? activeSockets : new Map();
       const nums = Array.from(sockets.keys());
       
-      const responseText = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗦𝗲𝘀𝘀𝗶𝗼𝗻𝘀 🎀] ¡! ❞*\n\n` +
+      const responseText = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘀𝘀𝗶𝗼𝗻𝘀 🎀] ¡! ❞*\n\n` +
                            `> *\`📡 𝙲𝙾𝚄𝙽𝚃 :\`* ${nums.length}\n\n` +
                            `${nums.map((n, i) => `> *\`${i + 1}.\`* +${n}`).join('\n')}\n\n` +
-                           `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                           `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
                            
       await reply(responseText);
       break;
@@ -1732,14 +1855,14 @@ case 'vv': {
         const res = await axios.get(`https://registry.npmjs.org/${pkg}`, { timeout: 10000 });
         const d = res.data;
         
-        const npmInfo = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗡𝗣𝗠 🎀] ¡! ❞*\n` +
+        const npmInfo = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗡𝗣𝗠 🎀] ¡! ❞*\n` +
                         `⊹₊⟡⋆ 𝗡𝗮𝗺𝗲 - ${d.name} 𝜗𝜚⋆\n\n` +
                         `> *\`📦 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 :\`* ${d['dist-tags']?.latest || 'N/A'}\n` +
                         `> *\`📝 𝙳𝙴𝚂𝙲 :\`* ${(d.description || 'N/A').slice(0, 100)}\n` +
                         `> *\`👤 𝙰𝚄𝚃𝙷𝙾𝚁 :\`* ${d.author?.name || 'N/A'}\n` +
                         `> *\`📄 𝙻𝙸𝙲𝙴𝙽𝚂𝙴 :\`* ${d.license || 'N/A'}\n` +
                         `> *\`🔗 𝙻𝙸𝙽𝙺 :\`* https://npmjs.com/package/${d.name}\n\n` +
-                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                        `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, { 
           image: { url: akira },
@@ -1818,11 +1941,11 @@ case 'img': {
         {
           image: { url: imgUrl },
           caption:
-`*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗜𝗠𝗚𝘀 🎀] ¡! ❞*
+`*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗜𝗠𝗚𝘀 🎀] ¡! ❞*
 
 *₊❏❜ ⋮ 🔍 Search:* ${q}
 
-> *𝗔esthetic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
         },
           { quoted: msg }
       );
@@ -1862,7 +1985,7 @@ case 'img': {
 
         await socket.sendMessage(sender, { 
           image: { url: dpUrl }, 
-          caption: `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗗𝗣 🎀] ¡! ❞*\n\n📷 Profile picture of @${target.split('@')[0]}`, 
+          caption: `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗗𝗣 🎀] ¡! ❞*\n\n📷 Profile picture of @${target.split('@')[0]}`, 
           mentions: [target] 
         }, { quoted: msg });
 
@@ -1897,8 +2020,8 @@ case 'img': {
         if (!media?.buffer) return reply('Could not download media.');
 
         const sticker = new WASticker(media.buffer, { 
-          pack: '𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜', 
-          author: '𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮', 
+          pack: botName, 
+          author: 'sadew', 
           type: StickerTypes.FULL, 
           categories: ['🤩'], 
           id: '12345', 
@@ -1923,9 +2046,9 @@ case 'img': {
         const ps       = gm.participants || [];
         const tm       = args.join(' ').trim() || '*Attention everyone!*';
         const mentions = ps.map(p => p.id);
-        let text = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗧𝗮𝗴𝗮𝗹𝗹 🎀] ¡! ❞*\n\n> *\`🗣️ :\`* ${tm}\n\n`;
+        let text = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗧𝗮𝗴𝗮𝗹𝗹 🎀] ¡! ❞*\n\n> *\`🗣️ :\`* ${tm}\n\n`;
         for (const p of ps) text += `₊❏❜ ⋮ @${p.id.split('@')[0]}\n`;
-        text += `\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        text += `\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
         await socket.sendMessage(sender, { text, mentions }, { quoted: msg });
       } catch (e) { await reply(`tagall failed: ${e.message}`); }
       break;
@@ -2020,7 +2143,7 @@ case 'add': {
         const mentions = admins.map(p => p.id);
         let text = `╭─⊹₊⟡⋆『 \`𝐀𝐝𝐦𝐢𝐧\` 』𖤐.ᐟ\n*┃* ${tm}\n*┃*\n`;
         for (const p of admins) text += `*┃* @${p.id.split('@')[0]}\n`;
-        text += `╰──────────────────<𝟑 .ᐟ\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        text += `╰──────────────────<𝟑 .ᐟ\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
         await socket.sendMessage(sender, { text, mentions }, { quoted: msg });
       } catch (e) { await replyFq(`tagadmin failed: ${e.message}`); }
       break;
@@ -2108,14 +2231,14 @@ case 'add': {
         const admCnt  = gm.participants.filter(p => p.admin).length;
         const created = gm.creation ? new Date(gm.creation * 1000).toLocaleDateString() : 'Unknown';
         await reply(
-          `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗚𝗜𝗻𝗳𝗼 🎀] ¡! ❞*\n\n` +
+          `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗚𝗜𝗻𝗳𝗼 🎀] ¡! ❞*\n\n` +
           `₊❏❜ ⋮ *\`📛 𝙽𝙰𝙼𝙴 :\`* ${gm.subject}\n` +
           `₊❏❜ ⋮ *\`🆔 𝙹𝙸𝙳 :\`* ${gm.id}\n` +
           `₊❏❜ ⋮ *\`📝 𝙳𝙴𝚂𝙲 :\`* ${(gm.desc || 'None').slice(0, 100)}\n` +
           `₊❏❜ ⋮ *\`👥 𝙼𝙴𝙼𝙱𝙴𝚁𝚂 :\`* ${total}\n` +
           `₊❏❜ ⋮ *\`👑 𝙰𝙳𝙼𝙸𝙽𝚂 :\`* ${admCnt}\n` +
           `₊❏❜ ⋮ *\`📅 𝙲𝚁𝙴𝙰𝚃𝙴𝙳 :\`* ${created}\n\n` +
-          `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+          `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
         );
       } catch (e) { await reply(`groupinfo failed: ${e.message}`); }
       break;
@@ -2234,7 +2357,7 @@ case 'hentai': {
 *₊❏❜ ⋮ 📁 Category:* ${randomVideo.category}
 *₊❏❜ ⋮ 👁️ Views:* ${randomVideo.views_count}
 
-> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
         }, 
         { quoted: msg }
       );
@@ -2249,7 +2372,7 @@ case 'hentai': {
   break;
 }
 
-// ════════════ PING ════════════
+// ════════════ FANCY TEXT ════════════
 
 case 'styletext':
 case 'fancy':
@@ -2286,7 +2409,7 @@ case 'fancytext': {
         });
         
         styledMsg += `*┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛*\n\n`;
-        styledMsg += `> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        styledMsg += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, { 
             image: { url: akira }, 
@@ -2308,7 +2431,7 @@ case 'fancytext': {
 
                 case 'owner': {
     const ownerNum = '+94707447414';
-    const ownerName = 'お 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 ࣪𖤐.ᐟ';
+    const ownerName = 'お 𝐒𝐚𝐝𝐞𝐰 𝐑𝐚𝐬𝐡𝐦𝐢𝐤𝐚 ࣪𖤐.ᐟ';
     
     await socket.sendMessage(sender, { react: { text: '🥷', key: msg.key } });
 
@@ -2317,13 +2440,13 @@ case 'fancytext': {
         contacts: {
             displayName: ownerName,
             contacts: [{
-                vcard: `BEGIN:VCARD\nVERSION:3.0\nFN:${ownerName}\nORG:𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝐗 𝐎𝐰𝐧𝐞𝐫;\nTEL;type=CELL;type=VOICE;waid=${ownerNum.slice(1)}:${ownerNum}\nEND:VCARD`
+                vcard: `BEGIN:VCARD\nVERSION:3.0\nFN:${ownerName}\nORG:𝐒𝐚𝐝𝐞𝐰-𝐌𝐢𝐧𝐢 𝐎𝐰𝐧𝐞𝐫;\nTEL;type=CELL;type=VOICE;waid=${ownerNum.slice(1)}:${ownerNum}\nEND:VCARD`
             }]
         }
     });
 
     await socket.sendMessage(sender, {
-        text: `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗢𝘄𝗻𝗲𝗿 🎀] ¡! ❞*\n\n₊❏❜ ⋮👤 Name: ${ownerName}\n₊❏❜ ⋮ 📞 Number: ${ownerNum}\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
+        text: `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗢𝘄𝗻𝗲𝗿 🎀] ¡! ❞*\n\n₊❏❜ ⋮👤 Name: ${ownerName}\n₊❏❜ ⋮ 📞 Number: ${ownerNum}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
         contextInfo: {
             mentionedJid: [`${ownerNum.slice(1)}@s.whatsapp.net`]
         }
@@ -2367,7 +2490,7 @@ case 'lvcal': {
         else if (percentage >= 30) hearts = '💖💖';
         else hearts = '💖';
 
-        let shipText = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪 𝗠𝗜𝗡𝗜 𝗟𝘃𝗖𝗮𝗹 🎀] ¡! ❞*\n\n`;
+        let shipText = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗟𝘃𝗖𝗮𝗹 🎀] ¡! ❞*\n\n`;
         shipText += `*${name1}* 💑 *${name2}*\n\n`;
         shipText += `${hearts}\n`;
         shipText += `*Love Percentage:* ${percentage}%\n\n`;
@@ -2378,7 +2501,7 @@ case 'lvcal': {
         else if (percentage >= 20) shipText += `*Needs Work! 🤔💔*`;
         else shipText += `*Not Meant To Be! 😢💔*`;
         
-        shipText += `\n\n> *𝗔esthatic 𝗤ueen 𝗕y 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        shipText += `\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, { text: shipText }, { quoted: msg });
         await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
@@ -2396,7 +2519,7 @@ case 'hack': {
     try {
         const from = msg.key.remoteJid; 
         const steps = [
-            '🎀 *𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗛𝗮𝗰𝗸 𝗦𝘁𝗮𝗿𝘁𝗶𝗻𝗴...* 🎀',
+            '🎀 *𝐒𝐚𝐝𝐞𝐰-𝐌𝐢𝐧𝐢 𝐇𝐚𝐜𝐤 𝐒𝐭𝐚𝐫𝐢𝐧𝐠...* 🎀',
             '`ɪɴɪᴛɪᴀʟɪᴢɪɴɢ ʜᴀᴄᴋɪɴɢ ᴛᴏᴏʟꜱ...` 🛠️',
             '`ᴄᴏɴɴᴇᴄᴛɪɴɢ ᴛᴏ ʀᴇᴍᴏᴛᴇ ꜱᴇʀᴠᴇʀ...` 🌐',
             '```[##] 20%``` ⏳',
@@ -2405,7 +2528,7 @@ case 'hack': {
             '```[########] 80%``` ⏳',
             '```[##########] 100%``` ✅',
             '🔒 *𝐒ystem 𝐁reach: 𝐒uccessful!* 🔓',
-            '*🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗛𝗮𝗰𝗸𝗶𝗻𝗴 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹 🎭*',
+            '*🎀 𝐒adew-𝐌ini 𝐇acking 𝐒uccessful 🎭*',
         ];
 
         await socket.sendMessage(from, { react: { text: '💀', key: msg.key } });
