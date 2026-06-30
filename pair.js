@@ -995,4 +995,592 @@ function getMergedCategory(catNum) {
     
     // Remove duplicate commands to keep it clean
     const uniqueItems = [];
-    const seen
+    const seen = new Set();
+    [...base.items, ...pluginItems].forEach(item => {
+        if (!seen.has(item.cmd)) {
+            seen.add(item.cmd);
+            uniqueItems.push(item);
+        }
+    });
+
+    return {
+        emoji: base.emoji,
+        name: base.name,
+        items: uniqueItems
+    };
+}
+
+function getTotalCommandCount() {
+    const builtInCount = Object.values(SADEW_CATEGORIES).reduce((sum, cat) => sum + cat.items.length, 0);
+    const pluginCount = loadedPlugins.reduce((sum, p) => sum + p.commands.length, 0);
+    return builtInCount + pluginCount;
+}
+
+// ════════════ AUTOMATIC MENU GENERATOR ════════════
+function buildCategoryTextMessage(catNum) {
+    const cat = getMergedCategory(catNum);
+    if (!cat) return null;
+
+    const header = `╭───⟡ 🤖 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 ⟡───\n┊\n┣⪼ ❖ ${cat.emoji} *${cat.name}* ✿\n┊\n`;
+    const bodyLines = cat.items.map(i => `┣ ❖ ${i.cmd} ➜ _${i.desc}_`).join('\n');
+    const footer = `\n┊\n╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝘚𝘢𝘥𝘦𝘸 𝘙𝘢𝘴𝘩𝘮𝘪𝘬𝘢 ⪻`;
+
+    return { text: header + bodyLines + footer };
+}
+
+async function setupCommandHandlers(socket, number) {
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+                
+    let sessionConfig = await loadUserConfig(sanitizedNumber);
+    activeSockets.set(sanitizedNumber, {
+        socket,
+        config: sessionConfig
+    });
+
+    const MEDIA_TYPES = ['imageMessage', 'videoMessage', 'audioMessage', 'stickerMessage', 'documentMessage'];
+
+    socket.ev.on('messages.upsert', async ({
+        messages
+    }) => {
+
+      const msg = messages[0];
+        if (!msg.message) return;
+        
+const type = getContentType(msg.message);
+        if (!msg.message) return;
+        msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
+                                                       const m = sms(socket, msg);                                     
+const quoted =
+            type == "extendedTextMessage" &&
+            msg.message.extendedTextMessage.contextInfo != null
+              ? msg.message.extendedTextMessage.contextInfo.quotedMessage || []
+              : [];
+        const body = (type === 'conversation') ? msg.message.conversation 
+            : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') 
+                ? msg.message.extendedTextMessage.text 
+            : (type == 'interactiveResponseMessage') 
+                ? msg.message.interactiveResponseMessage?.nativeFlowResponseMessage 
+                    && JSON.parse(msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson)?.id 
+            : (type == 'templateButtonReplyMessage') 
+                ? msg.message.templateButtonReplyMessage?.selectedId 
+            : (type === 'extendedTextMessage') 
+                ? msg.message.extendedTextMessage.text 
+            : (type == 'imageMessage') && msg.message.imageMessage.caption 
+                ? msg.message.imageMessage.caption 
+            : (type == 'videoMessage') && msg.message.videoMessage.caption 
+                ? msg.message.videoMessage.caption 
+            : (type == 'buttonsResponseMessage') 
+                ? msg.message.buttonsResponseMessage?.selectedButtonId 
+            : (type == 'listResponseMessage') 
+                ? msg.message.listResponseMessage?.singleSelectReply?.selectedRowId 
+            : (type == 'messageContextInfo') 
+                ? (msg.message.buttonsResponseMessage?.selectedButtonId 
+                    || msg.message.listResponseMessage?.singleSelectReply?.selectedRowId 
+                    || msg.text) 
+            : (type === 'viewOnceMessage') 
+                ? msg.message[type]?.message[getContentType(msg.message[type].message)] 
+            : (type === "viewOnceMessageV2") 
+                ? (msg.message[type]?.message?.imageMessage?.caption || msg.message[type]?.message?.videoMessage?.caption || "") 
+            : '';
+     
+        if (!body) return;
+    
+        const text = body;
+        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
+        const sender = msg.key.remoteJid;
+
+        const nowsender = msg.key.fromMe ?
+            (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
+            (msg.key.participant || msg.key.remoteJid);
+
+        const senderNumber = nowsender.split('@')[0];
+        const developers = `${config.OWNER_NUMBER}`;
+        const botNumber = socket.user.id.split(':')[0];
+
+        const isOwner = botNumber.includes(senderNumber) ? true : developers.includes(senderNumber);
+        const isGroup = msg.key.remoteJid.endsWith('@g.us');
+
+        if (!isOwner && sessionConfig.MODE === 'private') return;
+        if (!isOwner && isGroup && sessionConfig.MODE === 'inbox') return;
+        if (!isOwner && !isGroup && sessionConfig.MODE === 'groups') return;
+
+        // ════════════ MENU ROUTER (TEXT REPLY & BUTTON CATCHER) ════════════
+        let requestedCategory = null;
+
+        // 1. Check for Text Reply to the Menu Message
+        if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
+            const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.imageMessage?.caption || "";
+            
+            if (quotedText.includes("┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━") && /^[1-8]$/.test(text.trim())) {
+                requestedCategory = parseInt(text.trim());
+            }
+        }
+
+        // 2. Check for Menu Button Click
+        const btnId = msg.message?.buttonsResponseMessage?.selectedButtonId || 
+                      msg.message?.templateButtonReplyMessage?.selectedId || 
+                      msg.message?.interactiveResponseMessage?.nativeFlowResponseMessage?.id || 
+                      text;
+
+        if (btnId && btnId.startsWith('.menu_cat_')) {
+            requestedCategory = parseInt(btnId.replace('.menu_cat_', ''));
+        }
+
+        // Output the specific category text menu
+        if (requestedCategory && requestedCategory >= 1 && requestedCategory <= 8) {
+            const catMsg = buildCategoryTextMessage(requestedCategory);
+            if (catMsg) {
+                return await socket.sendMessage(msg.key.remoteJid, catMsg, { quoted: msg });
+            }
+        }
+
+        // ════════════ VIDEO DOWNLOAD MENU ROUTER ════════════
+        if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
+            const replyText = text.trim();
+            const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
+            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
+
+            if (quotedText.includes("*🔍 SADEW-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
+                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; 
+
+                    if (targetUrl) {
+                        const buttonMessage = {
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                            footer: '👑 SADEW-MINI 👑',
+                            buttons: [
+                                { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
+                                { buttonId: `.viddl ${targetUrl} 360`, buttonText: { displayText: '📱 360p' }, type: 1 }
+                            ],
+                            headerType: 1
+                        };
+                        
+                        delete global.sadewVideoSearch[sender];
+                        return await socket.sendMessage(msg.key.remoteJid, buttonMessage, { quoted: msg });
+                    }
+                } else {
+                    return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
+                }
+            }
+        }
+
+        // ════════════ DYNAMIC PLUGIN EXECUTION ════════════
+        if (isCmd) {
+            const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
+            const cmdName = parts[0].toLowerCase();
+            const args = parts.slice(1);
+            
+            const pluginToExecute = loadedPlugins.find(p => 
+                p.commands.some(c => c.cmd.replace(/^\./, '').toLowerCase() === cmdName)
+            );
+
+            if (pluginToExecute) {
+                try {
+                    return await pluginToExecute.handler(socket, msg, m, args, sessionConfig);
+                } catch (err) {
+                    console.error(`Plugin error (${cmdName}):`, err);
+                }
+            }
+        }
+
+        if (!isCmd) return;
+        const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
+        const command = parts[0].toLowerCase();
+        const args = parts.slice(1);
+
+        const reply = async (text, options = {}) => {
+            await socket.sendMessage(msg.key.remoteJid, { text, ...options }, { quoted: msg });
+        };
+        
+        const ARABIAN_TITLE = '🦋 ₊˚ ⊹ 𝐒 𝐀 𝐃 𝐄 𝐖 - 𝐌 𝐈 𝐍 𝐈 ⊹ ˚₊ 𝜗𝜚';
+        const arabianCtx = () => ({
+            forwardingScore: 999,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid  : "120363419619460838@newsletter",
+                newsletterName : ARABIAN_TITLE,
+                serverMessageId: 123,
+            }
+        });
+
+        const downloadQuotedMedia = async (quoted) => {
+            const { downloadContentFromMessage } = require('baileys');
+            let type = Object.keys(quoted)[0];
+            let msgObj = quoted[type];
+            if (!msgObj || !type) return null;
+            const stream = await downloadContentFromMessage(msgObj, type.replace('Message', ''));
+            let buffer = Buffer.from([]);
+            for await (const chunk of stream) { buffer = Buffer.concat([buffer, chunk]); }
+            return { buffer };
+        };
+        
+        try {       
+            switch (command) {
+
+            // ════════════ MAIN MENU COMMAND ════════════
+            case 'menu':
+            case 'list':
+            case 'panel': {
+                try { await socket.sendMessage(sender, { react: { text: '🤖', key: msg.key } }); } catch (_) {}
+                
+                const pushname = msg.pushName || 'Guest';
+                const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+                const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+                const botName = '𝓢𝓐𝓓𝓔𝓦-𝓜𝓘𝓝𝓘';
+
+                const menuHeader = `┌──⟡ 🤖 ${botName} ⟡──
+┊
+┠⪼✿ ✦ 👤 𝓝𝓪𝓶𝓮   : ${pushname}
+┠⪼✿ ✦ 🔖 𝓜𝓸𝓭𝓮   : ${sessionConfig.MODE || "Public"}
+┠⪼✿ ✦ 📅 𝓓𝓪𝓽𝓮   : ${slDate}
+┠⪼✿ ✦ ⏰ 𝓣𝓲𝓶𝓮   : ${slTimeNow}
+┠⪼✿ ✦ ⚡ 𝓤𝓹𝓽𝓲𝓶𝓮 : ${getUptime()}
+┠⪼✿ ✦ 📦 𝓟𝓵𝓾𝓰𝓲𝓷𝓼: cmd = ${getTotalCommandCount()}
+┠⪼✿ ✦ 🔰 𝓟𝓻𝓮𝓯𝓲𝔁 : ${sessionConfig.PREFIX || "."}
+┊
+└──⟡ ━━━━━━━━━━━━━━━━ ⟡
+┏━━━━『 𝐂𝐀𝐓𝐄𝐆𝐎𝐑𝐈𝐄𝐒 』━━━━━
+┣⪼ ❖ 1. 📥 Download Menu ✿
+┣⪼ ❖ 2. 🧠 AI Commands ✿
+┣⪼ ❖ 3. 👥 Group Manage ✿
+┣⪼ ❖ 4. ⚙️ Admin Menu ✿
+┣⪼ ❖ 5. 🔧 Tools & Edits ✿
+┣⪼ ❖ 6. 👑 Owner Area ✿
+┣⪼ ❖ 7. 📁 Other Cmds ✿
+┣⪼ ❖ 8. 🎵 Song & Music ✿
+┗━━━━━━━━━━━━━━━━━━━━━━━━━
+⊱ ─────── { 𑁍 } ─────── ⊰
+╰┈⪼ 𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘉𝘺 𝘚𝘢𝘥𝘦𝘸 𝘙𝘢𝘴𝘩𝘮𝘪𝘬𝘢 ⪻
+⊱ ─────── { 𑁍 } ─────── ⊰
+
+> *ඔබට අවශ්‍ය category එකට අදාල අංකය (1-8) මෙම පණිවිඩයට Reply කරන්න හෝ පහතින් Button එක Click කරන්න.*`;
+
+                // Main Menu with 8 Buttons
+                const buttonMessage = {
+                    image: { url: akira },
+                    caption: menuHeader,
+                    footer: '👑 SADEW-MINI 👑',
+                    buttons: [
+                        { buttonId: '.menu_cat_1', buttonText: { displayText: '📥 Download Menu' }, type: 1 },
+                        { buttonId: '.menu_cat_2', buttonText: { displayText: '🧠 AI Commands' }, type: 1 },
+                        { buttonId: '.menu_cat_3', buttonText: { displayText: '👥 Group Manage' }, type: 1 },
+                        { buttonId: '.menu_cat_4', buttonText: { displayText: '⚙️ Admin Menu' }, type: 1 },
+                        { buttonId: '.menu_cat_5', buttonText: { displayText: '🔧 Tools & Edits' }, type: 1 },
+                        { buttonId: '.menu_cat_6', buttonText: { displayText: '👑 Owner Area' }, type: 1 },
+                        { buttonId: '.menu_cat_7', buttonText: { displayText: '📁 Other Cmds' }, type: 1 },
+                        { buttonId: '.menu_cat_8', buttonText: { displayText: '🎵 Song & Music' }, type: 1 }
+                    ],
+                    headerType: 4,
+                    contextInfo: arabianCtx()
+                };
+
+                return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
+            }                   
+            
+            case 'ping': {
+                try { await socket.sendMessage(sender, { react: { text: '🍬', key: msg.key } }); } catch (_) {}     
+                const start = Date.now();
+                const pingMsg = await socket.sendMessage(sender, { text: 'පොඩ්ඩක් ඉන්න... 🍬' }, { quoted: msg });
+                const ms = Date.now() - start;
+                try { if (pingMsg?.key) await socket.sendMessage(sender, { delete: pingMsg.key }); } catch (_) {}
+
+                await socket.sendMessage(sender, {
+                    image: { url: akira },
+                    caption: `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗣𝗶𝗻𝗴 🎀] ¡! ❞*\n\n` +
+                             `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
+                             `┃₊❏❜ ⋮🏓 𝙿𝙾𝙽𝙶 : _pong!_\n` +
+                             `┃₊❏❜ ⋮⚡ 𝚂𝙿𝙴𝙴𝙳 : ${ms}ms\n` +
+                             `┃₊❏❜ ⋮⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴 : ${getUptime()}\n` +
+                             `┗━━━━━°⌜ \`赤い糸 ⌟°━━━━━┛\n\n` +
+                             `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
+                    contextInfo: arabianCtx()
+                }, { quoted: msg });
+                break;
+            }
+
+            case 'alive': {
+                try { await socket.sendMessage(sender, { react: { text: '🍓', key: msg.key } }); } catch (_) {}
+                const title = '*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗔𝗹𝗶𝘃𝗲 🎀] ¡! ❞*';
+                const content = `*⊹₊⟡⋆ ⋮ Ａｂｏｕｔ ᶻ 𝗓 𐰁 .ᐟ*\n` +
+                                `➜ This is a lightweight, stable WhatsApp bot designed to run 24/7. It is allowing users and group admins to fine-tune the bot’s behavior.\n\n` +
+                                `*⊹₊⟡⋆ ⋮ Ｄｅｐｌｏｙ ᶻ 𝗓 𐰁 .ᐟ*\n` +
+                                `➜ *Website:* https://whatsapp.com/channel/0029Vb7BZe8I1rcapv3kSP21`;
+                const footer = '> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*';
+
+                await socket.sendMessage(sender, {
+                    image: { url: akira },
+                    caption: `${title}\n\n${content}\n\n${footer}`,
+                    contextInfo: arabianCtx() 
+                }, { quoted: msg });
+                break;
+            }
+
+            case 'system': {
+                try { await socket.sendMessage(sender, { react: { text: '🛸', key: msg.key } }); } catch (_) {}
+                const uptime = getUptime();
+                const ramUsage = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2);
+                const totalRam = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
+                const nodeVersion = process.version;
+                const platform = os.platform();
+                
+                const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+                const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+
+                const sysInfo = `*↳ ❝ [🎀 𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜 𝗦𝘆𝘀𝘁𝗲𝗺 🎀] ¡! ❞*\n\n` +
+                                `┏━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┓\n` +
+                                `┃ *⏱️ 𝚄𝙿𝚃𝙸𝙼𝙴:* ${uptime}\n` +
+                                `┃ *📟 𝚁𝙰𝙼 𝚄𝚂𝙰𝙶𝙴:* ${ramUsage} MB / ${totalRam} GB\n` +
+                                `┃ *📦 𝙽𝙾𝙳𝙴 𝚅𝙴𝚁:* ${nodeVersion}\n` +
+                                `┃ *💻 𝙿𝙻𝙰𝚃𝙵𝙾𝚁𝙼:* ${platform}\n` +
+                                `┃ *📅 𝙳𝙰𝚃𝙴:* ${slDate}\n` +
+                                `┃ *⌚ 𝚃𝙸𝙼𝙴:* ${slTimeNow}\n` +
+                                `┗━━━━━°⌜ \`赤い糸\` ⌟°━━━━━┛\n\n` +
+                                `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                await socket.sendMessage(sender, {
+                    image: { url: akira },
+                    caption: sysInfo,
+                    contextInfo: arabianCtx()
+                }, { quoted: msg });
+                break;
+            }
+
+            case 'song':
+            case 'ytmp3': {
+                try {
+                    const query = args.join(' ');
+                    if (!query) return reply("🎵 *කරුණාකර සින්දුවක නමක් හෝ YouTube ලින්ක් එකක් ලබා දෙන්න!*");
+                    try { await socket.sendMessage(sender, { react: { text: '🔎', key: msg.key } }); } catch (_) {}
+
+                    const API_TOKEN = "VK4fry";
+                    const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
+                    const YT_DOWNLOAD_API = "https://whiteshadow-x-api.onrender.com/api/download/ytmp3";
+
+                    let youtubeUrl = null;
+                    let songTitle = "Sadew-MD Audio";
+
+                    const regex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i;
+                    const match = query.match(regex);
+
+                    if (match) {
+                        youtubeUrl = match[0].trim();
+                    } else {
+                        const searchRes = await axios.get(`${YT_SEARCH_API}?q=${encodeURIComponent(query)}&apitoken=${API_TOKEN}`);
+                        if (searchRes.data && searchRes.data.success && searchRes.data.result.length > 0) {
+                            youtubeUrl = searchRes.data.result[0].url;
+                            songTitle = searchRes.data.result[0].title || songTitle;
+                        }
+                    }
+
+                    if (!youtubeUrl) return reply("❌ *සොයා ගැනීමට නොහැකි විය!*");
+
+                    const dlRes = await axios.get(`${YT_DOWNLOAD_API}?url=${encodeURIComponent(youtubeUrl)}&quality=320&apitoken=${API_TOKEN}`);
+                    if (dlRes.data && dlRes.data.success && dlRes.data.result) {
+                        const audioDownloadUrl = dlRes.data.result.download_url;
+                        const cleanFileName = (dlRes.data.result.title || songTitle).replace(/[\\/:*?"<>|]/g, "_").slice(0, 60) + ".mp3";
+                        
+                        await socket.sendMessage(sender, {
+                            audio: { url: audioDownloadUrl },
+                            mimetype: 'audio/mpeg',
+                            fileName: cleanFileName,
+                            ptt: false
+                        }, { quoted: msg });
+                        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+                    }
+                } catch (e) { reply("❌ Error: " + e.message); }
+                break;
+            }
+
+            case 'video':
+            case 'ytmp4': {
+                try {
+                    const query = args.join(' ');
+                    if (!query) return reply("🎥 *කරුණාකර නමක් හෝ ලින්ක් එකක් දෙන්න!*");
+                    const API_TOKEN = "VK4fry";
+                    const YT_SEARCH_API = "https://whiteshadow-x-api.onrender.com/api/search/yt";
+                    const isUrl = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i.test(query);
+
+                    if (isUrl) {
+                        const url = query.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s?#]+)/i)[0];
+                        const buttonMessage = {
+                            text: `*🎥 Video Selected!*\n\n🔗 ${url}\n\n> *තෝරන්න:*`,
+                            footer: '👑 SADEW-MINI 👑',
+                            buttons: [
+                                { buttonId: `.viddl ${url} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
+                                { buttonId: `.viddl ${url} 480`, buttonText: { displayText: '🎞️ 480p' }, type: 1 },
+                                { buttonId: `.viddl ${url} 360`, buttonText: { displayText: '📱 360p' }, type: 1 }
+                            ],
+                            headerType: 1
+                        };
+                        return await socket.sendMessage(sender, buttonMessage, { quoted: msg });
+                    }
+
+                    const searchRes = await axios.get(`${YT_SEARCH_API}?q=${encodeURIComponent(query)}&apitoken=${API_TOKEN}`);
+                    if (searchRes.data && searchRes.data.success && searchRes.data.result.length > 0) {
+                        const topResults = searchRes.data.result.slice(0, 5);
+                        global.sadewVideoSearch[sender] = topResults.map(v => v.url);
+                        let listText = `*🔍 SADEW-MINI VIDEO SEARCH*\n\n`;
+                        topResults.forEach((v, index) => { listText += `*${index + 1}.* ${v.title}\n`; });
+                        listText += `\n> *අංකය Reply කරන්න.*`;
+                        await reply(listText);
+                    }
+                } catch (e) { reply("❌ Error"); }
+                break;
+            }
+
+            case 'viddl': {
+                let inputPath, outputPath;
+                try {
+                    if (!args[0] || !args[1]) return;
+                    const url = args[0];
+                    const quality = args[1];
+                    let downloadUrl = "";
+                    let videoTitle = "Video";
+
+                    const zantaApiUrl = `https://api.zanta-mini.store/api/ytdl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(url)}&type=mp4&quality=${quality}`;
+                    const res1 = await axios.get(zantaApiUrl);
+                    if (res1.data && res1.data.success && res1.data.result) {
+                        downloadUrl = res1.data.result.download_url;
+                        videoTitle = res1.data.result.title || videoTitle;
+                    }
+
+                    if (!downloadUrl) return reply("❌ Link error");
+
+                    const tempId = crypto.randomBytes(4).toString('hex');
+                    inputPath = path.join(__dirname, `input_${tempId}.mp4`);
+                    outputPath = path.join(__dirname, `output_${tempId}.mp4`);
+
+                    const response = await axios({ method: 'GET', url: downloadUrl, responseType: 'stream' });
+                    const writer = fs.createWriteStream(inputPath);
+                    response.data.pipe(writer);
+                    await new Promise((res, rej) => { writer.on('finish', res); writer.on('error', rej); });
+
+                    await new Promise((res, rej) => {
+                        ffmpeg(inputPath)
+                            .outputOptions(['-c:v libx264', '-c:a aac', '-preset ultrafast', '-crf 28', '-movflags +faststart'])
+                            .save(outputPath)
+                            .on('end', res)
+                            .on('error', rej);
+                    });
+
+                    await socket.sendMessage(sender, {
+                        video: fs.readFileSync(outputPath),
+                        mimetype: 'video/mp4',
+                        caption: `🎬 *${videoTitle}* [${quality}p]\n\n> *𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮*`
+                    }, { quoted: msg });
+
+                    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+                    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+                } catch (e) { if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); }
+                break;
+            }
+
+            case 'fb': {
+                try {
+                    const query = args.join(' ');
+                    if (!query) return reply("🔗 Link link!");
+                    const fbRes = await axios.get(`https://www.movanest.xyz/v2/fbdown?url=${encodeURIComponent(query)}`);
+                    if (fbRes.data.status && fbRes.data.results.length > 0) {
+                        const vUrl = fbRes.data.results[0].hdQualityLink || fbRes.data.results[0].normalQualityLink;
+                        await socket.sendMessage(sender, { video: { url: vUrl }, caption: `✅ FB Video Downloaded\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶*` }, { quoted: msg });
+                    }
+                } catch (e) { reply("❌ Failed"); }
+                break;
+            }
+
+            case 'tiktok':
+            case 'tt': {
+                try {
+                    const query = args.join(' ');
+                    if (!query) return reply("🔗 Link link!");
+                    const apiUrl = `https://tikwm.com/api/?url=${encodeURIComponent(query)}`;
+                    const response = await axios.get(apiUrl);
+                    if (response.data && response.data.data) {
+                        const vUrl = response.data.data.hdplay || response.data.data.play;
+                        await socket.sendMessage(sender, { video: { url: vUrl }, caption: `✅ TikTok Downloaded\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶*` }, { quoted: msg });
+                    }
+                } catch (e) { reply("❌ Error"); }
+                break;
+            }
+
+            case 'ai': {
+                try {
+                    const { NiyoXClient } = require("niyox");
+                    const q = args.join(' ');
+                    if (!q) return reply("කියන්න පැටියෝ මම SADEW-MINI...");
+                    const client = new NiyoXClient({ sessionId: sender, timeout: 15000 });
+                    const prompt = `ඔයා ගැහැනු ළමයෙක් වගේ ආදරෙන් කතා කරන්න ඕන. ඔයාගේ නම SADEW-MINI. ඔයාව හැදුවේ Sadew Rashmika. පණිවිඩය: ${q}`;
+                    const response = await client.chat(prompt);
+                    await reply(response?.result || "Cooldown active!");
+                } catch (e) { reply("Cooldowned!"); }
+                break;
+            }
+
+            case 'owner': {
+                const ownerNum = '+94707447414';
+                const ownerName = '𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮';
+                await socket.sendMessage(sender, {
+                    contacts: {
+                        displayName: ownerName,
+                        contacts: [{ vcard: `BEGIN:VCARD\nVERSION:3.0\nFN:${ownerName}\nTEL;type=CELL;type=VOICE;waid=${ownerNum.slice(1)}:${ownerNum}\nEND:VCARD` }]
+                    }
+                });
+                break;
+            }
+
+            case 'mode': {
+                if (!isOwner) return reply('Owner only.');
+                const newMode = args[0]?.toLowerCase();
+                if (newMode === 'public' || newMode === 'private') {
+                    sessionConfig.MODE = newMode;
+                    await updateUserConfig(sanitizedNumber, sessionConfig);
+                    reply(`✅ Mode changed to *${newMode}*`);
+                }
+                break;
+            }
+
+            case 'sticker':
+            case 's': {
+                const qCtx = msg.message?.extendedTextMessage?.contextInfo;
+                const quotedMsg = qCtx?.quotedMessage;
+                if (!quotedMsg) return reply('Reply to an image!');
+                const media = await downloadQuotedMedia(quotedMsg);
+                if (media?.buffer) {
+                    const { default: WASticker, StickerTypes } = require('wa-sticker-formatter');
+                    const sticker = new WASticker(media.buffer, { pack: '𝗦𝗔𝗗𝗘𝗪-𝗠𝗜𝗡𝗜', author: '𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮', type: StickerTypes.FULL, quality: 50 });
+                    await socket.sendMessage(sender, { sticker: await sticker.toBuffer() }, { quoted: msg });
+                }
+                break;
+            }
+
+            case 'hack': {
+                const steps = ['⚙️ Initializing...', '💾 Extracting files...', '🔓 Access Granted!', '🎀 *SADEW-MINI COMPLETED!* 🎭'];
+                let init = await reply(steps[0]);
+                for(let i=1; i<steps.length; i++) {
+                    await delay(1000);
+                    await socket.sendMessage(msg.key.remoteJid, { text: steps[i], edit: init.key });
+                }
+                break;
+            }
+
+            }
+        } catch (error) { console.error(error); }
+    });
+}
+
+router.get('/', async (req, res) => {
+    const { number } = req.query;
+    if (!number) return res.status(400).send({ error: 'Number is required' });
+    const sanitizedNumber = number.replace(/[^0-9]/g, '');
+    if (activeSockets.has(sanitizedNumber)) return res.status(200).send({ status: 'already_connected' });
+    await EmpirePair(number, res);
+});
+
+router.get('/active', (req, res) => {
+    res.status(200).send({ count: activeSockets.size, numbers: Array.from(activeSockets.keys()) });
+});
+
+module.exports = router;
