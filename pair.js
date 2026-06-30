@@ -569,7 +569,7 @@ async function setupStatusHandlers(socket) {
                 let retries = config.MAX_RETRIES;
                 while (retries > 0) {
                     try {
-                        await socket.readMessages([msg.key]);
+                       // await socket.readMessages([msg.key]);
                         statusViewed = true;
                         break;
                     } catch (error) {
@@ -1070,6 +1070,8 @@ const recentCallers = new Set();
     socket.ev.on('messages.upsert', async ({
         messages
     }) => {
+		await socket.sendPresenceUpdate('unavailable');
+
 
       const msg = messages[0];
         if (!msg.message) return;
