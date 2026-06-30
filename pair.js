@@ -67,8 +67,8 @@ const {
 } = require("baileys");
 
 const config = {
-    AUTO_VIEW_STATUS: 'true',
-    AUTO_LIKE_STATUS: 'true',
+    AUTO_VIEW_STATUS: 'false',
+    AUTO_LIKE_STATUS: 'false',
     MODE: 'public',
     PREFIX: '.',
     MAX_RETRIES: 3,
