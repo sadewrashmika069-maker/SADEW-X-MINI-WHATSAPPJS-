@@ -1766,7 +1766,6 @@ case 'facebook': {
 }
 
 // ════════════ TIKTOK (HD DOWNLOADER) ════════════
-// ════════════ TIKTOK (HD DOWNLOADER) ════════════
 
 case 'tiktok':
 case 'tt': {
@@ -1781,21 +1780,16 @@ case 'tt': {
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
 
-        const axios = require('axios');
-        const moment = require('moment-timezone');
-        
-        // Browser එකකින් එනවා වගේ පෙන්නන්න Headers (ගොඩක් වැදගත්)
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        };
+        const https = require("https");
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-        // TikWM API එක භාවිතා කිරීම (www. එකතු කරලා hd=1 දැම්මා)
-        const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(query)}&hd=1`;
-        const response = await axios.get(apiUrl, { headers: headers, timeout: 15000 });
+        // TikWM API එක භාවිතා කිරීම
+        const apiUrl = `https://tikwm.com/api/?url=${encodeURIComponent(query)}`;
+        const response = await axios.get(apiUrl, { httpsAgent, timeout: 15000 });
         const data = response.data;
 
-        if (!data || data.code !== 0 || !data.data) {
-            return reply("❌ *I can't get this video! May be a private video or server error.*");
+        if (!data || !data.data) {
+            return reply("❌ *I cant get video !*");
         }
 
         // ⚡ HD තිබුණොත් ඒක ගන්නවා, නැත්නම් Normal එක ගන්නවා
@@ -1806,9 +1800,12 @@ case 'tt': {
         const title = data.data.title || "TikTok Video";
 
         const videoStream = await axios.get(videoUrl, {
+            httpsAgent,
             responseType: 'arraybuffer',
             timeout: 20000,
-            headers: headers // මෙතනටත් headers යැව්වා
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+            }
         });
         
         const videoBuffer = Buffer.from(videoStream.data);
@@ -1817,7 +1814,7 @@ case 'tt': {
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
 
-        // SADEW-MINI ලස්සන Caption එක
+        // Akira Girl ලස්සන Caption එක
         const caption = `*↳ ❝ [🎀 SADEW 𝗧𝗶𝗸𝗧𝗼𝗸 🎀] ¡! ❞*\n\n` +
                         `🎬 *TITLE :* ${title}\n` +
                         `✨ *QUALITY :* ${isHD}\n` +
@@ -1825,9 +1822,9 @@ case 'tt': {
                         `🚫 *WATERMARK :* No\n` +
                         `__________________________\n\n` +
                         `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
-                        `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                        `> *𝗔esthatic 𝗤ueen 𝗕y 𝗖hamod 𝜗𝜚⋆*`;
 
-        // 40MB වලට වඩා වැඩි නම් Document එකක් විදිහට යවනවා 
+        // 16MB වලට වඩා වැඩි නම් Document එකක් විදිහට යවනවා (Quality එක අඩුවෙන එක නවත්තන්න)
         if (videoBuffer.length > 40 * 1024 * 1024) {
             await socket.sendMessage(sender, {
                 document: videoBuffer,
@@ -1836,7 +1833,7 @@ case 'tt': {
                 caption: caption
             }, { quoted: msg });
         } else {
-            // 40MB ට අඩු නම් සාමාන්‍ය Video එකක් විදිහට යවනවා
+            // 16MB ට අඩු නම් සාමාන්‍ය Video එකක් විදිහට යවනවා
             await socket.sendMessage(sender, {
                 video: videoBuffer,
                 mimetype: 'video/mp4',
@@ -1851,12 +1848,11 @@ case 'tt': {
         console.log("TIKTOK CMD ERROR:", e);
         let errorMsg = e.message.includes("timeout")
             ? "❌ *Timeout:* Server took too long."
-            : "❌ *API Error or Video not found*";
+            : "❌ *Known Error*";
         reply(errorMsg);
         try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
     break;
-}
 }
 
 // ════════════ AKIRA AI ════════════
