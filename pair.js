@@ -119,7 +119,7 @@ const Session = mongoose.model('SessionNew', SessionSchema);
 
 async function connectMongoDB() {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sadewrashmika069_db_user:NWaUu0Jjyx8BrCcl@cluster0.yqmgml7.mongodb.net/?appName=Cluster0';
+        const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sadewrashmika069_db_user:sadew13767@cluster0.yqmgml7.mongodb.net/?appName=Cluster0';
         await mongoose.connect(mongoUri, {
             bufferCommands: false,
             serverSelectionTimeoutMS: 5000 
