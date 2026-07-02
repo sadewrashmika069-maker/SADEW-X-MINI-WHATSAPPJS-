@@ -1862,9 +1862,12 @@ case 'ttp': {
         const path = require("path");
         const os = require("os");
         const { spawn } = require("child_process");
-        const moment = require('moment-timezone'); // ඔයාගේ FB CMD එකේ පාවිච්චි කරපු Date/Time ලයිබ්‍රරි එක
+        const moment = require('moment-timezone');
+        
+        // package.json එකේ තියෙන FFmpeg එක
+        const ffmpegPath = require('ffmpeg-static'); 
 
-        // 1. ලින්ක් එක අල්ලගන්නා කොටස (Reply කරත් වැඩ කරන විදිහට හදලා තියෙන්නේ)
+        // 1. ලින්ක් එක අල්ලගන්නා කොටස
         let query = args.join(' ');
         if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
             query = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
@@ -1891,7 +1894,6 @@ case 'ttp': {
         // --- Helper Functions ---
         const TIKWM_API = "https://www.tikwm.com/api/";
         const MAX_IMAGES = 30;
-        const MAX_VIDEO_BYTES = 95 * 1024 * 1024;
         const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         
         const buildTikwmUrl = (url) => (!url ? "" : /^https?:\/\//i.test(url) ? url : `https://www.tikwm.com${url.startsWith("/") ? "" : "/"}${url}`);
@@ -1924,28 +1926,52 @@ case 'ttp': {
             return { buffer: Buffer.from(res.data), type: String(res.headers["content-type"] || "").includes("mp3") ? ".mp3" : ".jpg" };
         };
 
+        // 🔥 Audio දිග (Duration) හරියටම හොයන අලුත් Function එක (ffprobe නැතුව)
+        const getAudioDuration = (audioPath) => {
+            return new Promise((resolve) => {
+                const child = spawn(ffmpegPath, ["-i", audioPath]);
+                let output = "";
+                child.stderr.on("data", d => output += d);
+                child.on("close", () => {
+                    const match = output.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+                    if (match) {
+                        const hours = parseInt(match[1], 10);
+                        const minutes = parseInt(match[2], 10);
+                        const seconds = parseFloat(match[3]);
+                        resolve((hours * 3600) + (minutes * 60) + seconds);
+                    } else {
+                        resolve(15); // Fallback: හොයාගන්න බැරි වුණොත් තත්පර 15ක් ගන්නවා
+                    }
+                });
+                child.on("error", () => resolve(15));
+            });
+        };
+
         const runCommand = (cmd, args) => {
             return new Promise((resolve, reject) => {
                 const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
                 let out = ""; child.stdout.on("data", d => out += d);
-                child.on("close", code => code === 0 ? resolve(out) : reject(new Error("FFmpeg Failed")));
-                child.on("error", () => reject(new Error("FFmpeg not installed")));
+                let err = ""; child.stderr.on("data", d => err += d);
+                child.on("close", code => code === 0 ? resolve(out) : reject(new Error(`FFmpeg Failed: ${err}`)));
+                child.on("error", (e) => reject(new Error(`FFmpeg spawn error: ${e.message}`)));
             });
         };
 
         const createVideo = async (imagePaths, audioPath, outPath, qlty) => {
-            let duration = 5;
-            try { 
-                const d = await runCommand("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audioPath]); 
-                if (Number(d) > 0) duration = Number(d) / imagePaths.length; 
-            } catch (e) {}
+            // 🔥 Audio එකේ මුළු කාලය අරගෙන, ඒක ෆොටෝ ගාණෙන් බෙදලා එක ෆොටෝ එකකට යන හරියටම වෙලාව හදනවා
+            let audioDuration = await getAudioDuration(audioPath);
+            if (!audioDuration || audioDuration <= 0) audioDuration = 15; 
+            
+            const eachDuration = audioDuration / imagePaths.length;
 
             const listPath = path.join(path.dirname(outPath), "images.txt");
-            const listBody = imagePaths.map(f => `file '${f.replace(/\\/g, "/")}'\nduration ${duration}`).join("\n") + `\nfile '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
+            const listBody = imagePaths.map(f => `file '${f.replace(/\\/g, "/")}'\nduration ${eachDuration.toFixed(3)}`).join("\n") + 
+                             `\nfile '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
             await fs.writeFile(listPath, listBody);
 
             const profile = qlty === "hd" ? { w: 1080, h: 1920 } : { w: 720, h: 1280 };
-            await runCommand("ffmpeg", [
+            
+            await runCommand(ffmpegPath, [
                 "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
                 "-vf", `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`,
                 "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
