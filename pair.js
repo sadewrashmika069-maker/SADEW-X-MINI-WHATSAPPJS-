@@ -1864,7 +1864,6 @@ case 'ttp': {
         const { spawn } = require("child_process");
         const moment = require('moment-timezone');
         
-        // package.json එකේ තියෙන FFmpeg එක
         const ffmpegPath = require('ffmpeg-static'); 
 
         // 1. ලින්ක් එක අල්ලගන්නා කොටස
@@ -1889,7 +1888,7 @@ case 'ttp': {
         }
 
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
-        reply("📥 _TikTok Slideshow එක Video එකක් බවට පත් කරමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳_");
+        reply("📥 _TikTok Photo Video එක සකසමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳_");
 
         // --- Helper Functions ---
         const TIKWM_API = "https://www.tikwm.com/api/";
@@ -1926,21 +1925,20 @@ case 'ttp': {
             return { buffer: Buffer.from(res.data), type: String(res.headers["content-type"] || "").includes("mp3") ? ".mp3" : ".jpg" };
         };
 
-        // 🔥 Audio දිග (Duration) හරියටම හොයන අලුත් Function එක (ffprobe නැතුව)
         const getAudioDuration = (audioPath) => {
             return new Promise((resolve) => {
                 const child = spawn(ffmpegPath, ["-i", audioPath]);
                 let output = "";
                 child.stderr.on("data", d => output += d);
                 child.on("close", () => {
-                    const match = output.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+                    const match = output.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d+)/);
                     if (match) {
                         const hours = parseInt(match[1], 10);
                         const minutes = parseInt(match[2], 10);
                         const seconds = parseFloat(match[3]);
                         resolve((hours * 3600) + (minutes * 60) + seconds);
                     } else {
-                        resolve(15); // Fallback: හොයාගන්න බැරි වුණොත් තත්පර 15ක් ගන්නවා
+                        resolve(15); 
                     }
                 });
                 child.on("error", () => resolve(15));
@@ -1957,27 +1955,49 @@ case 'ttp': {
             });
         };
 
+        // 🔥 Smart Video Creator
         const createVideo = async (imagePaths, audioPath, outPath, qlty) => {
-            // 🔥 Audio එකේ මුළු කාලය අරගෙන, ඒක ෆොටෝ ගාණෙන් බෙදලා එක ෆොටෝ එකකට යන හරියටම වෙලාව හදනවා
-            let audioDuration = await getAudioDuration(audioPath);
-            if (!audioDuration || audioDuration <= 0) audioDuration = 15; 
-            
-            const eachDuration = audioDuration / imagePaths.length;
-
-            const listPath = path.join(path.dirname(outPath), "images.txt");
-            const listBody = imagePaths.map(f => `file '${f.replace(/\\/g, "/")}'\nduration ${eachDuration.toFixed(3)}`).join("\n") + 
-                             `\nfile '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
-            await fs.writeFile(listPath, listBody);
-
             const profile = qlty === "hd" ? { w: 1080, h: 1920 } : { w: 720, h: 1280 };
-            
-            await runCommand(ffmpegPath, [
-                "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
-                "-vf", `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`,
-                "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-                "-c:a", "aac", "-shortest", "-movflags", "+faststart", outPath
-            ]);
-            return profile;
+            const scaleFilter = `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`;
+
+            if (imagePaths.length === 1) {
+                // 📸 එක ෆොටෝ එකක් නම්: Loop කරලා Audio එකේ වෙලාවටම Freeze කරනවා (Single Image Fix)
+                await runCommand(ffmpegPath, [
+                    "-y", "-loop", "1", "-i", imagePaths[0], "-i", audioPath,
+                    "-vf", scaleFilter,
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                    "-c:a", "aac", "-shortest", "-movflags", "+faststart", outPath
+                ]);
+                return profile;
+            } else {
+                // 📸📸 ෆොටෝස් ගොඩක් නම්: නියම Slideshow එක හදනවා
+                let audioDuration = await getAudioDuration(audioPath);
+                if (!audioDuration || audioDuration <= 0) audioDuration = 15; 
+                
+                const eachDuration = audioDuration / imagePaths.length;
+                const listPath = path.join(path.dirname(outPath), "images.txt");
+                
+                let listBody = "";
+                for (let i = 0; i < imagePaths.length; i++) {
+                    listBody += `file '${imagePaths[i].replace(/\\/g, "/")}'\n`;
+                    if (i === imagePaths.length - 1) {
+                        listBody += `duration 600.000\n`; 
+                    } else {
+                        listBody += `duration ${eachDuration.toFixed(3)}\n`;
+                    }
+                }
+                listBody += `file '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
+
+                await fs.writeFile(listPath, listBody);
+
+                await runCommand(ffmpegPath, [
+                    "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
+                    "-vf", scaleFilter,
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                    "-c:a", "aac", "-shortest", "-fflags", "+genpts", "-movflags", "+faststart", outPath
+                ]);
+                return profile;
+            }
         };
 
         // --- Main Execution ---
@@ -2010,13 +2030,13 @@ case 'ttp': {
             await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
         }
 
-        // --- Sending the Message (Sadew-Mini Style) ---
+        // --- Sending the Message ---
         const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
         const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
         const fileSizeMB = (finalVideoBuffer.length / (1024 * 1024)).toFixed(2);
 
         const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 🎀] ¡! ❞*\n\n` +
-                        `🎬 *TITLE :* TikTok Slideshow\n` +
+                        `🎬 *TITLE :* TikTok Photo Video\n` +
                         `📸 *IMAGES :* ${images.length}\n` +
                         `📺 *QUALITY :* ${videoMeta.w}x${videoMeta.h}\n` +
                         `⚖️ *SIZE :* ${fileSizeMB} MB\n` +
