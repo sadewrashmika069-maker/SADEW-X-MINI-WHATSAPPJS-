@@ -1866,7 +1866,6 @@ case 'ttp': {
         
         const ffmpegPath = require('ffmpeg-static'); 
 
-        // 1. ලින්ක් එක අල්ලගන්නා කොටස
         let query = args.join(' ');
         if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
             query = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
@@ -1890,7 +1889,6 @@ case 'ttp': {
         try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
         reply("📥 _TikTok Photo Video එක සකසමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳_");
 
-        // --- Helper Functions ---
         const TIKWM_API = "https://www.tikwm.com/api/";
         const MAX_IMAGES = 30;
         const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1920,9 +1918,10 @@ case 'ttp': {
             return [...set].slice(0, MAX_IMAGES);
         };
 
-        const downloadBuffer = async (url) => {
+        // 🔥 Audio extension bug එක fix කළා
+        const downloadBuffer = async (url, isAudio = false) => {
             const res = await axios.get(url, { responseType: "arraybuffer", headers: { "User-Agent": "Mozilla/5.0" } });
-            return { buffer: Buffer.from(res.data), type: String(res.headers["content-type"] || "").includes("mp3") ? ".mp3" : ".jpg" };
+            return { buffer: Buffer.from(res.data), type: isAudio ? ".mp3" : ".jpg" };
         };
 
         const getAudioDuration = (audioPath) => {
@@ -1950,32 +1949,41 @@ case 'ttp': {
                 const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
                 let out = ""; child.stdout.on("data", d => out += d);
                 let err = ""; child.stderr.on("data", d => err += d);
-                child.on("close", code => code === 0 ? resolve(out) : reject(new Error(`FFmpeg Failed: ${err}`)));
-                child.on("error", (e) => reject(new Error(`FFmpeg error: ${e.message}`)));
+                
+                const timer = setTimeout(() => {
+                    child.kill('SIGKILL');
+                    reject(new Error("FFmpeg Process Timeout! වින්ඩෝ එක හිරවිය."));
+                }, 180000);
+
+                child.on("close", code => {
+                    clearTimeout(timer);
+                    // 🔥 Error ආවොත් මුළු ලොග් එකම නොදා අන්තිම ටික විතරක් ගන්නවා
+                    code === 0 ? resolve(out) : reject(new Error(`FFmpeg Failed: ${err.slice(-500)}`));
+                });
+                child.on("error", (e) => {
+                    clearTimeout(timer);
+                    reject(new Error(`FFmpeg error: ${e.message}`));
+                });
             });
         };
 
-        // 🔥 Smart Video Creator
         const createVideo = async (imagePaths, audioPath, outPath, qlty) => {
             const profile = qlty === "hd" ? { w: 1080, h: 1920 } : { w: 720, h: 1280 };
             const scaleFilter = `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`;
 
+            const listPath = path.join(path.dirname(outPath), "images.txt");
+            let listBody = "";
+
             if (imagePaths.length === 1) {
-                await runCommand(ffmpegPath, [
-                    "-y", "-loop", "1", "-i", imagePaths[0], "-i", audioPath,
-                    "-vf", scaleFilter,
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-                    "-c:a", "aac", "-shortest", "-movflags", "+faststart", outPath
-                ]);
-                return profile;
+                // 🔥 Single Image Fix: Loop කමාන්ඩ් එක අයින් කරලා Concat ක්‍රමයම පාවිච්චි කරනවා
+                listBody += `file '${imagePaths[0].replace(/\\/g, "/")}'\n`;
+                listBody += `duration 600.000\n`; 
+                listBody += `file '${imagePaths[0].replace(/\\/g, "/")}'\n`;
             } else {
                 let audioDuration = await getAudioDuration(audioPath);
                 if (!audioDuration || audioDuration <= 0) audioDuration = 15; 
                 
                 const eachDuration = audioDuration / imagePaths.length;
-                const listPath = path.join(path.dirname(outPath), "images.txt");
-                
-                let listBody = "";
                 for (let i = 0; i < imagePaths.length; i++) {
                     listBody += `file '${imagePaths[i].replace(/\\/g, "/")}'\n`;
                     if (i === imagePaths.length - 1) {
@@ -1985,17 +1993,17 @@ case 'ttp': {
                     }
                 }
                 listBody += `file '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
-
-                await fs.writeFile(listPath, listBody);
-
-                await runCommand(ffmpegPath, [
-                    "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
-                    "-vf", scaleFilter,
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-                    "-c:a", "aac", "-shortest", "-fflags", "+genpts", "-movflags", "+faststart", outPath
-                ]);
-                return profile;
             }
+
+            await fs.writeFile(listPath, listBody);
+
+            await runCommand(ffmpegPath, [
+                "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
+                "-vf", scaleFilter,
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                "-c:a", "aac", "-shortest", "-fflags", "+genpts", "-movflags", "+faststart", outPath
+            ]);
+            return profile;
         };
 
         // --- Main Execution ---
@@ -2012,12 +2020,14 @@ case 'ttp': {
         try {
             const imagePaths = [];
             for (let i = 0; i < images.length; i++) {
-                const img = await downloadBuffer(images[i]);
+                // 🔥 Photos .jpg විදිහටම ගන්නවා
+                const img = await downloadBuffer(images[i], false);
                 const p = path.join(tmpDir, `img${i}${img.type}`);
                 await fs.writeFile(p, img.buffer);
                 imagePaths.push(p);
             }
-            const aud = await downloadBuffer(audioUrl);
+            // 🔥 Audio එක අනිවාර්යයෙන් .mp3 විදිහට ගන්නවා
+            const aud = await downloadBuffer(audioUrl, true);
             const audPath = path.join(tmpDir, `aud${aud.type}`);
             await fs.writeFile(audPath, aud.buffer);
 
@@ -2055,7 +2065,6 @@ case 'ttp': {
 
     } catch (e) {
         console.log("TTP CMD ERROR:", e);
-        // 🔥 දැන් ඇත්තම Error එක WhatsApp එකටම එවනවා
         reply(`❌ *ERROR:* ${e.message || "Unknown error"}\n\nකරුණාකර වෙනත් ලින්ක් එකක් උත්සාහ කරන්න!`);
         try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
     }
