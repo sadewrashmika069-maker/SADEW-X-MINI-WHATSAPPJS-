@@ -2030,49 +2030,71 @@ case 'ttp': {
                     }
                 };
 
-                // ---- Main Execution ----
+                // ---- Main Execution (Bug Fixed) ----
                 const textInput = typeof q !== 'undefined' ? q : (m.quoted ? m.quoted.text : "");
                 const tiktokUrl = extractUrl(textInput);
                 const quality = getQuality(textInput);
-                const myChat = m.chat || m.key.remoteJid;
+                const myChat = m.chat || (m.key ? m.key.remoteJid : m.remoteJid);
                 
-                // conn.sendMessage function eka hari client.sendMessage hari use karanna
-                const sock = typeof conn !== 'undefined' ? conn : client;
+                // 🔥 මේ කොටසින් බොට්ගේ Connection Variable එක ඔටෝම අල්ලගන්නවා
+                let sock;
+                if (typeof socket !== 'undefined') sock = socket;
+                else if (typeof conn !== 'undefined') sock = conn;
+                else if (typeof client !== 'undefined') sock = client;
+                else if (typeof Matrix !== 'undefined') sock = Matrix;
+
+                // 🔥 මේකෙන් Error නැතුව මැසේජ් රිප්ලයි කරනවා
+                const safeReply = async (txt) => {
+                    if (typeof reply === 'function') return reply(txt);
+                    if (sock) return await sock.sendMessage(myChat, { text: txt }, { quoted: m });
+                };
 
                 if (!tiktokUrl) {
-                    return reply("TikTok photo/slideshow link ekak denna.\n\nExample:\n.ttp https://vt.tiktok.com/xxxx/");
+                    return safeReply("TikTok photo/slideshow link ekak denna.\n\nExample:\n.ttp https://vt.tiktok.com/xxxx/");
                 }
                 if (!/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/i.test(tiktokUrl)) {
-                    return reply("Me command eka TikTok link walata witharai.");
+                    return safeReply("Me command eka TikTok link walata witharai.");
                 }
 
-                await sock.sendMessage(myChat, { react: { text: "🔎", key: m.key } });
-                reply("TikTok photo video prepare karanawa...\nReal slideshow MP4 ekak hadanawa. ⏳");
+                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "🔎", key: m.key } });
+                safeReply("TikTok photo video prepare karanawa...\nReal slideshow MP4 ekak hadanawa. ⏳");
 
                 const result = await fetchTikwmData(tiktokUrl);
                 const root = result?.data || {};
                 const video = await buildSlideshowVideo(result, quality);
                 const fileName = `${String(root.title || "tiktok-photo-video").replace(/[\\/:*?"<>|]/g, "_").slice(0, 50)}.mp4`;
 
-                await sock.sendMessage(myChat, { react: { text: "⬆️", key: m.key } });
+                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "⬆️", key: m.key } });
 
-                await sock.sendMessage(myChat, {
-                    video: video.buffer,
-                    mimetype: "video/mp4",
-                    fileName: fileName,
-                    caption: `*SADEW TIKTOK SLIDESHOW*\n\n📸 *Images:* ${video.count}\n🎞️ *Quality:* ${video.quality}\n🗂️ *Size:* ${prettyBytes(video.buffer.length)}\n✨ *Watermark:* Removed`
-                }, { quoted: m });
+                if (sock) {
+                    await sock.sendMessage(myChat, {
+                        video: video.buffer,
+                        mimetype: "video/mp4",
+                        fileName: fileName,
+                        caption: `*SADEW TIKTOK SLIDESHOW*\n\n📸 *Images:* ${video.count}\n🎞️ *Quality:* ${video.quality}\n🗂️ *Size:* ${prettyBytes(video.buffer.length)}\n✨ *Watermark:* Removed`
+                    }, { quoted: m });
+                }
 
-                await sock.sendMessage(myChat, { react: { text: "✅", key: m.key } });
+                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "✅", key: m.key } });
 
             } catch (err) {
                 console.log("TTP error:", err);
-                const myChat = m.chat || m.key.remoteJid;
-                const sock = typeof conn !== 'undefined' ? conn : client;
-                await sock.sendMessage(myChat, { react: { text: "❌", key: m.key } });
-                reply("TTP Error: " + (err.message || err));
+                const myChat = m.chat || (m.key ? m.key.remoteJid : m.remoteJid);
+                
+                let sock;
+                if (typeof socket !== 'undefined') sock = socket;
+                else if (typeof conn !== 'undefined') sock = conn;
+                else if (typeof client !== 'undefined') sock = client;
+                
+                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "❌", key: m.key } });
+                
+                if (typeof reply === 'function') {
+                    reply("TTP Error: " + (err.message || err));
+                } else if (sock) {
+                    sock.sendMessage(myChat, { text: "TTP Error: " + (err.message || err) }, { quoted: m });
+                }
             }
-            break; // Case eka mehen iwarai
+            break; 
         }
 // ════════════ AKIRA AI ════════════
 
