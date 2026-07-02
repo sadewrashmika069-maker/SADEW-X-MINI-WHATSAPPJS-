@@ -1856,246 +1856,166 @@ case 'tt': {
 }  
 //TIKTOK (photo to video DOWNLOADER)
 case 'ttp': {
-            try {
-                // Modules
-                const axios = require("axios");
-                const fs = require("fs/promises");
-                const path = require("path");
-                const os = require("os");
-                const { spawn } = require("child_process");
+    try {
+        const axios = require("axios");
+        const fs = require("fs/promises");
+        const path = require("path");
+        const os = require("os");
+        const { spawn } = require("child_process");
+        const moment = require('moment-timezone'); // ඔයාගේ FB CMD එකේ පාවිච්චි කරපු Date/Time ලයිබ්‍රරි එක
 
-                // Constants
-                const TIKWM_API = "https://www.tikwm.com/api/";
-                const MAX_IMAGES = 30;
-                const MAX_VIDEO_BYTES = 95 * 1024 * 1024;
-                const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-                const MAX_AUDIO_BYTES = 40 * 1024 * 1024;
-
-                // Helper Functions
-                const extractUrl = (text) => {
-                    const match = String(text || "").match(/https?:\/\/[^\s]+/i);
-                    return match ? match[0].replace(/[),.]+$/, "") : "";
-                };
-                const buildTikwmUrl = (url) => (!url ? "" : /^https?:\/\//i.test(url) ? url : `https://www.tikwm.com${url.startsWith("/") ? "" : "/"}${url}`);
-                const getQuality = (args) => /\b(normal|sd|720)\b/i.test(String(args || "")) ? "normal" : "hd";
-                const prettyBytes = (bytes) => `${(Number(bytes || 0) / 1024 / 1024).toFixed(1)} MB`;
-                const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-                const pickImages = (data) => {
-                    const root = data?.data || data?.result || data || {};
-                    const set = new Set();
-                    const lists = [root.images, root.image_post?.images, root.imagePost?.images, root.photos, root.pictures];
-                    for (const list of lists) {
-                        if (!Array.isArray(list)) continue;
-                        for (const item of list) {
-                            if (typeof item === "string") set.add(buildTikwmUrl(item));
-                            else if (item && typeof item === "object") {
-                                const url = item.url || item.image_url || item.display_image || item.origin_image || item.download_url;
-                                if (url) set.add(buildTikwmUrl(url));
-                            }
-                        }
-                    }
-                    return [...set].filter(Boolean).slice(0, MAX_IMAGES);
-                };
-
-                const pickAudio = (data) => {
-                    const root = data?.data || data?.result || data || {};
-                    return buildTikwmUrl(root.music || root.music_info?.play || root.music_info?.url || root.music_info?.download_url || root.musicInfo?.play || root.musicInfo?.url);
-                };
-
-                const fetchTikwmData = async (tiktokUrl) => {
-                    let lastError = null;
-                    for (let attempt = 1; attempt <= 3; attempt++) {
-                        try {
-                            const res = await axios.get(TIKWM_API, {
-                                timeout: 25000, maxRedirects: 8, params: { url: tiktokUrl, hd: 1 },
-                                headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://www.tikwm.com/" },
-                                validateStatus: (status) => status >= 200 && status < 500
-                            });
-                            if (res.status >= 400) throw new Error(`TikWM HTTP ${res.status}`);
-                            const code = Number(res.data?.code ?? res.data?.status ?? 0);
-                            if (code !== 0 && code !== 200) throw new Error(res.data?.msg || res.data?.message || `TikWM code ${code}`);
-                            return res.data;
-                        } catch (err) {
-                            lastError = err;
-                            if (attempt < 3) await sleep(attempt * 2500);
-                        }
-                    }
-                    throw lastError || new Error("TikWM API failed");
-                };
-
-                const downloadBuffer = async (url, maxBytes, type) => {
-                    const res = await axios.get(url, {
-                        responseType: "arraybuffer", timeout: 90000, maxRedirects: 12,
-                        maxContentLength: maxBytes, maxBodyLength: maxBytes,
-                        headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://www.tiktok.com/" },
-                        validateStatus: (status) => status >= 200 && status < 400
-                    });
-                    const buffer = Buffer.from(res.data || []);
-                    if (!buffer.length) throw new Error(`${type} buffer empty`);
-                    if (buffer.length > maxBytes) throw new Error(`${type} too large`);
-                    return { buffer, contentType: String(res.headers["content-type"] || "").toLowerCase() };
-                };
-
-                const extFromContentType = (contentType, fallback) => {
-                    if (contentType.includes("png")) return ".png";
-                    if (contentType.includes("webp")) return ".webp";
-                    if (contentType.includes("mp3") || contentType.includes("mpeg")) return ".mp3";
-                    if (contentType.includes("mp4")) return ".mp4";
-                    return fallback;
-                };
-
-                const runCommand = (command, args, timeout = 180000) => {
-                    return new Promise((resolve, reject) => {
-                        const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
-                        const out = [], err = [];
-                        const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error(`${command} timeout`)); }, timeout);
-                        child.stdout.on("data", (chunk) => out.push(chunk));
-                        child.stderr.on("data", (chunk) => err.push(chunk));
-                        child.on("error", (error) => {
-                            clearTimeout(timer);
-                            reject(error.code === "ENOENT" ? new Error("FFmpeg install karala na!") : error);
-                        });
-                        child.on("close", (code) => {
-                            clearTimeout(timer);
-                            const stdout = Buffer.concat(out).toString("utf8").trim();
-                            const stderr = Buffer.concat(err).toString("utf8").trim();
-                            if (code !== 0) return reject(new Error(stderr || `${command} failed: ${code}`));
-                            resolve(stdout);
-                        });
-                    });
-                };
-
-                const getDuration = async (filePath) => {
-                    try {
-                        const output = await runCommand("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filePath], 30000);
-                        const seconds = Number(output);
-                        return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
-                    } catch { return 0; }
-                };
-
-                const validateVideo = async (filePath) => {
-                    const output = await runCommand("ffprobe", ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", filePath], 30000);
-                    const info = JSON.parse(output || "{}");
-                    const hasVideo = Array.isArray(info.streams) && info.streams.some((s) => s.codec_type === "video" && Number(s.width || 0) > 0 && Number(s.height || 0) > 0);
-                    const duration = Number(info.format?.duration || 0);
-                    if (!hasVideo || !duration || duration < 1) throw new Error("Created video empty/invalid una");
-                };
-
-                const concatSafePath = (filePath) => filePath.replace(/\\/g, "/").replace(/'/g, "'\\''");
-
-                const createVideoFromPhotos = async (imagePaths, audioPath, outputPath, quality) => {
-                    const audioDuration = await getDuration(audioPath);
-                    const eachDuration = audioDuration ? (audioDuration / imagePaths.length) : 5;
-                    const listPath = path.join(path.dirname(outputPath), "images.txt");
-                    const listBody = imagePaths.map((file) => `file '${concatSafePath(file)}'\nduration ${eachDuration}`).join("\n") + `\nfile '${concatSafePath(imagePaths[imagePaths.length - 1])}'\n`;
-                    await fs.writeFile(listPath, listBody);
-                    const profiles = quality === "hd" ? [{ w: 1080, h: 1920, crf: 27 }, { w: 720, h: 1280, crf: 29 }] : [{ w: 720, h: 1280, crf: 29 }, { w: 540, h: 960, crf: 31 }];
-                    let lastError = null;
-                    for (const profile of profiles) {
-                        try {
-                            await runCommand("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath, "-vf", `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`, "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", String(profile.crf), "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", outputPath]);
-                            await validateVideo(outputPath);
-                            const stat = await fs.stat(outputPath);
-                            if (stat.size > 0 && stat.size <= MAX_VIDEO_BYTES) return { width: profile.w, height: profile.h, size: stat.size };
-                            lastError = new Error(`Video size too large: ${prettyBytes(stat.size)}`);
-                        } catch (err) { lastError = err; }
-                    }
-                    throw lastError || new Error("Video create failed");
-                };
-
-                const buildSlideshowVideo = async (data, quality) => {
-                    const images = pickImages(data);
-                    const audioUrl = pickAudio(data);
-                    if (!images.length) throw new Error("TikTok photo list eka hambune na");
-                    if (!audioUrl) throw new Error("TikTok audio eka hambune na");
-                    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "sadew-ttp-"));
-                    try {
-                        const imagePaths = [];
-                        for (let i = 0; i < images.length; i++) {
-                            const image = await downloadBuffer(images[i], MAX_IMAGE_BYTES, "image");
-                            const imagePath = path.join(tmpDir, `image-${String(i + 1).padStart(2, "0")}${extFromContentType(image.contentType, ".jpg")}`);
-                            await fs.writeFile(imagePath, image.buffer);
-                            imagePaths.push(imagePath);
-                        }
-                        const audio = await downloadBuffer(audioUrl, MAX_AUDIO_BYTES, "audio");
-                        const audioPath = path.join(tmpDir, `audio${extFromContentType(audio.contentType, ".mp3")}`);
-                        await fs.writeFile(audioPath, audio.buffer);
-                        const outputPath = path.join(tmpDir, "tiktok-photo-video.mp4");
-                        const meta = await createVideoFromPhotos(imagePaths, audioPath, outputPath, quality);
-                        const videoBuffer = await fs.readFile(outputPath);
-                        return { buffer: videoBuffer, count: imagePaths.length, quality: `${meta.width}x${meta.height}` };
-                    } finally {
-                        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-                    }
-                };
-
-                // ---- Main Execution (Bug Fixed) ----
-                const textInput = typeof q !== 'undefined' ? q : (m.quoted ? m.quoted.text : "");
-                const tiktokUrl = extractUrl(textInput);
-                const quality = getQuality(textInput);
-                const myChat = m.chat || (m.key ? m.key.remoteJid : m.remoteJid);
-                
-                // 🔥 මේ කොටසින් බොට්ගේ Connection Variable එක ඔටෝම අල්ලගන්නවා
-                let sock;
-                if (typeof socket !== 'undefined') sock = socket;
-                else if (typeof conn !== 'undefined') sock = conn;
-                else if (typeof client !== 'undefined') sock = client;
-                else if (typeof Matrix !== 'undefined') sock = Matrix;
-
-                // 🔥 මේකෙන් Error නැතුව මැසේජ් රිප්ලයි කරනවා
-                const safeReply = async (txt) => {
-                    if (typeof reply === 'function') return reply(txt);
-                    if (sock) return await sock.sendMessage(myChat, { text: txt }, { quoted: m });
-                };
-
-                if (!tiktokUrl) {
-                    return safeReply("TikTok photo/slideshow link ekak denna.\n\nExample:\n.ttp https://vt.tiktok.com/xxxx/");
-                }
-                if (!/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/i.test(tiktokUrl)) {
-                    return safeReply("Me command eka TikTok link walata witharai.");
-                }
-
-                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "🔎", key: m.key } });
-                safeReply("TikTok photo video prepare karanawa...\nReal slideshow MP4 ekak hadanawa. ⏳");
-
-                const result = await fetchTikwmData(tiktokUrl);
-                const root = result?.data || {};
-                const video = await buildSlideshowVideo(result, quality);
-                const fileName = `${String(root.title || "tiktok-photo-video").replace(/[\\/:*?"<>|]/g, "_").slice(0, 50)}.mp4`;
-
-                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "⬆️", key: m.key } });
-
-                if (sock) {
-                    await sock.sendMessage(myChat, {
-                        video: video.buffer,
-                        mimetype: "video/mp4",
-                        fileName: fileName,
-                        caption: `*SADEW TIKTOK SLIDESHOW*\n\n📸 *Images:* ${video.count}\n🎞️ *Quality:* ${video.quality}\n🗂️ *Size:* ${prettyBytes(video.buffer.length)}\n✨ *Watermark:* Removed`
-                    }, { quoted: m });
-                }
-
-                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "✅", key: m.key } });
-
-            } catch (err) {
-                console.log("TTP error:", err);
-                const myChat = m.chat || (m.key ? m.key.remoteJid : m.remoteJid);
-                
-                let sock;
-                if (typeof socket !== 'undefined') sock = socket;
-                else if (typeof conn !== 'undefined') sock = conn;
-                else if (typeof client !== 'undefined') sock = client;
-                
-                if (sock && m.key) await sock.sendMessage(myChat, { react: { text: "❌", key: m.key } });
-                
-                if (typeof reply === 'function') {
-                    reply("TTP Error: " + (err.message || err));
-                } else if (sock) {
-                    sock.sendMessage(myChat, { text: "TTP Error: " + (err.message || err) }, { quoted: m });
-                }
-            }
-            break; 
+        // 1. ලින්ක් එක අල්ලගන්නා කොටස (Reply කරත් වැඩ කරන විදිහට හදලා තියෙන්නේ)
+        let query = args.join(' ');
+        if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
+            query = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
+        } else if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage?.text) {
+            query = msg.message.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage.text;
         }
+
+        const extractUrl = (text) => {
+            const match = String(text || "").match(/https?:\/\/[^\s]+/i);
+            return match ? match[0].replace(/[),.]+$/, "") : "";
+        };
+        
+        const tiktokUrl = extractUrl(query);
+        const quality = /\b(normal|sd|720)\b/i.test(query) ? "normal" : "hd";
+
+        if (!tiktokUrl) return reply("🎥 *කරුණාකර TikTok Photo Slideshow ලින්ක් එකක් දෙන්න!*");
+        if (!/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/i.test(tiktokUrl)) {
+            return reply("❌ *මෙය නිවැරදි TikTok ලින්ක් එකක් නොවේ!*");
+        }
+
+        try { await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } }); } catch (_) {}
+        reply("📥 _TikTok Slideshow එක Video එකක් බවට පත් කරමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳_");
+
+        // --- Helper Functions ---
+        const TIKWM_API = "https://www.tikwm.com/api/";
+        const MAX_IMAGES = 30;
+        const MAX_VIDEO_BYTES = 95 * 1024 * 1024;
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        
+        const buildTikwmUrl = (url) => (!url ? "" : /^https?:\/\//i.test(url) ? url : `https://www.tikwm.com${url.startsWith("/") ? "" : "/"}${url}`);
+        
+        const fetchTikwmData = async (url) => {
+            for (let i = 1; i <= 3; i++) {
+                try {
+                    const res = await axios.get(TIKWM_API, { params: { url, hd: 1 }, headers: { "User-Agent": "Mozilla/5.0" }});
+                    if (res.data?.code === 0) return res.data;
+                } catch (e) { if (i < 3) await sleep(2000); }
+            }
+            throw new Error("TikWM API Failed");
+        };
+
+        const pickImages = (data) => {
+            const root = data?.data || {};
+            const lists = [root.images, root.image_post?.images];
+            const set = new Set();
+            for (const list of lists) {
+                if (Array.isArray(list)) list.forEach(img => {
+                    if (typeof img === 'string') set.add(buildTikwmUrl(img));
+                    else if (img?.url || img?.display_image) set.add(buildTikwmUrl(img.url || img.display_image));
+                });
+            }
+            return [...set].slice(0, MAX_IMAGES);
+        };
+
+        const downloadBuffer = async (url) => {
+            const res = await axios.get(url, { responseType: "arraybuffer", headers: { "User-Agent": "Mozilla/5.0" } });
+            return { buffer: Buffer.from(res.data), type: String(res.headers["content-type"] || "").includes("mp3") ? ".mp3" : ".jpg" };
+        };
+
+        const runCommand = (cmd, args) => {
+            return new Promise((resolve, reject) => {
+                const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+                let out = ""; child.stdout.on("data", d => out += d);
+                child.on("close", code => code === 0 ? resolve(out) : reject(new Error("FFmpeg Failed")));
+                child.on("error", () => reject(new Error("FFmpeg not installed")));
+            });
+        };
+
+        const createVideo = async (imagePaths, audioPath, outPath, qlty) => {
+            let duration = 5;
+            try { 
+                const d = await runCommand("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audioPath]); 
+                if (Number(d) > 0) duration = Number(d) / imagePaths.length; 
+            } catch (e) {}
+
+            const listPath = path.join(path.dirname(outPath), "images.txt");
+            const listBody = imagePaths.map(f => `file '${f.replace(/\\/g, "/")}'\nduration ${duration}`).join("\n") + `\nfile '${imagePaths[imagePaths.length - 1].replace(/\\/g, "/")}'\n`;
+            await fs.writeFile(listPath, listBody);
+
+            const profile = qlty === "hd" ? { w: 1080, h: 1920 } : { w: 720, h: 1280 };
+            await runCommand("ffmpeg", [
+                "-y", "-f", "concat", "-safe", "0", "-i", listPath, "-i", audioPath,
+                "-vf", `scale=${profile.w}:${profile.h}:force_original_aspect_ratio=decrease,pad=${profile.w}:${profile.h}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p`,
+                "-r", "30", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                "-c:a", "aac", "-shortest", "-movflags", "+faststart", outPath
+            ]);
+            return profile;
+        };
+
+        // --- Main Execution ---
+        const result = await fetchTikwmData(tiktokUrl);
+        const images = pickImages(result);
+        const audioUrl = buildTikwmUrl(result.data?.music_info?.play || result.data?.music);
+        
+        if (!images.length || !audioUrl) throw new Error("Photos or Audio missing");
+
+        const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "sadew-ttp-"));
+        let finalVideoBuffer;
+        let videoMeta;
+
+        try {
+            const imagePaths = [];
+            for (let i = 0; i < images.length; i++) {
+                const img = await downloadBuffer(images[i]);
+                const p = path.join(tmpDir, `img${i}${img.type}`);
+                await fs.writeFile(p, img.buffer);
+                imagePaths.push(p);
+            }
+            const aud = await downloadBuffer(audioUrl);
+            const audPath = path.join(tmpDir, `aud${aud.type}`);
+            await fs.writeFile(audPath, aud.buffer);
+
+            const outPath = path.join(tmpDir, "out.mp4");
+            videoMeta = await createVideo(imagePaths, audPath, outPath, quality);
+            finalVideoBuffer = await fs.readFile(outPath);
+        } finally {
+            await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+        }
+
+        // --- Sending the Message (Sadew-Mini Style) ---
+        const slDate = moment().tz('Asia/Colombo').format('YYYY-MM-DD');
+        const slTimeNow = moment().tz('Asia/Colombo').format('HH:mm:ss');
+        const fileSizeMB = (finalVideoBuffer.length / (1024 * 1024)).toFixed(2);
+
+        const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 🎀] ¡! ❞*\n\n` +
+                        `🎬 *TITLE :* TikTok Slideshow\n` +
+                        `📸 *IMAGES :* ${images.length}\n` +
+                        `📺 *QUALITY :* ${videoMeta.w}x${videoMeta.h}\n` +
+                        `⚖️ *SIZE :* ${fileSizeMB} MB\n` +
+                        `__________________________\n\n` +
+                        `📅 *DATE :* ${slDate} | ⌚ *TIME :* ${slTimeNow}\n\n` +
+                        `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+        try { await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } }); } catch (_) {}
+
+        await socket.sendMessage(sender, {
+            video: finalVideoBuffer,
+            mimetype: 'video/mp4',
+            caption: caption,
+            fileName: `Sadew_TikTok_${slTimeNow}.mp4`
+        }, { quoted: msg });
+
+        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+    } catch (e) {
+        console.log("TTP CMD ERROR:", e);
+        reply("❌ *ERROR: කරුණාකර වෙනත් TikTok ලින්ක් එකක් උත්සාහ කරන්න!*");
+        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+    }
+    break;
+}
 // ════════════ AKIRA AI ════════════
 
 case 'ai':
