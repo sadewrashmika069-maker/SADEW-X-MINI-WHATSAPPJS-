@@ -1184,7 +1184,7 @@ const quoted =
                 }
             }
 
-            // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - INSIDE the if block now) 🔥🔥🔥
+             // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - David Cyril Download API) 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     try {
@@ -1200,23 +1200,25 @@ const quoted =
                                 try {
                                     await socket.sendMessage(msg.key.remoteJid, { 
                                         image: { url: selectedVideo.thumbnail }, 
-                                        caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
+                                        caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව එයි, රැඳී සිටින්න...*` 
                                     }, { quoted: msg });
                                 } catch (_) {}
                             }
 
                             try {
-                                const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
+                                // ✅ CORRECT DOWNLOAD API — David Cyril, parameter = url
+                                const downloadApiUrl = `https://apis.davidcyril.name.ng/download/xnxx?url=${encodeURIComponent(selectedVideo.url)}`;
                                 const downloadResponse = await axios.get(downloadApiUrl, { timeout: 30000 });
                                 const dlData = downloadResponse.data?.result;
                                 
-                                const directDownloadLink = dlData?.dl_links?.high || dlData?.dl_links?.low || dlData?.url || dlData?.files?.high;
+                                // ✅ CORRECT PATH — result.download.high_quality / low_quality
+                                const directDownloadLink = dlData?.download?.high_quality || dlData?.download?.low_quality;
 
                                 if (directDownloadLink) {
                                     await socket.sendMessage(msg.key.remoteJid, {
                                         video: { url: directDownloadLink },
                                         mimetype: 'video/mp4',
-                                        caption: `🎬 *${selectedVideo.title || 'Video'}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+                                        caption: `🎬 *${selectedVideo.title || 'Video'}*\n⏱ ${dlData?.duration || 'N/A'}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
                                     }, { quoted: msg });
                                     try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
                                 } else {
@@ -1240,8 +1242,6 @@ const quoted =
                     }
                 }
             }
-
-        } // <-- NO-PREFIX REPLY CATCHER block end
 
         if (!isCmd) return;
 
@@ -2276,17 +2276,19 @@ case 'vv': {
       break;
     }
 // ════════════ XNXX SEARCH (FIXED) ════════════
+// ════════════ XNXX SEARCH (FIXED - David Cyril API) ════════════
 case 'xnxx':
 case 'xxx': {
     try {
         const query = args.join(' ');
-        if (!query) return await socket.sendMessage(sender, { text: '🔗 *Send me a search query!*\n\nExample: `.xnxx search term`' }, { quoted: msg });
+        if (!query) return await socket.sendMessage(sender, { text: '🔗 *Send me a search query!*\n\nExample: `.xnxx sri lankan`' }, { quoted: msg });
 
         try { await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
 
         if (!global.xnxxContexts) global.xnxxContexts = {};
 
-        const searchApiUrl = `https://api.zanta-mini.store/api/xnxx/search?apiKey=zan_FIAO7Ayh_eo1vllkep6&query=${encodeURIComponent(query)}`;
+        // ✅ CORRECT API URL — David Cyril API, parameter = q
+        const searchApiUrl = `https://apis.davidcyril.name.ng/xxx/xnxx?q=${encodeURIComponent(query)}`;
         
         let searchResponse;
         try {
@@ -2296,24 +2298,24 @@ case 'xxx': {
             return await socket.sendMessage(sender, { text: '❌ *Search failed! API error, try again later.*' }, { quoted: msg });
         }
 
-        const results = searchResponse.data?.result?.videos || searchResponse.data?.result || [];
+        // ✅ CORRECT PATH — data.results (NOT data.result.videos)
+        const results = searchResponse.data?.results || [];
         
         if (!results || !results.length) {
             return await socket.sendMessage(sender, { text: '🤷‍♀️ *No results found for:* ' + query }, { quoted: msg });
         }
 
-        // Store results for reply catcher
+        // Store results for reply catcher — max 15
         global.xnxxContexts[sender] = { results: results.slice(0, 15) };
 
-        // Build numbered list - max 15 results
+        // Build numbered list
         let listText = `*🔍 SADEW-MD SEARCH*\n*🔎 Query:* _${query}_\n*📊 Results:* ${Math.min(results.length, 15)}\n\n`;
 
         results.slice(0, 15).forEach((video, idx) => {
-            listText += `*${idx + 1}.* ${video.title || 'No title'}\n`;
-            listText += `   ⏱ _${video.duration || 'N/A'}_\n\n`;
+            listText += `*${idx + 1}.* ${video.title || 'No title'}\n\n`;
         });
 
-        listText += `\n*📩 Reply with the number (1-${Math.min(results.length, 15)}) to download the video.*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        listText += `\n*📩 ඉහත list එකෙන් number එක reply කරන්න (1-${Math.min(results.length, 15)}) download කරන්න.*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
         await socket.sendMessage(sender, { text: listText }, { quoted: msg });
         try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
@@ -2325,7 +2327,6 @@ case 'xxx': {
     }
     break;
 }
-
 // ════════════ NPM ════════════
 
     case 'npm': {
