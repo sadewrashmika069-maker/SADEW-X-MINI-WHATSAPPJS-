@@ -2274,8 +2274,8 @@ case 'xxx': {
 
         if (!global.xnxxContexts) global.xnxxContexts = {};
 
-        // ✅ SEARCH API — Zanta, parameter = query
-        const searchApiUrl = `https://api.zanta-mini.store/api/xnxx/search?apiKey=zan_FIAO7Ayh_eo1vllkep6&query=${encodeURIComponent(query)}`;
+        // ✅ CORRECT — parameter name = url (not query!)
+const searchApiUrl = `https://api.zanta-mini.store/api/xnxx/search?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(query)}`;
         
         let searchResponse;
         try {
