@@ -1137,7 +1137,7 @@ const quoted =
         if (!isOwner && isGroup && sessionConfig.MODE === 'inbox') return;
         if (!isOwner && !isGroup && sessionConfig.MODE === 'groups') return;
 
-        // ════════════ NO-PREFIX REPLY CATCHER ════════════
+             // ════════════ NO-PREFIX REPLY CATCHER ════════════
         if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
             const replyText = text.trim();
             const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
@@ -1184,60 +1184,64 @@ const quoted =
                 }
             }
 
-            // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - now INSIDE the if block) 🔥🔥🔥
+            // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - INSIDE the if block now) 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
-                    let context = global.xnxxContexts[sender];
-                    let selectedNum = parseInt(replyText);
-                    
-                    if (selectedNum >= 1 && selectedNum <= context.results.length) {
-                        const selectedVideo = context.results[selectedNum - 1];
+                    try {
+                        let context = global.xnxxContexts[sender];
+                        let selectedNum = parseInt(replyText);
                         
-                        try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } }); } catch (_) {}
-
-                        if (selectedVideo.thumbnail) {
-                            try {
-                                await socket.sendMessage(msg.key.remoteJid, { 
-                                    image: { url: selectedVideo.thumbnail }, 
-                                    caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
-                                }, { quoted: msg });
-                            } catch (_) {}
-                        }
-
-                        try {
-                            const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
-                            const downloadResponse = await axios.get(downloadApiUrl, { timeout: 30000 });
-                            const dlData = downloadResponse.data?.result;
+                        if (selectedNum >= 1 && selectedNum <= context.results.length) {
+                            const selectedVideo = context.results[selectedNum - 1];
                             
-                            const directDownloadLink = dlData?.dl_links?.high || dlData?.dl_links?.low || dlData?.url || dlData?.files?.high;
+                            try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } }); } catch (_) {}
 
-                            if (directDownloadLink) {
-                                await socket.sendMessage(msg.key.remoteJid, {
-                                    video: { url: directDownloadLink },
-                                    mimetype: 'video/mp4',
-                                    caption: `🎬 *${selectedVideo.title || 'XNXX Video'}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
-                                }, { quoted: msg });
+                            if (selectedVideo.thumbnail) {
+                                try {
+                                    await socket.sendMessage(msg.key.remoteJid, { 
+                                        image: { url: selectedVideo.thumbnail }, 
+                                        caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
+                                    }, { quoted: msg });
+                                } catch (_) {}
+                            }
 
-                                try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-                            } else {
-                                await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download link not found!*' }, { quoted: msg });
+                            try {
+                                const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
+                                const downloadResponse = await axios.get(downloadApiUrl, { timeout: 30000 });
+                                const dlData = downloadResponse.data?.result;
+                                
+                                const directDownloadLink = dlData?.dl_links?.high || dlData?.dl_links?.low || dlData?.url || dlData?.files?.high;
+
+                                if (directDownloadLink) {
+                                    await socket.sendMessage(msg.key.remoteJid, {
+                                        video: { url: directDownloadLink },
+                                        mimetype: 'video/mp4',
+                                        caption: `🎬 *${selectedVideo.title || 'Video'}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+                                    }, { quoted: msg });
+                                    try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+                                } else {
+                                    await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download link not found!*' }, { quoted: msg });
+                                    try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                                }
+                            } catch (dlError) {
+                                console.error('XNXX download error:', dlError.message);
+                                await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download failed! Try again later.*' }, { quoted: msg });
                                 try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                             }
-                        } catch (dlError) {
-                            console.error('XNXX download error:', dlError.message);
-                            await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download failed! Try again later.*' }, { quoted: msg });
-                            try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-                        }
 
-                        delete global.xnxxContexts[sender];
-                        return;
-                    } else {
-                        return await socket.sendMessage(msg.key.remoteJid, { text: `❌ *Invalid number! Please reply with 1-${context.results.length}*` }, { quoted: msg });
+                            delete global.xnxxContexts[sender];
+                            return;
+                        } else {
+                            return await socket.sendMessage(msg.key.remoteJid, { text: `❌ *Invalid number! Reply with 1-${context.results.length}*` }, { quoted: msg });
+                        }
+                    } catch (xnxxErr) {
+                        console.error('XNXX reply catcher error:', xnxxErr.message);
+                        return await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Error occurred, try again.*' }, { quoted: msg });
                     }
                 }
             }
 
-        } // <-- NO-PREFIX REPLY CATCHER if block ends here
+        } // <-- NO-PREFIX REPLY CATCHER block end
 
         if (!isCmd) return;
 
