@@ -1191,7 +1191,7 @@ const quoted =
                     let number = parseInt(replyText);
                     
                     if (number >= 1 && number <= context.results.length) {
-                        const axios = require('axios');
+                        // ❌ මෙතන තිබ්බ "const axios = require('axios');" කෑල්ල අයින් කරා ක්‍රෑෂ් වෙන නිසා!
                         const selectedVideo = context.results[number - 1];
                         
                         try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } }); } catch (_) {}
@@ -1199,13 +1199,13 @@ const quoted =
                         if (selectedVideo.thumbnail) {
                             await socket.sendMessage(msg.key.remoteJid, { 
                                 image: { url: selectedVideo.thumbnail }, 
-                                caption: `📥 *Downloading Video No ${number}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න... (ෆයිල් එක විශාල නම් මඳ වෙලාවක් ගතවිය හැක)*` 
+                                caption: `📥 *Downloading Video No ${number}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
                             }, { quoted: msg });
                         }
 
                         try {
                             const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
-                            const downloadResponse = await axios.get(downloadApiUrl);
+                            const downloadResponse = await axios.get(downloadApiUrl); // උඩ තියෙන axios එක පාවිච්චි කරනවා
                             const dlData = downloadResponse.data?.result;
                             
                             const directDownloadLink = dlData?.dl_links?.high || dlData?.dl_links?.low || dlData?.url || dlData?.files?.high;
@@ -1223,18 +1223,15 @@ const quoted =
                             try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
                         } catch (error) {
                             try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-                            await socket.sendMessage(msg.key.remoteJid, { text: `_❌ වීඩියෝව ඩවුන්ලෝඩ් කිරීම අසාර්ථක විය! (ෆයිල් සයිස් එක විශාල වැඩි විය හැක): ${error.message || error}_` }, { quoted: msg });
+                            await socket.sendMessage(msg.key.remoteJid, { text: `_❌ වීඩියෝව ඩවුන්ලෝඩ් කිරීම අසාර්ථක විය!: ${error.message || error}_` }, { quoted: msg });
                         }
-                        return; // වැඩේ ඉවර නිසා එළියට පනිනවා
+                        return; 
                     }
                 } else {
                     return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට නැවත Search කරන්න! (Session Expired)*" }, { quoted: msg });
                 }
             }
-            // 🔥🔥🔥 XNXX REPLY CATCHER (මෙතනින් අවසන් වේ) 🔥🔥🔥
-
-        } // 👈 මේ බ්‍රැකට් එක අනිවාර්යයි! (NO-PREFIX REPLY CATCHER එක වැහෙන තැන)
-
+        }
         // ════════════════════════════════════════════════
 
         if (!isCmd) return;
