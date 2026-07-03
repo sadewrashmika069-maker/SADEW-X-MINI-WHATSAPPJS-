@@ -2275,7 +2275,56 @@ case 'vv': {
       await reply(responseText);
       break;
     }
+// ════════════ XNXX SEARCH (FIXED) ════════════
+case 'xnxx':
+case 'xxx': {
+    try {
+        const query = args.join(' ');
+        if (!query) return await socket.sendMessage(sender, { text: '🔗 *Send me a search query!*\n\nExample: `.xnxx search term`' }, { quoted: msg });
 
+        try { await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } }); } catch (_) {}
+
+        if (!global.xnxxContexts) global.xnxxContexts = {};
+
+        const searchApiUrl = `https://api.zanta-mini.store/api/xnxx/search?apiKey=zan_FIAO7Ayh_eo1vllkep6&query=${encodeURIComponent(query)}`;
+        
+        let searchResponse;
+        try {
+            searchResponse = await axios.get(searchApiUrl, { timeout: 15000 });
+        } catch (apiErr) {
+            console.error('XNXX search API error:', apiErr.message);
+            return await socket.sendMessage(sender, { text: '❌ *Search failed! API error, try again later.*' }, { quoted: msg });
+        }
+
+        const results = searchResponse.data?.result?.videos || searchResponse.data?.result || [];
+        
+        if (!results || !results.length) {
+            return await socket.sendMessage(sender, { text: '🤷‍♀️ *No results found for:* ' + query }, { quoted: msg });
+        }
+
+        // Store results for reply catcher
+        global.xnxxContexts[sender] = { results: results.slice(0, 15) };
+
+        // Build numbered list - max 15 results
+        let listText = `*🔍 SADEW-MD SEARCH*\n*🔎 Query:* _${query}_\n*📊 Results:* ${Math.min(results.length, 15)}\n\n`;
+
+        results.slice(0, 15).forEach((video, idx) => {
+            listText += `*${idx + 1}.* ${video.title || 'No title'}\n`;
+            listText += `   ⏱ _${video.duration || 'N/A'}_\n\n`;
+        });
+
+        listText += `\n*📩 Reply with the number (1-${Math.min(results.length, 15)}) to download the video.*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+        await socket.sendMessage(sender, { text: listText }, { quoted: msg });
+        try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+
+    } catch (err) {
+        console.error('XNXX command error:', err.message);
+        try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+        await socket.sendMessage(sender, { text: '❌ *XNXX search failed!*' }, { quoted: msg });
+    }
+    break;
+}
 
 // ════════════ NPM ════════════
 
