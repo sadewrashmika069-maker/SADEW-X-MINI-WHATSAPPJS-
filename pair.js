@@ -2263,8 +2263,7 @@ case 'vv': {
       await reply(responseText);
       break;
     }
-// ════════════ XNXX SEARCH (FIXED) ════════════
-// ════════════ XNXX SEARCH (FIXED - David Cyril API) ════════════
+//XNXXX DOWNLOADD XXXXXXXXXXXXXXXX
 case 'xnxx':
 case 'xxx': {
     try {
@@ -2275,8 +2274,8 @@ case 'xxx': {
 
         if (!global.xnxxContexts) global.xnxxContexts = {};
 
-        // ✅ CORRECT API URL — David Cyril API, parameter = q
-        const searchApiUrl = `https://apis.davidcyril.name.ng/xxx/xnxx?q=${encodeURIComponent(query)}`;
+        // ✅ SEARCH API — Zanta, parameter = query
+        const searchApiUrl = `https://api.zanta-mini.store/api/xnxx/search?apiKey=zan_FIAO7Ayh_eo1vllkep6&query=${encodeURIComponent(query)}`;
         
         let searchResponse;
         try {
@@ -2286,17 +2285,15 @@ case 'xxx': {
             return await socket.sendMessage(sender, { text: '❌ *Search failed! API error, try again later.*' }, { quoted: msg });
         }
 
-        // ✅ CORRECT PATH — data.results (NOT data.result.videos)
+        // ✅ Response path = data.results
         const results = searchResponse.data?.results || [];
         
         if (!results || !results.length) {
             return await socket.sendMessage(sender, { text: '🤷‍♀️ *No results found for:* ' + query }, { quoted: msg });
         }
 
-        // Store results for reply catcher — max 15
         global.xnxxContexts[sender] = { results: results.slice(0, 15) };
 
-        // Build numbered list
         let listText = `*🔍 SADEW-MD SEARCH*\n*🔎 Query:* _${query}_\n*📊 Results:* ${Math.min(results.length, 15)}\n\n`;
 
         results.slice(0, 15).forEach((video, idx) => {
