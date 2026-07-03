@@ -1137,7 +1137,7 @@ const quoted =
         if (!isOwner && isGroup && sessionConfig.MODE === 'inbox') return;
         if (!isOwner && !isGroup && sessionConfig.MODE === 'groups') return;
 
-             // ════════════ NO-PREFIX REPLY CATCHER ════════════
+        // ════════════ NO-PREFIX REPLY CATCHER ════════════
         if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
             const replyText = text.trim();
             const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
@@ -1161,8 +1161,7 @@ const quoted =
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
                 if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
                     const num = parseInt(replyText);
-                    const targetUrl = global.sadewVideoSearch[sender][num - 1]; 
-
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1];
                     if (targetUrl) {
                         const buttonMessage = {
                             text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්ය Video Quality එක තෝරන්න:*`,
@@ -1175,7 +1174,6 @@ const quoted =
                             ],
                             headerType: 1
                         };
-                        
                         delete global.sadewVideoSearch[sender];
                         return await socket.sendMessage(msg.key.remoteJid, buttonMessage, { quoted: msg });
                     }
@@ -1184,36 +1182,28 @@ const quoted =
                 }
             }
 
-             // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - David Cyril Download API) 🔥🔥🔥
+            // 🔥🔥🔥 XNXX REPLY CATCHER (INSIDE the if block) 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     try {
                         let context = global.xnxxContexts[sender];
                         let selectedNum = parseInt(replyText);
-                        
                         if (selectedNum >= 1 && selectedNum <= context.results.length) {
                             const selectedVideo = context.results[selectedNum - 1];
-                            
                             try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } }); } catch (_) {}
-
                             if (selectedVideo.thumbnail) {
                                 try {
-                                    await socket.sendMessage(msg.key.remoteJid, { 
-                                        image: { url: selectedVideo.thumbnail }, 
-                                        caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව එයි, රැඳී සිටින්න...*` 
+                                    await socket.sendMessage(msg.key.remoteJid, {
+                                        image: { url: selectedVideo.thumbnail },
+                                        caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව එයි, රැඳී සිටින්න...*`
                                     }, { quoted: msg });
                                 } catch (_) {}
                             }
-
                             try {
-                                // ✅ CORRECT DOWNLOAD API — David Cyril, parameter = url
                                 const downloadApiUrl = `https://apis.davidcyril.name.ng/download/xnxx?url=${encodeURIComponent(selectedVideo.url)}`;
                                 const downloadResponse = await axios.get(downloadApiUrl, { timeout: 30000 });
                                 const dlData = downloadResponse.data?.result;
-                                
-                                // ✅ CORRECT PATH — result.download.high_quality / low_quality
                                 const directDownloadLink = dlData?.download?.high_quality || dlData?.download?.low_quality;
-
                                 if (directDownloadLink) {
                                     await socket.sendMessage(msg.key.remoteJid, {
                                         video: { url: directDownloadLink },
@@ -1223,14 +1213,11 @@ const quoted =
                                     try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
                                 } else {
                                     await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download link not found!*' }, { quoted: msg });
-                                    try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                                 }
                             } catch (dlError) {
                                 console.error('XNXX download error:', dlError.message);
                                 await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download failed! Try again later.*' }, { quoted: msg });
-                                try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                             }
-
                             delete global.xnxxContexts[sender];
                             return;
                         } else {
@@ -1242,6 +1229,7 @@ const quoted =
                     }
                 }
             }
+        }
 
         if (!isCmd) return;
 
