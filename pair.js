@@ -1145,7 +1145,6 @@ const quoted =
             const quotedStanzaId = msg.message.extendedTextMessage.contextInfo.stanzaId;
 
             // ── SADEW-MINI MENU CATEGORY REPLY CATCHER ──
-            // Only triggers when replying to the exact .menu message this bot sent (tracked by stanzaId)
             if (
                 global.sadewMenuTracker[sender] &&
                 global.sadewMenuTracker[sender] === quotedStanzaId &&
@@ -1158,6 +1157,7 @@ const quoted =
                 }
             }
 
+            // ── VIDEO SEARCH REPLY CATCHER ──
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
                 if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
                     const num = parseInt(replyText);
@@ -1165,7 +1165,7 @@ const quoted =
 
                     if (targetUrl) {
                         const buttonMessage = {
-                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්ය Video Quality එක තෝරන්න:*`,
                             footer: '👑 SADEW-X-MINI 👑',
                             buttons: [
                                 { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
@@ -1183,56 +1183,61 @@ const quoted =
                     return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
                 }
             }
-        } 
-// 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
+
+            // 🔥🔥🔥 XNXX REPLY CATCHER (FIXED - now INSIDE the if block) 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     let context = global.xnxxContexts[sender];
-                    let number = parseInt(replyText);
+                    let selectedNum = parseInt(replyText);
                     
-                    if (number >= 1 && number <= context.results.length) {
-                        // ❌ මෙතන තිබ්බ "const axios = require('axios');" කෑල්ල අයින් කරා ක්‍රෑෂ් වෙන නිසා!
-                        const selectedVideo = context.results[number - 1];
+                    if (selectedNum >= 1 && selectedNum <= context.results.length) {
+                        const selectedVideo = context.results[selectedNum - 1];
                         
                         try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } }); } catch (_) {}
 
                         if (selectedVideo.thumbnail) {
-                            await socket.sendMessage(msg.key.remoteJid, { 
-                                image: { url: selectedVideo.thumbnail }, 
-                                caption: `📥 *Downloading Video No ${number}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
-                            }, { quoted: msg });
+                            try {
+                                await socket.sendMessage(msg.key.remoteJid, { 
+                                    image: { url: selectedVideo.thumbnail }, 
+                                    caption: `📥 *Downloading Video No ${selectedNum}:* _${selectedVideo.title}_\n*සැනෙකින් වීඩියෝව අප්ලෝඩ් වේ, රැඳී සිටින්න...*` 
+                                }, { quoted: msg });
+                            } catch (_) {}
                         }
 
                         try {
                             const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
-                            const downloadResponse = await axios.get(downloadApiUrl); // උඩ තියෙන axios එක පාවිච්චි කරනවා
+                            const downloadResponse = await axios.get(downloadApiUrl, { timeout: 30000 });
                             const dlData = downloadResponse.data?.result;
                             
                             const directDownloadLink = dlData?.dl_links?.high || dlData?.dl_links?.low || dlData?.url || dlData?.files?.high;
 
-                            if (!directDownloadLink) {
-                                try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-                                return await socket.sendMessage(msg.key.remoteJid, { text: "❌ _Direct Download Link එක ලබා ගැනීමට නොහැකි විය!_" }, { quoted: msg });
-                            }
+                            if (directDownloadLink) {
+                                await socket.sendMessage(msg.key.remoteJid, {
+                                    video: { url: directDownloadLink },
+                                    mimetype: 'video/mp4',
+                                    caption: `🎬 *${selectedVideo.title || 'XNXX Video'}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+                                }, { quoted: msg });
 
-                            await socket.sendMessage(msg.key.remoteJid, { 
-                                video: { url: directDownloadLink }, 
-                                caption: `🎥 *${dlData.title || selectedVideo.title}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*` 
-                            }, { quoted: msg });
-                            
-                            try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
-                        } catch (error) {
+                                try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } }); } catch (_) {}
+                            } else {
+                                await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download link not found!*' }, { quoted: msg });
+                                try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
+                            }
+                        } catch (dlError) {
+                            console.error('XNXX download error:', dlError.message);
+                            await socket.sendMessage(msg.key.remoteJid, { text: '❌ *Download failed! Try again later.*' }, { quoted: msg });
                             try { await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } }); } catch (_) {}
-                            await socket.sendMessage(msg.key.remoteJid, { text: `_❌ වීඩියෝව ඩවුන්ලෝඩ් කිරීම අසාර්ථක විය!: ${error.message || error}_` }, { quoted: msg });
                         }
-                        return; 
+
+                        delete global.xnxxContexts[sender];
+                        return;
+                    } else {
+                        return await socket.sendMessage(msg.key.remoteJid, { text: `❌ *Invalid number! Please reply with 1-${context.results.length}*` }, { quoted: msg });
                     }
-                } else {
-                    return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට නැවත Search කරන්න! (Session Expired)*" }, { quoted: msg });
                 }
             }
-        }
-        // ════════════════════════════════════════════════
+
+        } // <-- NO-PREFIX REPLY CATCHER if block ends here
 
         if (!isCmd) return;
 
