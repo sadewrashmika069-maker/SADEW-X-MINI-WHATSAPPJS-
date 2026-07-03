@@ -1184,13 +1184,12 @@ const quoted =
                 }
             }
         } 
-// 🔥🔥🔥 XNXX REPLY CATCHER (මෙතනින් පටන් ගනී) 🔥🔥🔥
+// 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     let context = global.xnxxContexts[sender];
                     let number = parseInt(replyText);
                     
-                    // ගහපු අංකය 1 ත් 15 ත් අතරද කියලා බලනවා
                     if (number >= 1 && number <= context.results.length) {
                         const axios = require('axios');
                         const selectedVideo = context.results[number - 1];
@@ -1205,7 +1204,6 @@ const quoted =
                         }
 
                         try {
-                            // Zanta API එකෙන් ඩවුන්ලෝඩ් ලින්ක් එක ගන්නවා
                             const downloadApiUrl = `https://api.zanta-mini.store/api/xnxx/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&url=${encodeURIComponent(selectedVideo.url)}`;
                             const downloadResponse = await axios.get(downloadApiUrl);
                             const dlData = downloadResponse.data?.result;
@@ -1217,7 +1215,6 @@ const quoted =
                                 return await socket.sendMessage(msg.key.remoteJid, { text: "❌ _Direct Download Link එක ලබා ගැනීමට නොහැකි විය!_" }, { quoted: msg });
                             }
 
-                            // වීඩියෝ එක WhatsApp වෙත යවනවා
                             await socket.sendMessage(msg.key.remoteJid, { 
                                 video: { url: directDownloadLink }, 
                                 caption: `🎥 *${dlData.title || selectedVideo.title}*\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*` 
@@ -1235,7 +1232,9 @@ const quoted =
                 }
             }
             // 🔥🔥🔥 XNXX REPLY CATCHER (මෙතනින් අවසන් වේ) 🔥🔥🔥
-		}
+
+        } // 👈 මේ බ්‍රැකට් එක අනිවාර්යයි! (NO-PREFIX REPLY CATCHER එක වැහෙන තැන)
+
         // ════════════════════════════════════════════════
 
         if (!isCmd) return;
