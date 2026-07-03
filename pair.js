@@ -2916,7 +2916,7 @@ case 'hack': {
             await socket.sendMessage(from, {
                 text: steps[i],
                 edit: initialMsg.key,
-                contextInfo: arabianCtx() 
+                contextInfo: typeof arabianCtx === 'function' ? arabianCtx() : {} 
             });
         }
 
@@ -2927,8 +2927,30 @@ case 'hack': {
     break;
 }
 
-        }
-        }catch (error) {
+// 🔴🔴🔴 මෙන්න මෙතන තමයි switch එක වැහෙන්නේ! 🔴🔴🔴
+} 
+
+// 🔥🔥🔥 PLUGIN EXECUTION කෑල්ල දැන් තියෙන්නේ switch එකෙන් එලියේ 🔥🔥🔥
+const plugin = findPluginForCommand(command);
+if (plugin) {
+    try {
+        await plugin.handler({ 
+            socket, 
+            msg, 
+            sender, 
+            args, 
+            text, 
+            command, 
+            reply 
+        });
+    } catch (err) {
+        console.error(`[PLUGIN ERROR] ${plugin.name}:`, err);
+        reply(`❌ *Plugin Error:* ${err.message}`);
+    }
+}
+
+// ---------------------------------------------------------
+        } catch (error) {
             console.error('Command handler error:', error);
             await socket.sendMessage(sender, {
                 text: `❌ ERROR\nAn error occurred: ${error.message}`,
@@ -2948,7 +2970,6 @@ router.get('/', async (req, res) => {
     
     if (activeSockets.size >= 77) {
         return res.status(429).send({ 
-        
             status: 'limit_reached',
             message: 'Active connections limit reached. Please try again in 1 hour.'
         });
