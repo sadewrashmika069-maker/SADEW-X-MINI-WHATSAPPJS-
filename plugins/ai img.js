@@ -1,11 +1,11 @@
 const axios = require('axios');
 
-// 🔥 API වල Method එක සහ Parameter එකත් එක්කම ලස්සනට වෙන් කරලා තියෙනවා
+// 🔥 API එකේ Method එක සහ Parameter එක ගාණට වෙන් කරලා
 const imageEndpoints = {
     'dalle': { path: '/api/ai/image/dall-e', method: 'POST', param: 'prompt' },
     'pixabay': { path: '/api/ai/image/pixabay', method: 'GET', param: 'q' },
     'picsum': { path: '/api/ai/image/lorem-picsum', method: 'GET', param: null },
-    'flickr': { path: '/api/ai/image/lorem-flickr', method: 'GET', param: null },
+    'flickr': { path: '/api/ai/image/lorem-flickr', method: 'GET', param: 'q' }, // මේකටත් ප්‍රොම්ප්ට් එකක් ඕනේ
     'dog': { path: '/api/ai/image/dog', method: 'GET', param: null },
     'cat': { path: '/api/ai/image/cat', method: 'GET', param: null },
     'bingimg': { path: '/api/ai/image/bing', method: 'POST', param: 'prompt' }
@@ -34,7 +34,7 @@ module.exports = {
 
         // API එකට විස්තරයක් (Param) ඕනෙම නම් සහ Query එකක් දීලා නැත්නම්
         if (apiConfig.param && !query) {
-            return reply(`❓ *කරුණාකර Image එක සඳහා විස්තරයක් ඇතුළත් කරන්න!*\n💡 උදා: \`.${command} a futuristic city in neon colors\``);
+            return reply(`❓ *කරුණාකර Image එක සඳහා විස්තරයක් ඇතුළත් කරන්න!*\n💡 උදා: \`.${command} a beautiful sunset\``);
         }
 
         try { await socket.sendMessage(sender, { react: { text: '🖼️', key: msg.key } }); } catch (_) {}
@@ -45,6 +45,11 @@ module.exports = {
         // URL එකට අදාළ Parameter එක (q හෝ prompt) දානවා
         if (apiConfig.param && query) {
             url += `&${apiConfig.param}=${encodeURIComponent(query)}`;
+        }
+
+        // Picsum සහ Flickr වලට පළල සහ උස ඔටෝම දාමු (ලස්සනට එන්න)
+        if (command === 'picsum' || command === 'flickr') {
+            url += '&width=800&height=600';
         }
 
         try {
@@ -60,11 +65,19 @@ module.exports = {
             const data = response.data;
 
             // 🔥 API එකෙන් එවන විදිහ කොහොම වුණත් Image URL එක අල්ලගන්න Smart Logic එක
-            let imageUrl = data.url || data.image || data.featured || data.result;
-            
-            // Pixabay වගේ ඒවගේ එන්නේ images කියන Array එකක් ඇතුළේ
-            if (!imageUrl && data.images && Array.isArray(data.images) && data.images.length > 0) {
-                imageUrl = data.images[0].url || data.images[0];
+            let imageUrl = null;
+            if (data.url && typeof data.url === 'string') {
+                imageUrl = data.url; // dall-e, bing
+            } else if (data.image && typeof data.image === 'string') {
+                imageUrl = data.image; // cat API
+            } else if (data.image && data.image.url) {
+                imageUrl = data.image.url; // picsum, flickr
+            } else if (data.featured) {
+                imageUrl = data.featured; // pixabay fallback
+            } else if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+                imageUrl = data.images[0].url || data.images[0]; // pixabay
+            } else if (data.result && typeof data.result === 'string') {
+                imageUrl = data.result;
             }
 
             // අන්තිමට URL එකක් සෙට් වුණාද බලනවා
@@ -72,7 +85,7 @@ module.exports = {
                 const aiName = command.toUpperCase();
                 
                 let captionText = `*↳ ❝ [🖼️ ${aiName} 𝗜𝗠𝗔𝗚𝗘𝗦 ] ¡! ❞*\n\n`;
-                if (query) captionText += `*✨ Prompt:* _${query}_\n\n`;
+                if (query && apiConfig.param) captionText += `*✨ Prompt:* _${query}_\n\n`;
                 captionText += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
                 await socket.sendMessage(sender, { 
@@ -82,7 +95,6 @@ module.exports = {
                 
                 try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
             } else {
-                // සර්වර් එකෙන් මොනවා හරි අමුතු එකක් ආවොත් ඒක පෙන්නනවා
                 reply(`❌ *Image එක ලබා ගැනීමට නොහැකි විය!*\n\n_Server Response: ${JSON.stringify(data).slice(0, 80)}..._`);
                 try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
             }
