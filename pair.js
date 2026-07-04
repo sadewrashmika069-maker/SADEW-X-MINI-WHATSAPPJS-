@@ -919,7 +919,7 @@ const CATEGORY_KEYWORDS = {
     5: ['sticker', 'vv', 'view-once', 'fancy', 'text style', 'getdp', 'dp', 'npm', 'img', 'image', 'tool', 'edit'],
     6: ['owner', 'active', 'session', 'dev'],
     7: ['alive', 'system', 'ping', 'lvcal', 'love', 'hack', 'hentai', 'fun', 'game'],
-    8: ['song', 'music', 'mp3', 'audio', 'lyrics', 'playlist']
+    8: ['song', 'music', 'mp3', 'audio', 'lyrics', 'playlist'],
 	9: ['dalle', 'pixabay', 'picsum', 'flickr', 'dog', 'cat', 'bingimg']
 };
 
