@@ -893,6 +893,10 @@ const SADEW_CATEGORIES = {
         items: [
             { cmd: '.song', desc: 'ᴅᴏᴡɴʟᴏᴀᴅ ꜱᴏɴɢ (ᴍᴘ3)' }
         ]
+    },9: {
+        emoji: '🖼️',
+        name: 'AI Image Menu',
+        items: [] // Plugin එකෙන් ඔටෝ පිරෙන නිසා මේක හිස්ව තියන්න
     }
 };
 
@@ -916,6 +920,7 @@ const CATEGORY_KEYWORDS = {
     6: ['owner', 'active', 'session', 'dev'],
     7: ['alive', 'system', 'ping', 'lvcal', 'love', 'hack', 'hentai', 'fun', 'game'],
     8: ['song', 'music', 'mp3', 'audio', 'lyrics', 'playlist']
+	9: ['dalle', 'pixabay', 'picsum', 'flickr', 'dog', 'cat', 'bingimg']
 };
 
 function autoDetectCategory(plugin) {
@@ -1148,7 +1153,7 @@ const quoted =
             if (
                 global.sadewMenuTracker[sender] &&
                 global.sadewMenuTracker[sender] === quotedStanzaId &&
-                /^[1-8]$/.test(replyText)
+                /^[1-9]$/.test(replyText)
             ) {
                 const catNum = parseInt(replyText);
                 const buttonMsg = buildCategoryButtonMessage(catNum);
@@ -1372,6 +1377,7 @@ try {
 ┣⪼ ❖ 6. 👑 Owner Area✿
 ┣⪼ ❖ 7. 📁 Other Cmds✿
 ┣⪼ ❖ 8. 🎵 Song & Music✿
+┣⪼ ❖ 9. 🖼️ AI Image Menu✿
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━
 ⊱ ─────── { 𑁍 } ─────── ⊰
 ╰┈⪼ 𝘙𝘦𝘱𝘭𝘺 𝘸𝘪𝘵𝘩 𝘢 𝘯𝘶𝘮𝘣𝘦𝘳 (1-8) 𝘰𝘳 𝘵𝘢𝘱 𝘢 𝘣𝘶𝘵𝘵𝘰𝘯 𝘣𝘦𝘭𝘰𝘸 ⪻
