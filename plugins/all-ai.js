@@ -46,8 +46,11 @@ module.exports = {
     category: 2, // 'AI Commands' කැටගරි එකට වැටෙයි
     description: "Multiple AI Models with Sinhala/English Mix",
     
-    // උඩ ලියපු නම් ටික ඔටෝම කමාන්ඩ්ස් විදිහට හැදෙනවා (.gpt, .gemini වගේ)
-    commands: Object.keys(aiEndpoints),
+// හැම AI එකකටම ඔටෝම ලස්සන Description එකක් හැදෙනවා
+    commands: Object.keys(aiEndpoints).map(cmd => ({
+        cmd: cmd,
+        desc: `Chat with ${cmd.toUpperCase()} AI Model`
+    })),
 
     handler: async ({ socket, msg, sender, args, command, reply }) => {
         let query = args.join(' ');
