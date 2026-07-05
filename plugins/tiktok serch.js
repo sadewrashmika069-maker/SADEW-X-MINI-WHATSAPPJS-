@@ -3,13 +3,12 @@ const {
     generateWAMessageFromContent,
     prepareWAMessageMedia,
     proto,
-} = require("baileys"); // අලුත් Baileys පැකේජ් එක
+} = require("baileys"); 
 
 const API_TOKEN = process.env.WHITESHADOW_API_TOKEN || "VK4fry";
 const WHITESHADOW_API = "https://whiteshadow-x-api.onrender.com/api/search/tiktok";
 const TIKWM_SEARCH_API = "https://tikwm.com/api/feed/search";
 
-// Server එක ක්‍රෑෂ් නොවී තියාගන්න උපරිම රිසල්ට් ගාණ 5 කට සීමා කරලා තියෙන්නේ
 const MAX_RESULTS = 5; 
 const MAX_VIDEO_MB = 80;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
@@ -22,7 +21,6 @@ const OUTER_HEADER_TITLE = toFullWidth("𝐥𝐥ı𝐥𝐥ı ıllıllı ★彡 *
 const OUTER_FOOTER_TEXT = "| POWERED BY 👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥";
 const CARD_FOOTER_TEXT = "👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥";
 
-// ── Helpers ──
 function toFullWidth(text) {
     return String(text).replace(/[A-Z0-9.]/g, (char) => {
         if (char === ".") return "\uFF0E";
@@ -113,19 +111,21 @@ function normalizeVideo(rawVideo, index) {
             rawVideo.thumb
         )
     );
+    
+    // 🔥 මෙතන තමයි වෙනස කරේ! hdplay මුලටම ගෙනාවා HD වීඩියෝ එක ගන්න.
     const directVideo = toAbsoluteTikwmUrl(
         pickFirstString(
-            rawVideo.play,
-            rawVideo.wmplay,
-            rawVideo.hdplay,
+            rawVideo.hdplay,       // Priority 1: HD Quality (720p/1080p)
+            rawVideo.play,         // Priority 2: Normal Quality
+            rawVideo.no_watermark,
+            rawVideo.nowm,
+            rawVideo.nwm_video_url,
             rawVideo.video,
             rawVideo.video_url,
             rawVideo.play_url,
             rawVideo.download,
             rawVideo.download_url,
-            rawVideo.no_watermark,
-            rawVideo.nowm,
-            rawVideo.nwm_video_url
+            rawVideo.wmplay
         )
     );
     const pageUrl = pickFirstString(
@@ -148,7 +148,7 @@ function normalizeVideo(rawVideo, index) {
 
 // ── API Fetchers ──
 async function fetchWhiteShadowResults(searchQuery) {
-    const endpoint = `${WHITESHADOW_API}?query=${encodeURIComponent(searchQuery)}&apitoken=${API_TOKEN}`;
+    const endpoint = `${WHITESHADOW_API}?query=${encodeURIComponent(searchQuery)}&apitoken=${API_TOKEN}&hd=1`;
     const { data } = await axios.get(endpoint, { timeout: 15000 });
     return pickResultsArray(data).map(normalizeVideo);
 }
@@ -158,6 +158,7 @@ async function fetchTikwmResults(searchQuery) {
         keywords: searchQuery,
         count: String(MAX_RESULTS),
         cursor: "0",
+        hd: "1" // 🔥 HD ඉල්ලන්න Parameter එක දැම්මා
     });
 
     const { data } = await axios.post(TIKWM_SEARCH_API, body, {
@@ -225,7 +226,7 @@ async function prepareVideoHeader(socket, video) {
             mimetype: "video/mp4",
         },
         {
-            upload: socket.waUploadToServer, // WA Server එකට Media අප්ලෝඩ් කිරීම අනිවාර්යයි
+            upload: socket.waUploadToServer, 
         }
     );
 
@@ -262,7 +263,7 @@ async function buildCarouselCards(socket, videos) {
                             name: "quick_reply",
                             buttonParamsJson: JSON.stringify({
                                 display_text: `${EMOJI_DOWNLOAD} Download Video`,
-                                id: `.tt ${video.url}`, // ඔයාගේ Download කමාන්ඩ් එකට ලින්ක් වෙනවා
+                                id: `.tt ${video.url}`, 
                             }),
                         },
                     ],
@@ -281,8 +282,8 @@ async function buildCarouselCards(socket, videos) {
 // ── SADEW-MINI PLUGIN EXPORT ──
 module.exports = {
     name: "tiktok-carousel-search",
-    category: 1, // Download Menu එකට
-    description: "Search TikTok videos and display in a beautiful carousel grid.",
+    category: 1, 
+    description: "Search TikTok videos and display in a beautiful HD carousel grid.",
     commands: ["ts", "tiktoksearch", "tsearch"],
 
     handler: async ({ socket, msg, sender, args, reply }) => {
@@ -298,7 +299,6 @@ module.exports = {
             const videos = await fetchTikTokResults(searchQuery);
 
             try {
-                // Carousel එක යැවීම
                 const InteractiveMessage = proto.Message.InteractiveMessage;
                 const CarouselMessage = InteractiveMessage?.CarouselMessage || proto.Message.CarouselMessage;
 
@@ -311,7 +311,7 @@ module.exports = {
                         hasMediaAttachment: false,
                     }),
                     body: createProto(InteractiveMessage.Body, {
-                        text: `${EMOJI_SEARCH} *TikTok Search:* _${searchQuery}_\n> වීඩියෝවක් තෝරා Download බටන් එක ඔබන්න.`,
+                        text: `${EMOJI_SEARCH} *TikTok Search:* _${searchQuery}_\n> HD වීඩියෝවක් තෝරා Download බටන් එක ඔබන්න.`,
                     }),
                     footer: createProto(InteractiveMessage.Footer, {
                         text: OUTER_FOOTER_TEXT,
@@ -345,7 +345,6 @@ module.exports = {
             } catch (carouselError) {
                 console.error("TS video carousel failed, sending fallback:", carouselError);
                 
-                // Carousel එක ක්‍රෑෂ් වුනොත් ලින්ක් ලිස්ට් එකක් විදිහට යැවීම
                 const lines = [
                     `${EMOJI_SEARCH} *TikTok search results for:* _${searchQuery}_`,
                     "",
