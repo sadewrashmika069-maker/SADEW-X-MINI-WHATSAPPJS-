@@ -1,6 +1,6 @@
 const { generateForwardMessageContent, generateWAMessageFromContent, getContentType } = require("baileys");
 
-// ෆයිල් නම හොයාගැනීමේ ෆන්ක්ශන් (Sparky එකේ තිබ්බ ලොජික් එක)
+// ෆයිල් නම හොයාගැනීමේ ෆන්ක්ශන්
 function getTextFromQuoted(quoted) {
     const msg = quoted?.message || {};
     const doc = msg.documentMessage || msg.documentWithCaptionMessage?.message?.documentMessage;
@@ -53,12 +53,11 @@ function applyFileName(content, fileName) {
 
 module.exports = {
     name: "forward-message",
-    category: 5, // 'Tools & Edits' මෙනු එකට වැටෙනවා
-    description: "Forward any file up to 2GB instantly without downloading",
+    category: 5,
+    description: "Forward any file up to 2GB instantly with Custom Caption",
     commands: ["forward", "foward", "fw"],
 
     handler: async ({ socket, msg, sender, args, reply }) => {
-        // 1. Target Number එක හදාගැනීම
         let targetText = args.join(" ").trim();
         if (!targetText) {
             return reply("📤 *Forward කරන්න අවශ්‍ය Number එක හෝ JID එක ලබා දෙන්න.*\n\n💡 උදා:\n`.forward 94712345678`\n`.fw 120363xxxx@g.us` (Group)");
@@ -69,13 +68,11 @@ module.exports = {
             targetJid = targetText.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
         }
 
-        // 2. Reply කරපු මැසේජ් එක හොයාගැනීම (Quoted Message)
         const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
         if (!contextInfo || !contextInfo.quotedMessage) {
             return reply("📌 *Forward කිරීමට අවශ්‍ය Message, Photo, Video හෝ Document එකට Reply කර මෙම Command එක ලබා දෙන්න.*");
         }
 
-        // Baileys Format එකට හරියන්න Quoted Message Object එක හැදීම
         const quotedMsg = {
             key: {
                 remoteJid: msg.key.remoteJid,
@@ -88,7 +85,6 @@ module.exports = {
         try {
             await socket.sendMessage(sender, { react: { text: '📤', key: msg.key } });
 
-            // 3. ඩවුන්ලෝඩ් නොකර Forward කන්ටෙන්ට් එක ජෙනරේට් කිරීම (0 Data Usage)
             const content = await generateForwardMessageContent(quotedMsg, false);
             const type = getContentType(content);
 
@@ -96,11 +92,28 @@ module.exports = {
                 throw new Error("Forward Content ජෙනරේට් කිරීමට නොහැකි විය.");
             }
 
-            // ෆයිල් එකේ නම නැති වෙන එක වලක්වන්න Sparky එකේ තිබ්බ ලොජික් එකම දැම්මා
-            const fileName = inferFileName(quotedMsg);
-            applyFileName(content, fileName);
+            // 🔥 1. ෆයිල් නම සහ Fancy Text එක හැදීම
+            let originalFileName = inferFileName(quotedMsg) || "Media File";
+            const fancyName = "🎀 𝘚𝘢𝘥𝘦𝘸 𝘔𝘪𝘯𝘪 🎀"; 
+            
+            // Document එකේ නමට ඉස්සරහින් Fancy Name එක එකතු කිරීම
+            const newFileName = `[${fancyName}] ${originalFileName}`;
+            applyFileName(content, newFileName);
 
-            // Forward කරපු ලේබල් එක (Forwarded tag) වැටෙන්න හදමු
+            // 🔥 2. Custom Caption එක හැදීම (Powered by SADEW X MINI)
+            const customCaption = `*↳ ❝ [ ${fancyName} ] ¡! ❞*\n\n📁 *Name:* ${originalFileName}\n\n> * 💞𝘗𝘰𝘸𝘦𝘳𝘦𝘥 𝘣𝘺 𝘚𝘈𝘋𝘌𝘞 𝘟 𝘔𝘐𝘕𝘐 😍*`;
+
+            // 🔥 3. Caption එක Content එකට ඇතුළු කිරීම (Documents, Images, Videos වලට)
+            if (content.documentMessage) {
+                content.documentMessage.caption = customCaption;
+            } else if (content.documentWithCaptionMessage?.message?.documentMessage) {
+                content.documentWithCaptionMessage.message.documentMessage.caption = customCaption;
+            } else if (content.imageMessage) {
+                content.imageMessage.caption = customCaption;
+            } else if (content.videoMessage) {
+                content.videoMessage.caption = customCaption;
+            }
+
             if (typeof content[type] === "object") {
                 content[type].contextInfo = {
                     ...(content[type].contextInfo || {}),
@@ -109,21 +122,18 @@ module.exports = {
                 };
             }
 
-            // Target එකට යවන්න මැසේජ් එක පැකේජ් කිරීම
             const waMessage = await generateWAMessageFromContent(targetJid, content, {
                 userJid: socket.user.id
             });
 
-            // 4. කෙලින්ම WhatsApp Server එක හරහා යැවීම (Relay Message)
             await socket.relayMessage(targetJid, waMessage.message, {
                 messageId: waMessage.key.id
             });
 
             await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
             
-            // සාර්ථක වුණා කියලා රිප්ලයි කිරීම
             let successMsg = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄 𝗙𝗼𝗿𝘄𝗮𝗿𝗱𝗲𝗿 🎀] ¡! ❞*\n\n`;
-            successMsg += `✅ *සාර්ථකව Forward කරන ලදී!*\n📍 *Target:* ${targetJid}\n\n`;
+            successMsg += `✅ *සාර්ථකව Forward කරන ලදී!*\n📍 *Target:* ${targetJid.split('@')[0]}\n\n`;
             successMsg += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
             
             await reply(successMsg);
