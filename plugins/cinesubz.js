@@ -166,14 +166,14 @@ module.exports = {
 
                 // ═══════ resolvedUrl eka transform karala /download endpoint ekata pass karanna ═══════
                 // resolvedUrl format: https://bot3.sonic-cloud.online/server11/1:/path/to/file.mp4
-                // /download needs:    https://bot3.sonic-cloud.online/server1/path/to/file.mp4?ext=mp4
+                // /download needs:    https://bot3.sonic-cloud.online/server11/path/to/file.mp4
                 
                 let downloadPageUrl = resolvedUrl.trim();
                 
-                // Transform: /server11/1:/ → /server1/  (or similar patterns)
-                downloadPageUrl = downloadPageUrl.replace(/\/server\d+\/\d+:\//g, '/server1/');
+                // Transform: /server11/1:/ → /server11/ (keep the specific server number)
+                downloadPageUrl = downloadPageUrl.replace(/\/(server\d+)\/\d+:\//g, '/$1/');
                 
-                // Add ?ext=mp4 if not present and URL ends with .mp4
+                // Add ?ext=mp4 if not present and URL ends with .mp4 (without query params)
                 if (downloadPageUrl.endsWith('.mp4') && !downloadPageUrl.includes('?ext=')) {
                     downloadPageUrl = downloadPageUrl.replace(/\.mp4$/, '?ext=mp4');
                 }
@@ -182,7 +182,7 @@ module.exports = {
 
                 // ═══════ TRY 1: /download endpoint → tokenized URL ═══════
                 try {
-                    const dlApiUrl = `${CZ_API}/download?url=${downloadPageUrl}`;
+                    const dlApiUrl = `${CZ_API}/download?url=${encodeURIComponent(downloadPageUrl)}`;
                     console.log("CZ: Trying /download API:", dlApiUrl);
                     
                     const dlRes = await axios.get(dlApiUrl, { timeout: 20000 });
@@ -196,12 +196,6 @@ module.exports = {
 
                         if (httpUrl && httpUrl.url) {
                             console.log("CZ: Got tokenized URL:", httpUrl.url);
-
-                            // Size check
-                            if (dlData.result.size) {
-                                const sizeStr = dlData.result.size;
-                                console.log("CZ: File size:", sizeStr);
-                            }
 
                             await socket.sendMessage(sender, {
                                 document: { url: httpUrl.url },
