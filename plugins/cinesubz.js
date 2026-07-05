@@ -133,12 +133,15 @@ module.exports = {
                 } else if (quality === '720p') {
                     finalUrl = originalUrl.replace(/(480p|1080p|1080|480)/i, '720p');
                 }
-                
+
+                // ✅ Proxy API eken wrap karanna — direct URL eka 125KB HTML denava
+                const proxyDownloadUrl = `https://cz-dnuz.vercel.app/download?url=${encodeURIComponent(finalUrl)}`;
+
                 try {
-                    const headRes = await axios.head(finalUrl);
+                    const headRes = await axios.head(proxyDownloadUrl, { timeout: 10000 });
                     if (headRes && headRes.headers['content-length']) {
                         const sizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
-                        if (sizeMB > 1950) { 
+                        if (sizeMB > 1950) {
                             await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
                             return await reply(`❌ *Error: File එක 2GB වලට වඩා විශාලයි! (${sizeMB.toFixed(2)} MB)*\nWhatsApp හරහා මෙය යැවිය නොහැක.`);
                         }
@@ -150,7 +153,7 @@ module.exports = {
                 const caption = `🎬 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
                 await socket.sendMessage(sender, {
-                    document: { url: finalUrl },
+                    document: { url: proxyDownloadUrl },
                     mimetype: "video/mp4",
                     fileName: `${title} - ${quality}.mp4`,
                     caption: caption
@@ -164,5 +167,3 @@ module.exports = {
                 await reply("❌ *Download Failed! ලින්ක් එක දෝෂ සහිතයි හෝ Expire වී ඇත.*");
             }
         }
-    }
-};
