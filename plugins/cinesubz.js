@@ -27,7 +27,7 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: "🔍", key: msg.key } });
 
                 const searchUrl = `https://cinesubz-api-cnw.vercel.app/api/search?q=${encodeURIComponent(query)}`;
-                const res = await axios.get(searchUrl);
+                const res = await axios.get(searchUrl, { timeout: 15000 });
                 const data = res.data;
 
                 if (!data.status || !data.data || data.data.length === 0) {
@@ -48,7 +48,6 @@ module.exports = {
                 const listener = async ({ messages }) => {
                     const replyMsg = messages[0];
                     if (!replyMsg.message) return;
-
                     if (replyMsg.key.remoteJid !== sender) return;
 
                     const replyContext = replyMsg.message.extendedTextMessage?.contextInfo;
@@ -68,7 +67,7 @@ module.exports = {
                             await socket.sendMessage(sender, { react: { text: "🎬", key: replyMsg.key } });
 
                             const extractUrl = `https://cinesubz-api-cnw.vercel.app/api/extract?id=${selectedMovie.id}&type=mv`;
-                            const extRes = await axios.get(extractUrl);
+                            const extRes = await axios.get(extractUrl, { timeout: 15000 });
                             const extData = extRes.data;
 
                             if (!extData.status || !extData.data || extData.data.length === 0) {
@@ -124,45 +123,89 @@ module.exports = {
 
             try {
                 await socket.sendMessage(sender, { react: { text: "⬇️", key: msg.key } });
-                await socket.sendMessage(sender, { text: `⬇️ *Downloading ${title} (${quality})...*\n_මෙය විශාල file එකක් බැවින්, Upload වීමට ටික වේලාවක් ගත විය හැක._` }, { quoted: metaQuote });
 
                 let finalUrl = originalUrl.trim();
+                let actualQuality = quality;
+                const baseLink = originalUrl.trim();
+
+                // Quality URL eka hadanna
                 if (quality === '480p') {
-                    finalUrl = originalUrl.replace(/(720p|1080p|1080|720)/i, '480p');
+                    finalUrl = baseLink.replace(/(720p|1080p|1080|720)/gi, '480p');
                 } else if (quality === '720p') {
-                    finalUrl = originalUrl.replace(/(480p|1080p|1080|480)/i, '720p');
+                    finalUrl = baseLink.replace(/(480p|1080p|1080|480)/gi, '720p');
                 }
 
-                const caption = `🎬 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                // ═══════ HEAD REQUEST — URL eka valid da check karanna ═══════
+                let validUrl = finalUrl;
 
-                // ✅ PROXY API URL — encodeURIComponent nathuva! (double encoding fix)
-                const proxyUrl = `https://cz-dnuz.vercel.app/download?url=${finalUrl}`;
+                try {
+                    const headRes = await axios.head(validUrl, { timeout: 10000 });
+                    const contentType = headRes.headers['content-type'] || '';
 
+                    // HTML page ekak enava nam — eka video ekak nemei!
+                    if (contentType.includes('text/html')) {
+                        console.log(`CZ: Quality URL returns HTML, falling back to base link`);
+                        if (validUrl !== baseLink) {
+                            validUrl = baseLink;
+                            actualQuality = "Default";
+                            await socket.sendMessage(sender, { text: `⚠️ *${quality} සර්වර් එකේ නැත.*\n_පවතින Quality එක බාගත වෙමින්..._` }, { quoted: msg });
+                        }
+                    }
+
+                    // Size check
+                    if (headRes.headers['content-length']) {
+                        const sizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
+                        if (sizeMB > 1950) {
+                            await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
+                            return await reply(`❌ *File එක 2GB වලට වඩා විශාලයි! (${sizeMB.toFixed(2)} MB)*`);
+                        }
+                    }
+                } catch (headErr) {
+                    // 404 Error — quality URL eka server eke na
+                    if (headErr.response && headErr.response.status === 404) {
+                        console.log(`CZ: ${quality} URL returns 404, falling back to base link`);
+                        if (validUrl !== baseLink) {
+                            validUrl = baseLink;
+                            actualQuality = "Default";
+                            await socket.sendMessage(sender, { text: `⚠️ *${quality} සංස්කරණය සර්වර් එකේ නැත (404).*\n_පවතින එකම සංස්කරණය බාගත වෙමින්..._` }, { quoted: msg });
+                        } else {
+                            // Base link ekath 404 — proxy try karanna
+                            console.log(`CZ: Base link also 404, trying proxy API...`);
+                        }
+                    } else {
+                        console.log("CZ: HEAD check failed:", headErr.message);
+                    }
+                }
+
+                // ═══════ Fallback eke base link ekath 404 nam, check karanna ═══════
+                if (validUrl === baseLink) {
+                    try {
+                        const baseHead = await axios.head(baseLink, { timeout: 10000 });
+                        const baseContentType = baseHead.headers['content-type'] || '';
+                        if (baseContentType.includes('text/html')) {
+                            // Base link ekath HTML denava — proxy try karanna
+                            validUrl = null;
+                        }
+                    } catch (baseErr) {
+                        if (baseErr.response && baseErr.response.status === 404) {
+                            validUrl = null;
+                        }
+                    }
+                }
+
+                await socket.sendMessage(sender, { text: `📥 *Downloading ${title} (${actualQuality})...*\n_Upload වීමට ටික වේලාවක් ගත විය හැක._` }, { quoted: metaQuote });
+
+                const caption = `🎬 *${title}* [${actualQuality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
                 let downloadSuccess = false;
 
-                // ═══════ TRY 1: Proxy API eken try karanna ═══════
-                try {
-                    console.log("CZ Download: Trying proxy API...");
-                    await socket.sendMessage(sender, {
-                        document: { url: proxyUrl },
-                        mimetype: "video/mp4",
-                        fileName: `${title} - ${quality}.mp4`,
-                        caption: caption
-                    }, { quoted: metaQuote });
-                    downloadSuccess = true;
-                    console.log("CZ Download: Proxy API success!");
-                } catch (proxyErr) {
-                    console.log("CZ Download: Proxy failed:", proxyErr.message);
-                }
-
-                // ═══════ TRY 2: Direct URL eken try karanna ═══════
-                if (!downloadSuccess) {
+                // ═══════ TRY 1: Direct URL (if valid) ═══════
+                if (validUrl) {
                     try {
-                        console.log("CZ Download: Trying direct URL...");
+                        console.log("CZ Download: Trying direct URL:", validUrl);
                         await socket.sendMessage(sender, {
-                            document: { url: finalUrl },
+                            document: { url: validUrl },
                             mimetype: "video/mp4",
-                            fileName: `${title} - ${quality}.mp4`,
+                            fileName: `${title} - ${actualQuality}.mp4`,
                             caption: caption
                         }, { quoted: metaQuote });
                         downloadSuccess = true;
@@ -172,11 +215,48 @@ module.exports = {
                     }
                 }
 
+                // ═══════ TRY 2: Proxy API ═══════
+                if (!downloadSuccess) {
+                    try {
+                        // Try quality URL first via proxy
+                        const proxyUrl = `https://cz-dnuz.vercel.app/download?url=${finalUrl}`;
+                        console.log("CZ Download: Trying proxy API:", proxyUrl);
+                        await socket.sendMessage(sender, {
+                            document: { url: proxyUrl },
+                            mimetype: "video/mp4",
+                            fileName: `${title} - ${actualQuality}.mp4`,
+                            caption: caption
+                        }, { quoted: metaQuote });
+                        downloadSuccess = true;
+                        console.log("CZ Download: Proxy API success!");
+                    } catch (proxyErr) {
+                        console.log("CZ Download: Proxy failed:", proxyErr.message);
+                    }
+                }
+
+                // ═══════ TRY 3: Proxy API with base link ═══════
+                if (!downloadSuccess && finalUrl !== baseLink) {
+                    try {
+                        const proxyBaseUrl = `https://cz-dnuz.vercel.app/download?url=${baseLink}`;
+                        console.log("CZ Download: Trying proxy with base link:", proxyBaseUrl);
+                        await socket.sendMessage(sender, {
+                            document: { url: proxyBaseUrl },
+                            mimetype: "video/mp4",
+                            fileName: `${title} - Default.mp4`,
+                            caption: caption
+                        }, { quoted: metaQuote });
+                        downloadSuccess = true;
+                        console.log("CZ Download: Proxy base link success!");
+                    } catch (proxyBaseErr) {
+                        console.log("CZ Download: Proxy base link failed:", proxyBaseErr.message);
+                    }
+                }
+
                 if (downloadSuccess) {
                     await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
                 } else {
                     await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                    await reply("❌ *Download Failed! ලින්ක් එක දෝෂ සහිතයි හෝ Expire වී ඇත.*");
+                    await reply("❌ *Download Failed! ලින්ක් එක සර්වර් එකෙන් ඉවත් කර ඇත හෝ Expire වී ඇත.*");
                 }
 
             } catch (e) {
