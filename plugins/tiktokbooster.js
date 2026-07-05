@@ -9,16 +9,15 @@ module.exports = {
     handler: async ({ socket, msg, sender, args, reply }) => {
         const input = args.join(" ").trim();
 
-        // 1. ලින්ක් එක අල්ලගැනීම (දැන් Profile Links සහ Video Links දෙකම අල්ලනවා)
-        const urlMatch = input.match(/(https?:\/\/(?:www\.)?(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)\/(?:@[^\s/]+(?:\/video\/\d+)?|[^\s]+))/i);
-        
+        // 1. ලින්ක් එක අල්ලගැනීම 
+        const urlMatch = input.match(/(https?:\/\/(?:www\.)?(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)\/[^\s]+)/i);
         if (!urlMatch) {
-            return reply(`🚀 *SADEW-MINI TIKTOK BOOSTER* 🚀\n\nකරුණාකර TikTok ලින්ක් එකක්, සර්වර් අංකයක් (1-5) සහ අවශ්‍ය සේවාව ලබා දෙන්න.\n\n💡 *උදාහරණ:*\n\`.ttboost https://vm.tiktok.com/xxxxxx 1\` (Views සඳහා)\n\`.ttboost https://www.tiktok.com/@username 5\` (Followers සඳහා)`);
+            return reply(`🚀 *SADEW-MINI TIKTOK BOOSTER* 🚀\n\nකරුණාකර TikTok ලින්ක් එකක්, සර්වර් අංකයක් (1-5) සහ අවශ්‍ය සේවාව ලබා දෙන්න.\n\n💡 *උදාහරණ:*\n\`.ttboost https://vm.tiktok.com/xxxxxx 1\` (Views සඳහා)`);
         }
         
         let tiktokUrl = urlMatch[0];
         
-        // 2. සර්වර් අංකය සහ සේවාව (Type) අල්ලගැනීම
+        // 2. සර්වර් අංකය සහ Type එක අල්ලගැනීම
         const remainingInput = input.replace(tiktokUrl, "").toLowerCase();
         const numMatch = remainingInput.match(/[1-5]/);
         const serverNum = numMatch ? numMatch[0] : "1";
@@ -30,23 +29,31 @@ module.exports = {
         else if (remainingInput.includes("favorite")) boostType = "favorites";
         else if (remainingInput.includes("follower")) boostType = "followers";
 
-        // Followers දානවා නම් අනිවාර්යයෙන් සර්වර් 5 වෙන්න ඕනේ
-        if (boostType === "followers" && serverNum !== "5") {
-            return reply(`❌ Followers යැවීමට කරුණාකර සර්වර් 5 භාවිතා කරන්න.\nඋදා: \`.ttboost <profile_link> 5 followers\``);
-        }
-
         if (serverNum === "1" && boostType === "views") {
             boostType = "video_views";
         }
 
         try {
             await socket.sendMessage(sender, { react: { text: '🚀', key: msg.key } });
-            await reply(`⚙️ _TikTok Boost Server ${serverNum} වෙත සම්බන්ධ වෙමින් පවතී..._\n🎯 *Target:* ${boostType.toUpperCase()}`);
 
-            // 🔥 Short Links (vm.tiktok.com) වල ID එක extract කරගන්න බැරිවෙන අවුල හදන්න,
-            // සමහර වෙලාවට ලින්ක් එකේ අගට "/" එකක් නැත්නම් API එක අවුල් යනවා.
-            // ඒක නිසා ලින්ක් එක පොඩ්ඩක් Clean කරලා යවනවා.
-            tiktokUrl = tiktokUrl.split("?")[0]; // Parameters අයින් කරනවා (?share_id= වගේ ඒවා)
+            // 🔥 AUTO LINK EXPANDER (කෙටි ලින්ක් දිගු කිරීම)
+            if (tiktokUrl.includes("vm.tiktok.com") || tiktokUrl.includes("vt.tiktok.com")) {
+                await reply(`🔄 _කෙටි ලින්ක් එකක් හඳුනාගත්තා. එය සම්පූර්ණ ලින්ක් එකක් බවට පත් කරමින් පවතී..._`);
+                try {
+                    const expandRes = await axios.get(tiktokUrl, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                    });
+                    // Redirect වුණාට පස්සේ එන අන්තිම ලින්ක් එක ගන්නවා
+                    tiktokUrl = expandRes.request.res.responseUrl || tiktokUrl;
+                } catch (e) {
+                    tiktokUrl = e.request?.res?.responseUrl || tiktokUrl;
+                }
+            }
+
+            // ලින්ක් එකේ අග තියෙන අනවශ්‍ය කෑලි අයින් කරලා Clean කරනවා
+            tiktokUrl = tiktokUrl.split("?")[0]; 
+            
+            await reply(`⚙️ _TikTok Boost Server ${serverNum} වෙත සම්බන්ධ වෙමින් පවතී..._\n🎯 *Target:* ${boostType.replace('_', ' ').toUpperCase()}`);
 
             let boostPath = serverNum === "1" ? "boost" : `boost${serverNum}`;
             let apiUrl = `https://apis.davidcyril.name.ng/api/tiktok/${boostPath}?url=${encodeURIComponent(tiktokUrl)}`;
@@ -91,15 +98,14 @@ module.exports = {
 
             } else {
                 resultMsg += `*❌ Status:* Failed / Cooldown Active\n`;
-                resultMsg += `*💬 Reason:* ${data.message || 'සර්වර් එක මේ මොහොතේ කාර්යබහුලයි හෝ Cooldown වී ඇත.'}\n\n`;
                 
-                // Extract ID error එක ආවොත් වෙනම මැසේජ් එකක් දෙනවා
-                if (data.message && data.message.includes("extract")) {
-                    resultMsg += `_💡 ලින්ක් එකේ අවුලක්! කරුණාකර 'vm.tiktok.com' කෙටි ලින්ක් වෙනුවට, කෙලින්ම බ්‍රව්සරයෙන් කොපි කරගත් සම්පූර්ණ ලින්ක් එකක් භාවිතා කරන්න._\n`;
+                if (data.message && data.message.toLowerCase().includes("banned")) {
+                    resultMsg += `*💬 Reason:* API සර්වර් එකේ මෙම පහසුකම දැනට අවහිර (Banned) කර ඇත. (මෙය ඔබගේ ගිණුමේ දෝෂයක් නොවේ).\n\n`;
                 } else {
-                    resultMsg += `_💡 කරුණාකර වෙනත් සර්වර් එකක් උත්සාහ කරන්න._\n`;
+                    resultMsg += `*💬 Reason:* ${data.message || 'සර්වර් එක කාර්යබහුලයි.'}\n\n`;
                 }
                 
+                resultMsg += `_💡 කරුණාකර වෙනත් සර්වර් එකක් උත්සාහ කරන්න._\n`;
                 await socket.sendMessage(sender, { react: { text: '⚠️', key: msg.key } });
             }
 
