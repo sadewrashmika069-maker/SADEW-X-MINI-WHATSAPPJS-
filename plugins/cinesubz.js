@@ -1,9 +1,8 @@
 const axios = require('axios');
-const { generateWAMessageFromContent, proto } = require('baileys');
 
 module.exports = {
     name: "cinesubz-downloader",
-    category: 3, // Movies / Download Menu එකට
+    category: 3, 
     description: "Search and download Sinhala Subbed movies from Cinesubz",
     commands: ["cz", "cinesubz", "cz_dl"],
 
@@ -50,7 +49,6 @@ module.exports = {
                     const replyMsg = messages[0];
                     if (!replyMsg.message) return;
 
-                    // වෙනත් ගෲප්/චැට් වලින් එන මැසේජ් ෆිල්ටර් කිරීම
                     if (replyMsg.key.remoteJid !== sender) return;
 
                     const replyContext = replyMsg.message.extendedTextMessage?.contextInfo;
@@ -79,51 +77,24 @@ module.exports = {
 
                             const directVideo = extData.data.find(v => v.is_direct_mp4) || extData.data[0];
                             const baseLink = directVideo.link;
+                            
+                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${selectedMovie.title}\n📅 *Year:* ${selectedMovie.year}\n🎭 *Genres:* ${selectedMovie.genres}\n⭐ *IMDB:* ${selectedMovie.imdb}\n\n> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️`;
                             const shortTitle = selectedMovie.title.substring(0, 20).replace(/[^a-zA-Z0-9 ]/g, "").trim();
 
-                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${selectedMovie.title}\n📅 *Year:* ${selectedMovie.year}\n🎭 *Genres:* ${selectedMovie.genres}\n⭐ *IMDB:* ${selectedMovie.imdb}\n\n> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️`;
+                            // 🔥 ඔයාගේ බේස් එකට සපෝට් කරන Standard Buttons මෙතන තියෙනවා
+                            const buttons = [
+                                { buttonId: `.cz_dl ${shortTitle} || 480p || ${baseLink}`, buttonText: { displayText: "🎥 480p (SD)" }, type: 1 },
+                                { buttonId: `.cz_dl ${shortTitle} || 720p || ${baseLink}`, buttonText: { displayText: "🎥 720p (HD)" }, type: 1 }
+                            ];
 
-                            // 🔥 MODERN INTERACTIVE BUTTONS (NativeFlow)
-                            const InteractiveMessage = proto.Message.InteractiveMessage;
-                            const interactiveMessage = InteractiveMessage.create({
-                                body: InteractiveMessage.Body.create({ text: captionText }),
-                                footer: InteractiveMessage.Footer.create({ text: "👑 SADEW-MINI 👑" }),
-                                header: InteractiveMessage.Header.create({
-                                    title: "",
-                                    hasMediaAttachment: false
-                                }),
-                                nativeFlowMessage: InteractiveMessage.NativeFlowMessage.create({
-                                    buttons: [
-                                        {
-                                            name: "quick_reply",
-                                            buttonParamsJson: JSON.stringify({
-                                                display_text: "🎥 480p (SD)",
-                                                id: `.cz_dl ${shortTitle} || 480p || ${baseLink}`
-                                            })
-                                        },
-                                        {
-                                            name: "quick_reply",
-                                            buttonParamsJson: JSON.stringify({
-                                                display_text: "🎥 720p (HD)",
-                                                id: `.cz_dl ${shortTitle} || 720p || ${baseLink}`
-                                            })
-                                        }
-                                    ]
-                                })
-                            });
-
-                            const buttonMessage = generateWAMessageFromContent(sender, {
-                                viewOnceMessage: {
-                                    message: {
-                                        messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
-                                        interactiveMessage
-                                    }
-                                }
+                            await socket.sendMessage(sender, {
+                                image: { url: selectedMovie.img },
+                                caption: captionText,
+                                footer: '👑 SADEW-MINI 👑',
+                                buttons: buttons,
+                                headerType: 4
                             }, { quoted: replyMsg });
 
-                            await socket.relayMessage(sender, buttonMessage.message, { messageId: buttonMessage.key.id });
-
-                            // Listener එක අයින් කරනවා
                             socket.ev.off('messages.upsert', listener);
 
                         } catch (e) {
@@ -163,7 +134,6 @@ module.exports = {
                     finalUrl = originalUrl.replace(/(480p|1080p|1080|480)/i, '720p');
                 }
                 
-                // File Size එක පරීක්ෂා කිරීම (2GB Limit Check)
                 try {
                     const headRes = await axios.head(finalUrl);
                     if (headRes && headRes.headers['content-length']) {
