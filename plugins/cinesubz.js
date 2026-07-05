@@ -8,6 +8,7 @@ module.exports = {
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const botName = "👑 SADEW-MINI 👑";
+        const CZ_API = "https://cz-dnuz.vercel.app";
         const metaQuote = {
             key: { remoteJid: "status@broadcast", participant: "0@s.whatsapp.net", fromMe: false, id: "META_AI_CZ" },
             message: { contactMessage: { displayName: botName, vcard: `BEGIN:VCARD\nVERSION:3.0\nFN:${botName}\nORG:Sadew Cinesubz\nTEL;waid=94700000000:+94 70 000 0000\nEND:VCARD` } }
@@ -26,64 +27,91 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: "🔍", key: msg.key } });
 
-                const searchUrl = `https://cinesubz-api-cnw.vercel.app/api/search?q=${encodeURIComponent(query)}`;
+                // ✅ DanuZz API — search
+                const searchUrl = `${CZ_API}/search?q=${encodeURIComponent(query)}`;
                 const res = await axios.get(searchUrl, { timeout: 15000 });
                 const data = res.data;
 
-                if (!data.status || !data.data || data.data.length === 0) {
+                if (!data.success || !data.result || data.result.length === 0) {
+                    await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
                     return await reply("❌ *සමාවෙන්න, එම නමින් Movies කිසිවක් හමුවූයේ නැත.*");
                 }
 
-                const topResults = data.data.slice(0, 10);
-                let listText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝘀𝘂𝗯𝘇 𝗦𝗲𝗮𝗿𝗰𝗵 🎬] ¡! ❞*\n\n🔍 *සෙව්වේ:* ${query}\n👇 *ඔබට අවශ්ය ෆිල්ම් එකේ අංකය Reply කරන්න*\n\n`;
+                const topResults = data.result.slice(0, 10);
+
+                // Global context eka save karanna (reply catcher ekata)
+                if (!global.czContexts) global.czContexts = {};
+                global.czContexts[sender] = { results: topResults };
+
+                let listText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝘀𝘂𝗯𝘇 𝗦𝗲𝗮𝗿𝗰𝗵 🎬] ¡! ❞*\n\n🔍 *සෙව්වේ:* ${query}\n📊 *Results:* ${topResults.length}\n\n`;
                 
                 topResults.forEach((mv, index) => {
-                    listText += `*${index + 1}.* ${mv.title} (${mv.year || 'N/A'})\n`;
+                    listText += `*${index + 1}.* ${mv.title}\n   ⭐ IMDB: ${mv.imdb || 'N/A'} | 📅 ${mv.date || 'N/A'} | ⏱ ${mv.runtime || 'N/A'}\n\n`;
                 });
-                listText += `\n> *Reply with 1 - ${topResults.length}*\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                listText += `> *📩 ඔබට අවශ්‍ය Movie එකේ අංකය Reply කරන්න (1-${topResults.length})*\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
                 const listMsg = await socket.sendMessage(sender, { text: listText }, { quoted: metaQuote });
 
-                // REPLY LISTENER
+                // Store search msg ID for reply matching
+                global.czContexts[sender].searchMsgId = listMsg.key.id;
+
+                // REPLY LISTENER for movie selection
                 const listener = async ({ messages }) => {
-                    const replyMsg = messages[0];
-                    if (!replyMsg.message) return;
-                    if (replyMsg.key.remoteJid !== sender) return;
+                    try {
+                        const replyMsg = messages[0];
+                        if (!replyMsg.message) return;
+                        if (replyMsg.key.remoteJid !== sender) return;
 
-                    const replyContext = replyMsg.message.extendedTextMessage?.contextInfo;
-                    const isReplyToBot = replyContext?.stanzaId === listMsg.key.id;
+                        const replyContext = replyMsg.message.extendedTextMessage?.contextInfo;
+                        if (!replyContext || replyContext.stanzaId !== listMsg.key.id) return;
 
-                    if (isReplyToBot) {
                         const userReply = replyMsg.message.extendedTextMessage.text.trim();
                         const selectedIndex = parseInt(userReply) - 1;
 
                         if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= topResults.length) {
-                            return await socket.sendMessage(sender, { text: "❌ *වැරදි අංකයක්! කරුණාකර නිවැරදි අංකයක් reply කරන්න.*" }, { quoted: replyMsg });
+                            return await socket.sendMessage(sender, { text: "❌ *වැරදි අංකයක්!*" }, { quoted: replyMsg });
                         }
 
                         const selectedMovie = topResults[selectedIndex];
+                        socket.ev.off('messages.upsert', listener);
 
+                        await socket.sendMessage(sender, { react: { text: "⏳", key: replyMsg.key } });
+                        await socket.sendMessage(sender, { text: `📥 *${selectedMovie.title}* සඳහා Download Links සකසමින්...` }, { quoted: replyMsg });
+
+                        // ✅ /movidl — get download links
                         try {
-                            await socket.sendMessage(sender, { react: { text: "🎬", key: replyMsg.key } });
+                            const movidlUrl = `${CZ_API}/movidl?url=${encodeURIComponent(selectedMovie.url)}`;
+                            const dlRes = await axios.get(movidlUrl, { timeout: 20000 });
+                            const dlData = dlRes.data;
 
-                            const extractUrl = `https://cinesubz-api-cnw.vercel.app/api/extract?id=${selectedMovie.id}&type=mv`;
-                            const extRes = await axios.get(extractUrl, { timeout: 15000 });
-                            const extData = extRes.data;
-
-                            if (!extData.status || !extData.data || extData.data.length === 0) {
-                                return await socket.sendMessage(sender, { text: "❌ *මෙම චිත්රපටියේ Direct Links ලබාගත නොහැක.*" }, { quoted: replyMsg });
+                            if (!dlData.success || !dlData.result || !dlData.result.downloads || dlData.result.downloads.length === 0) {
+                                return await socket.sendMessage(sender, { text: "❌ *මෙම චිත්‍රපටය සඳහා Download Links හමු නොවිණි.*" }, { quoted: replyMsg });
                             }
 
-                            const directVideo = extData.data.find(v => v.is_direct_mp4) || extData.data[0];
-                            const baseLink = directVideo.link;
-                            
-                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${selectedMovie.title}\n📅 *Year:* ${selectedMovie.year}\n🎭 *Genres:* ${selectedMovie.genres}\n⭐ *IMDB:* ${selectedMovie.imdb}\n\n> *ඔබට අවශ්ය Quality එක පහලින් තෝරන්න* ⬇️`;
-                            const shortTitle = selectedMovie.title.substring(0, 20).replace(/[^a-zA-Z0-9 ]/g, "").trim();
+                            const downloads = dlData.result.downloads;
+                            const movieTitle = dlData.result.title || selectedMovie.title;
+                            const shortTitle = movieTitle.substring(0, 20).replace(/[^a-zA-Z0-9 ]/g, "").trim();
 
-                            const buttons = [
-                                { buttonId: `.cz_dl ${shortTitle} || 480p || ${baseLink}`, buttonText: { displayText: "🎥 480p (SD)" }, type: 1 },
-                                { buttonId: `.cz_dl ${shortTitle} || 720p || ${baseLink}`, buttonText: { displayText: "🎥 720p (HD)" }, type: 1 }
-                            ];
+                            // Build quality buttons
+                            const buttons = [];
+                            downloads.forEach((dl, idx) => {
+                                // resolvedUrl eka use karanava — eka /download endpoint ekata pass karanava
+                                const resolvedUrl = dl.resolvedUrl || '';
+                                const label = dl.meta || `Quality ${idx + 1}`;
+                                if (resolvedUrl) {
+                                    buttons.push({
+                                        buttonId: `.cz_dl ${shortTitle} || ${label} || ${resolvedUrl}`,
+                                        buttonText: { displayText: `🎥 ${label}` },
+                                        type: 1
+                                    });
+                                }
+                            });
+
+                            if (buttons.length === 0) {
+                                return await socket.sendMessage(sender, { text: "❌ *Download Links Resolve කළ නොහැක.*" }, { quoted: replyMsg });
+                            }
+
+                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${movieTitle}\n📅 *Year:* ${selectedMovie.date || 'N/A'}\n🎭 *Genres:* ${selectedMovie.genres || 'N/A'}\n⭐ *IMDB:* ${selectedMovie.imdb || 'N/A'}\n⏱ *Runtime:* ${selectedMovie.runtime || 'N/A'}\n\n> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️`;
 
                             await socket.sendMessage(sender, {
                                 image: { url: selectedMovie.img },
@@ -93,20 +121,26 @@ module.exports = {
                                 headerType: 4
                             }, { quoted: replyMsg });
 
-                            socket.ev.off('messages.upsert', listener);
+                            await socket.sendMessage(sender, { react: { text: "🎬", key: replyMsg.key } });
 
-                        } catch (e) {
-                            console.error("Movie Detail Fetch Error:", e);
-                            await socket.sendMessage(sender, { text: "❌ *විස්තර ලබාගැනීමේදී දෝෂයක් ඇතිවිය.*" }, { quoted: replyMsg });
+                        } catch (dlErr) {
+                            console.error("CZ movidl Error:", dlErr.message);
+                            await socket.sendMessage(sender, { text: "❌ *Download Links ලබාගැනීමේදී දෝෂයක්.*" }, { quoted: replyMsg });
                         }
+
+                    } catch (listenerErr) {
+                        console.error("CZ listener error:", listenerErr.message);
                     }
                 };
 
                 socket.ev.on('messages.upsert', listener);
-                setTimeout(() => { socket.ev.off('messages.upsert', listener); }, 60000); 
+                setTimeout(() => { socket.ev.off('messages.upsert', listener); }, 120000);
+
+                await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
 
             } catch (e) {
-                console.error("Cinesubz Search Error:", e);
+                console.error("Cinesubz Search Error:", e.message);
+                await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
                 await reply("❌ *සෙවීමේදී දෝෂයක් ඇතිවිය.*");
             }
         } 
@@ -118,137 +152,95 @@ module.exports = {
             const inputData = args.join(" ").trim();
             if (!inputData.includes('||')) return;
 
-            const [title, quality, originalUrl] = inputData.split(' || ');
-            if (!originalUrl) return;
+            const parts = inputData.split(' || ');
+            const title = parts[0] || 'Movie';
+            const quality = parts[1] || 'Default';
+            const resolvedUrl = parts[2] || '';
+            if (!resolvedUrl) return;
 
             try {
                 await socket.sendMessage(sender, { react: { text: "⬇️", key: msg.key } });
+                await socket.sendMessage(sender, { text: `📥 *Downloading ${title} (${quality})...*\n_Token සහිත Download Link සකසමින්..._` }, { quoted: metaQuote });
 
-                let finalUrl = originalUrl.trim();
-                let actualQuality = quality;
-                const baseLink = originalUrl.trim();
+                const caption = `🎬 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // Quality URL eka hadanna
-                if (quality === '480p') {
-                    finalUrl = baseLink.replace(/(720p|1080p|1080|720)/gi, '480p');
-                } else if (quality === '720p') {
-                    finalUrl = baseLink.replace(/(480p|1080p|1080|480)/gi, '720p');
+                // ═══════ resolvedUrl eka transform karala /download endpoint ekata pass karanna ═══════
+                // resolvedUrl format: https://bot3.sonic-cloud.online/server11/1:/path/to/file.mp4
+                // /download needs:    https://bot3.sonic-cloud.online/server1/path/to/file.mp4?ext=mp4
+                
+                let downloadPageUrl = resolvedUrl.trim();
+                
+                // Transform: /server11/1:/ → /server1/  (or similar patterns)
+                downloadPageUrl = downloadPageUrl.replace(/\/server\d+\/\d+:\//g, '/server1/');
+                
+                // Add ?ext=mp4 if not present and URL ends with .mp4
+                if (downloadPageUrl.endsWith('.mp4') && !downloadPageUrl.includes('?ext=')) {
+                    downloadPageUrl = downloadPageUrl.replace(/\.mp4$/, '?ext=mp4');
                 }
 
-                // ═══════ HEAD REQUEST — URL eka valid da check karanna ═══════
-                let validUrl = finalUrl;
-
-                try {
-                    const headRes = await axios.head(validUrl, { timeout: 10000 });
-                    const contentType = headRes.headers['content-type'] || '';
-
-                    // HTML page ekak enava nam — eka video ekak nemei!
-                    if (contentType.includes('text/html')) {
-                        console.log(`CZ: Quality URL returns HTML, falling back to base link`);
-                        if (validUrl !== baseLink) {
-                            validUrl = baseLink;
-                            actualQuality = "Default";
-                            await socket.sendMessage(sender, { text: `⚠️ *${quality} සර්වර් එකේ නැත.*\n_පවතින Quality එක බාගත වෙමින්..._` }, { quoted: msg });
-                        }
-                    }
-
-                    // Size check
-                    if (headRes.headers['content-length']) {
-                        const sizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
-                        if (sizeMB > 1950) {
-                            await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                            return await reply(`❌ *File එක 2GB වලට වඩා විශාලයි! (${sizeMB.toFixed(2)} MB)*`);
-                        }
-                    }
-                } catch (headErr) {
-                    // 404 Error — quality URL eka server eke na
-                    if (headErr.response && headErr.response.status === 404) {
-                        console.log(`CZ: ${quality} URL returns 404, falling back to base link`);
-                        if (validUrl !== baseLink) {
-                            validUrl = baseLink;
-                            actualQuality = "Default";
-                            await socket.sendMessage(sender, { text: `⚠️ *${quality} සංස්කරණය සර්වර් එකේ නැත (404).*\n_පවතින එකම සංස්කරණය බාගත වෙමින්..._` }, { quoted: msg });
-                        } else {
-                            // Base link ekath 404 — proxy try karanna
-                            console.log(`CZ: Base link also 404, trying proxy API...`);
-                        }
-                    } else {
-                        console.log("CZ: HEAD check failed:", headErr.message);
-                    }
-                }
-
-                // ═══════ Fallback eke base link ekath 404 nam, check karanna ═══════
-                if (validUrl === baseLink) {
-                    try {
-                        const baseHead = await axios.head(baseLink, { timeout: 10000 });
-                        const baseContentType = baseHead.headers['content-type'] || '';
-                        if (baseContentType.includes('text/html')) {
-                            // Base link ekath HTML denava — proxy try karanna
-                            validUrl = null;
-                        }
-                    } catch (baseErr) {
-                        if (baseErr.response && baseErr.response.status === 404) {
-                            validUrl = null;
-                        }
-                    }
-                }
-
-                await socket.sendMessage(sender, { text: `📥 *Downloading ${title} (${actualQuality})...*\n_Upload වීමට ටික වේලාවක් ගත විය හැක._` }, { quoted: metaQuote });
-
-                const caption = `🎬 *${title}* [${actualQuality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
                 let downloadSuccess = false;
 
-                // ═══════ TRY 1: Direct URL (if valid) ═══════
-                if (validUrl) {
-                    try {
-                        console.log("CZ Download: Trying direct URL:", validUrl);
-                        await socket.sendMessage(sender, {
-                            document: { url: validUrl },
-                            mimetype: "video/mp4",
-                            fileName: `${title} - ${actualQuality}.mp4`,
-                            caption: caption
-                        }, { quoted: metaQuote });
-                        downloadSuccess = true;
-                        console.log("CZ Download: Direct URL success!");
-                    } catch (directErr) {
-                        console.log("CZ Download: Direct URL failed:", directErr.message);
+                // ═══════ TRY 1: /download endpoint → tokenized URL ═══════
+                try {
+                    const dlApiUrl = `${CZ_API}/download?url=${downloadPageUrl}`;
+                    console.log("CZ: Trying /download API:", dlApiUrl);
+                    
+                    const dlRes = await axios.get(dlApiUrl, { timeout: 20000 });
+                    const dlData = dlRes.data;
+
+                    if (dlData.success && dlData.result && dlData.result.downloadUrls) {
+                        // Get the HTTP download URL (skip Telegram links)
+                        const httpUrl = dlData.result.downloadUrls.find(u => 
+                            u.url && !u.url.includes('t.me/') && u.url.startsWith('http')
+                        );
+
+                        if (httpUrl && httpUrl.url) {
+                            console.log("CZ: Got tokenized URL:", httpUrl.url);
+
+                            // Size check
+                            if (dlData.result.size) {
+                                const sizeStr = dlData.result.size;
+                                console.log("CZ: File size:", sizeStr);
+                            }
+
+                            await socket.sendMessage(sender, {
+                                document: { url: httpUrl.url },
+                                mimetype: "video/mp4",
+                                fileName: `${title} - ${quality}.mp4`,
+                                caption: caption
+                            }, { quoted: metaQuote });
+
+                            downloadSuccess = true;
+                            console.log("CZ: Download SUCCESS via tokenized URL!");
+                        }
                     }
+                } catch (dlErr) {
+                    console.log("CZ: /download API failed:", dlErr.message);
                 }
 
-                // ═══════ TRY 2: Proxy API ═══════
+                // ═══════ TRY 2: Direct resolvedUrl ═══════
                 if (!downloadSuccess) {
                     try {
-                        // Try quality URL first via proxy
-                        const proxyUrl = `https://cz-dnuz.vercel.app/download?url=${finalUrl}`;
-                        console.log("CZ Download: Trying proxy API:", proxyUrl);
-                        await socket.sendMessage(sender, {
-                            document: { url: proxyUrl },
-                            mimetype: "video/mp4",
-                            fileName: `${title} - ${actualQuality}.mp4`,
-                            caption: caption
-                        }, { quoted: metaQuote });
-                        downloadSuccess = true;
-                        console.log("CZ Download: Proxy API success!");
-                    } catch (proxyErr) {
-                        console.log("CZ Download: Proxy failed:", proxyErr.message);
-                    }
-                }
-
-                // ═══════ TRY 3: Proxy API with base link ═══════
-                if (!downloadSuccess && finalUrl !== baseLink) {
-                    try {
-                        const proxyBaseUrl = `https://cz-dnuz.vercel.app/download?url=${baseLink}`;
-                        console.log("CZ Download: Trying proxy with base link:", proxyBaseUrl);
-                        await socket.sendMessage(sender, {
-                            document: { url: proxyBaseUrl },
-                            mimetype: "video/mp4",
-                            fileName: `${title} - Default.mp4`,
-                            caption: caption
-                        }, { quoted: metaQuote });
-                        downloadSuccess = true;
-                        console.log("CZ Download: Proxy base link success!");
-                    } catch (proxyBaseErr) {
-                        console.log("CZ Download: Proxy base link failed:", proxyBaseErr.message);
+                        console.log("CZ: Trying direct resolvedUrl:", resolvedUrl);
+                        
+                        // HEAD check first
+                        const headRes = await axios.head(resolvedUrl, { timeout: 10000 });
+                        const contentType = headRes.headers['content-type'] || '';
+                        
+                        if (!contentType.includes('text/html')) {
+                            await socket.sendMessage(sender, {
+                                document: { url: resolvedUrl },
+                                mimetype: "video/mp4",
+                                fileName: `${title} - ${quality}.mp4`,
+                                caption: caption
+                            }, { quoted: metaQuote });
+                            downloadSuccess = true;
+                            console.log("CZ: Download SUCCESS via direct URL!");
+                        } else {
+                            console.log("CZ: Direct URL returns HTML, skipping");
+                        }
+                    } catch (directErr) {
+                        console.log("CZ: Direct URL failed:", directErr.message);
                     }
                 }
 
@@ -256,13 +248,13 @@ module.exports = {
                     await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
                 } else {
                     await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                    await reply("❌ *Download Failed! ලින්ක් එක සර්වර් එකෙන් ඉවත් කර ඇත හෝ Expire වී ඇත.*");
+                    await reply("❌ *Download Failed! සර්වර් එකේ ලින්ක් එක Expire වී ඇත. වෙනත් Quality එකක් උත්සාහ කරන්න.*");
                 }
 
             } catch (e) {
                 console.error("Cinesubz DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                await reply("❌ *Download Failed! ලින්ක් එක දෝෂ සහිතයි හෝ Expire වී ඇත.*");
+                await reply("❌ *Download Failed!*");
             }
         }
     }
