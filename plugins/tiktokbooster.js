@@ -3,56 +3,81 @@ const axios = require('axios');
 module.exports = {
     name: "tiktok-booster",
     category: 5, 
-    description: "Boost TikTok Views/Followers using SMM APIs",
+    description: "Boost TikTok Views/Likes/Followers using SMM APIs",
     commands: ["ttboost", "tiktokboost", "boosttt", "tview"],
 
     handler: async ({ socket, msg, sender, args, reply }) => {
         const input = args.join(" ").trim();
 
-        // 1. ලින්ක් එක අල්ලගැනීම
+        // 1. ලින්ක් එක අල්ලගැනීම (TikTok URLs)
         const urlMatch = input.match(/(https?:\/\/(?:www\.)?(?:tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com)\/[^\s]+)/i);
         if (!urlMatch) {
-            return reply(`🚀 *SADEW-MINI TIKTOK BOOSTER* 🚀\n\nකරුණාකර TikTok ලින්ක් එකක් සහ සර්වර් අංකයක් (1-5) ලබා දෙන්න.\n\n💡 *උදාහරණ:*\n\`.ttboost https://vm.tiktok.com/xxxxxx 1\`\n\n*Servers:*\n[1] - Video Views (Fast)\n[2] - Video Views (Alt)\n[3] - Multi-Session Views\n[4] - Video Likes/Shares\n[5] - Followers (High Cooldown)`);
+            return reply(`🚀 *SADEW-MINI TIKTOK BOOSTER* 🚀\n\nකරුණාකර TikTok ලින්ක් එකක්, සර්වර් අංකයක් (1-5) සහ අවශ්‍ය සේවාව (views/likes/shares/followers) ලබා දෙන්න.\n\n💡 *උදාහරණ:*\n\`.ttboost https://vm.tiktok.com/xxxxxx 1\` (Views සඳහා)\n\`.ttboost https://vm.tiktok.com/xxxxxx 4 likes\` (Likes සඳහා)\n\`.ttboost https://vm.tiktok.com/xxxxxx 4 shares\` (Shares සඳහා)`);
         }
         
         const tiktokUrl = urlMatch[0];
+        
+        // ලින්ක් එකෙන් අයින් කරලා ඉතුරු ටික (සර්වර් එක සහ type එක හොයාගන්න)
+        const remainingInput = input.replace(tiktokUrl, "").toLowerCase();
 
         // 2. සර්වර් අංකය අල්ලගැනීම (නැත්නම් Default 1 ගන්නවා)
-        const numMatch = input.replace(tiktokUrl, "").match(/[1-5]/);
+        const numMatch = remainingInput.match(/[1-5]/);
         const serverNum = numMatch ? numMatch[0] : "1";
+
+        // 3. අවශ්‍ය සේවාව (Type) අල්ලගැනීම (නැත්නම් Default 'views' ගන්නවා)
+        let boostType = "views"; 
+        if (remainingInput.includes("like")) boostType = "likes";
+        else if (remainingInput.includes("share")) boostType = "shares";
+        else if (remainingInput.includes("comment")) boostType = "comments";
+        else if (remainingInput.includes("favorite")) boostType = "favorites";
+        else if (remainingInput.includes("follower")) boostType = "followers";
+
+        // Server 1 වල views වලට API එකේ තියෙන්නේ 'video_views' කියලයි (උඹ එවපු curl එකේ විදිහට)
+        if (serverNum === "1" && boostType === "views") {
+            boostType = "video_views";
+        }
 
         try {
             await socket.sendMessage(sender, { react: { text: '🚀', key: msg.key } });
-            await reply(`⚙️ _TikTok Boost Server ${serverNum} වෙත ඉල්ලීම යවමින් පවතී. කරුණාකර රැඳී සිටින්න..._`);
+            await reply(`⚙️ _TikTok Boost Server ${serverNum} වෙත සම්බන්ධ වෙමින් පවතී..._\n🎯 *Target:* ${boostType.toUpperCase()}`);
 
-            // 🔥 මෙතන තමයි හැදුවේ! (tiktokboost වෙනුවට tiktok-boost කියලා ඉරක් එක්ක දැම්මා)
-            let apiUrl = "";
-            switch (serverNum) {
-                case "1": apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost?url=${encodeURIComponent(tiktokUrl)}`; break;
-                case "2": apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost-2?url=${encodeURIComponent(tiktokUrl)}`; break;
-                case "3": apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost-3?url=${encodeURIComponent(tiktokUrl)}`; break;
-                case "4": apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost-4?url=${encodeURIComponent(tiktokUrl)}`; break;
-                case "5": apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost-5?url=${encodeURIComponent(tiktokUrl)}`; break;
-                default: apiUrl = `https://apis.davidcyril.name.ng/tiktok-boost?url=${encodeURIComponent(tiktokUrl)}`;
+            // 🔥 ඔයා හොයාගත්ත නිවැරදි API Endpoint එක
+            let boostPath = serverNum === "1" ? "boost" : `boost${serverNum}`;
+            let apiUrl = `https://apis.davidcyril.name.ng/api/tiktok/${boostPath}?url=${encodeURIComponent(tiktokUrl)}`;
+
+            // සර්වර් 1 සහ 4 වලට විතරයි type එක සපෝට් කරන්නේ
+            if (serverNum === "1" || serverNum === "4") {
+                apiUrl += `&type=${boostType}`;
             }
 
-            const response = await axios.get(apiUrl, { timeout: 30000 });
-            const data = response.data;
+            let data;
+            try {
+                // කෙලින්ම නිවැරදි ලින්ක් එකට Request එක යවනවා
+                const response = await axios.get(apiUrl, { timeout: 25000 });
+                data = response.data;
+            } catch (err) {
+                if (err.response && err.response.data) {
+                    // 400/429 (Cooldown Error) ආවොත් ඒකෙත් JSON Data තියෙනවා
+                    data = err.response.data;
+                } else {
+                    throw err; 
+                }
+            }
 
-            // 3. Responses හැසිරවීම
+            // 4. Responses හැසිරවීම
             let resultMsg = `*↳ ❝ [🚀 𝗦𝗮𝗱𝗲𝘄 𝗧𝗶𝗸𝗧𝗼𝗸 𝗕𝗼𝗼𝘀𝘁𝗲𝗿 🚀] ¡! ❞*\n\n`;
-            resultMsg += `*🔗 Link:* ${tiktokUrl}\n*🖧 Server:* ${serverNum}\n\n`;
+            resultMsg += `*🔗 Link:* ${tiktokUrl}\n*🖧 Server:* ${serverNum}\n*🎯 Type:* ${boostType.replace('_', ' ').toUpperCase()}\n\n`;
 
-            if (data.success) {
+            if (data.success || data.success === 'true' || data.success === true) {
                 resultMsg += `*✅ Status:* Success\n`;
 
                 if (data.data && data.data.amount_processed) {
-                    resultMsg += `*📈 Processed:* ${data.data.amount_processed} ${data.type || 'Views'}\n`;
+                    resultMsg += `*📈 Processed:* ${data.data.amount_processed}\n`;
                 } 
                 else if (data.results && Array.isArray(data.results)) {
                     let total = 0;
                     data.results.forEach(res => total += res.quantity || 0);
-                    resultMsg += `*📈 Sessions Sent:* ${data.sessions}\n*📊 Est. Quantity:* ${total}\n`;
+                    resultMsg += `*📈 Sessions:* ${data.sessions || data.results.length}\n*📊 Est. Quantity:* ${total}\n`;
                 } 
                 else if (data.message) {
                     resultMsg += `*💬 Info:* ${data.message}\n`;
@@ -63,8 +88,8 @@ module.exports = {
 
             } else {
                 resultMsg += `*❌ Status:* Failed / Cooldown Active\n`;
-                resultMsg += `*💬 Reason:* ${data.message || 'සර්වර් එක මේ මොහොතේ කාර්යබහුලයි.'}\n\n`;
-                resultMsg += `_💡 කරුණාකර වෙනත් සර්වර් එකක් උත්සාහ කරන්න (උදා: .ttboost <link> 2)._\n`;
+                resultMsg += `*💬 Reason:* ${data.message || 'සර්වර් එක මේ මොහොතේ කාර්යබහුලයි හෝ Cooldown වී ඇත.'}\n\n`;
+                resultMsg += `_💡 කරුණාකර වෙනත් සර්වර් එකක් උත්සාහ කරන්න._\n`;
                 await socket.sendMessage(sender, { react: { text: '⚠️', key: msg.key } });
             }
 
@@ -77,12 +102,8 @@ module.exports = {
             console.error("[TIKTOK BOOST ERROR]:", error.message);
             await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
             
-            // 404 ආවොත් කියන්න වෙනම මැසේජ් එකකුත් දැම්මා
-            if (error.response && error.response.status === 404) {
-                await reply(`❌ *සර්වර් දෝෂයකි (404 Not Found)!*\n\nAPI සර්වර් එකේ මෙම පහසුකම දැනට ඉවත් කර හෝ වෙනස් කර ඇත.`);
-            } else {
-                await reply(`❌ *සර්වර් දෝෂයකි!*\n\nමෙම සර්වර් එක දැනට අක්‍රිය වී හෝ අවහිර වී ඇත. කරුණාකර පසුව නැවත උත්සාහ කරන්න.`);
-            }
+            let errMsg = error.response?.data?.message || error.message;
+            await reply(`❌ *සර්වර් දෝෂයකි!*\n\nAPI සර්වර් එක අක්‍රිය වී ඇත.\n_හේතුව: ${errMsg}_`);
         }
     }
 };
