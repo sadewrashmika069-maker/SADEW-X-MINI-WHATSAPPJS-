@@ -124,41 +124,60 @@ module.exports = {
 
             try {
                 await socket.sendMessage(sender, { react: { text: "⬇️", key: msg.key } });
-                await socket.sendMessage(sender, { text: `⬇️ *Downloading ${title} (${quality})...*\n_මෙය විශාල file එකක් බැවින්, WhatsApp වෙත Upload වීමට ටික වේලාවක් ගත විය හැක._` }, { quoted: metaQuote });
+                await socket.sendMessage(sender, { text: `⬇️ *Downloading ${title} (${quality})...*\n_මෙය විශාල file එකක් බැවින්, Upload වීමට ටික වේලාවක් ගත විය හැක._` }, { quoted: metaQuote });
 
-                let finalUrl = originalUrl;
+                let finalUrl = originalUrl.trim();
                 if (quality === '480p') {
                     finalUrl = originalUrl.replace(/(720p|1080p|1080|720)/i, '480p');
                 } else if (quality === '720p') {
                     finalUrl = originalUrl.replace(/(480p|1080p|1080|480)/i, '720p');
                 }
 
-                // ✅ Proxy API eken wrap karanna — direct URL eka 125KB HTML denava
-                const proxyDownloadUrl = `https://cz-dnuz.vercel.app/download?url=${encodeURIComponent(finalUrl)}`;
-
-                try {
-                    const headRes = await axios.head(proxyDownloadUrl, { timeout: 10000 });
-                    if (headRes && headRes.headers['content-length']) {
-                        const sizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
-                        if (sizeMB > 1950) { 
-                            await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                            return await reply(`❌ *Error: File එක 2GB වලට වඩා විශාලයි! (${sizeMB.toFixed(2)} MB)*\nWhatsApp හරහා මෙය යැවිය නොහැක.`);
-                        }
-                    }
-                } catch (headErr) {
-                    console.log("Size check failed, proceeding with direct upload...");
-                }
-
                 const caption = `🎬 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                await socket.sendMessage(sender, {
-                    document: { url: proxyDownloadUrl },
-                    mimetype: "video/mp4",
-                    fileName: `${title} - ${quality}.mp4`,
-                    caption: caption
-                }, { quoted: metaQuote });
+                // ✅ PROXY API URL — encodeURIComponent nathuva! (double encoding fix)
+                const proxyUrl = `https://cz-dnuz.vercel.app/download?url=${finalUrl}`;
 
-                await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+                let downloadSuccess = false;
+
+                // ═══════ TRY 1: Proxy API eken try karanna ═══════
+                try {
+                    console.log("CZ Download: Trying proxy API...");
+                    await socket.sendMessage(sender, {
+                        document: { url: proxyUrl },
+                        mimetype: "video/mp4",
+                        fileName: `${title} - ${quality}.mp4`,
+                        caption: caption
+                    }, { quoted: metaQuote });
+                    downloadSuccess = true;
+                    console.log("CZ Download: Proxy API success!");
+                } catch (proxyErr) {
+                    console.log("CZ Download: Proxy failed:", proxyErr.message);
+                }
+
+                // ═══════ TRY 2: Direct URL eken try karanna ═══════
+                if (!downloadSuccess) {
+                    try {
+                        console.log("CZ Download: Trying direct URL...");
+                        await socket.sendMessage(sender, {
+                            document: { url: finalUrl },
+                            mimetype: "video/mp4",
+                            fileName: `${title} - ${quality}.mp4`,
+                            caption: caption
+                        }, { quoted: metaQuote });
+                        downloadSuccess = true;
+                        console.log("CZ Download: Direct URL success!");
+                    } catch (directErr) {
+                        console.log("CZ Download: Direct URL failed:", directErr.message);
+                    }
+                }
+
+                if (downloadSuccess) {
+                    await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+                } else {
+                    await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
+                    await reply("❌ *Download Failed! ලින්ක් එක දෝෂ සහිතයි හෝ Expire වී ඇත.*");
+                }
 
             } catch (e) {
                 console.error("Cinesubz DL Error:", e.message);
