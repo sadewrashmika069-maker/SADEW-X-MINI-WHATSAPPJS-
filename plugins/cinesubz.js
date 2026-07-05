@@ -95,7 +95,6 @@ module.exports = {
                             // Build quality buttons
                             const buttons = [];
                             downloads.forEach((dl, idx) => {
-                                // resolvedUrl eka use karanava — eka /download endpoint ekata pass karanava
                                 const resolvedUrl = dl.resolvedUrl || '';
                                 const label = dl.meta || `Quality ${idx + 1}`;
                                 if (resolvedUrl) {
@@ -163,61 +162,69 @@ module.exports = {
                 await socket.sendMessage(sender, { text: `📥 *Downloading ${title} (${quality})...*\n_Token සහිත Download Link සකසමින්..._` }, { quoted: metaQuote });
 
                 const caption = `🎬 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
-
-                // ═══════ resolvedUrl eka transform karala /download endpoint ekata pass karanna ═══════
-                // resolvedUrl format: https://bot3.sonic-cloud.online/server11/1:/path/to/file.mp4
-                // /download needs:    https://bot3.sonic-cloud.online/server11/path/to/file.mp4
                 
-                let downloadPageUrl = resolvedUrl.trim();
+                // ═══════ Create URL variations ═══════
+                let downloadPageUrlOriginal = resolvedUrl.trim();
                 
-                // Transform: /server11/1:/ → /server11/ (keep the specific server number)
-                downloadPageUrl = downloadPageUrl.replace(/\/(server\d+)\/\d+:\//g, '/$1/');
+                // Transform: /serverX/Y:/ → /serverX/ 
+                downloadPageUrlOriginal = downloadPageUrlOriginal.replace(/\/(server\d+)\/\d+:\//g, '/$1/');
                 
-                // Add ?ext=mp4 if not present and URL ends with .mp4 (without query params)
-                if (downloadPageUrl.endsWith('.mp4') && !downloadPageUrl.includes('?ext=')) {
-                    downloadPageUrl = downloadPageUrl.replace(/\.mp4$/, '?ext=mp4');
+                // Add ?ext=mp4 if not present and URL ends with .mp4
+                if (downloadPageUrlOriginal.endsWith('.mp4') && !downloadPageUrlOriginal.includes('?ext=')) {
+                    downloadPageUrlOriginal = downloadPageUrlOriginal.replace(/\.mp4$/, '?ext=mp4');
                 }
 
+                // Fallback URL (if original server fails, try server1)
+                let downloadPageUrlFallback = downloadPageUrlOriginal.replace(/\/server\d+\//, '/server1/');
+                
                 let downloadSuccess = false;
 
-                // ═══════ TRY 1: /download endpoint → tokenized URL ═══════
-                try {
-                    const dlApiUrl = `${CZ_API}/download?url=${encodeURIComponent(downloadPageUrl)}`;
-                    console.log("CZ: Trying /download API:", dlApiUrl);
-                    
-                    const dlRes = await axios.get(dlApiUrl, { timeout: 20000 });
-                    const dlData = dlRes.data;
+                // Function to attempt /download API
+                const tryDownloadApi = async (urlToTry) => {
+                    try {
+                        // DO NOT double encode the URL, it already has %20!
+                        const dlApiUrl = `${CZ_API}/download?url=${urlToTry}`;
+                        console.log("CZ: Trying /download API:", dlApiUrl);
+                        
+                        const dlRes = await axios.get(dlApiUrl, { timeout: 20000 });
+                        const dlData = dlRes.data;
 
-                    if (dlData.success && dlData.result && dlData.result.downloadUrls) {
-                        // Get the HTTP download URL (skip Telegram links)
-                        const httpUrl = dlData.result.downloadUrls.find(u => 
-                            u.url && !u.url.includes('t.me/') && u.url.startsWith('http')
-                        );
+                        if (dlData.success && dlData.result && dlData.result.downloadUrls) {
+                            const httpUrl = dlData.result.downloadUrls.find(u => 
+                                u.url && !u.url.includes('t.me/') && u.url.startsWith('http')
+                            );
 
-                        if (httpUrl && httpUrl.url) {
-                            console.log("CZ: Got tokenized URL:", httpUrl.url);
-
-                            await socket.sendMessage(sender, {
-                                document: { url: httpUrl.url },
-                                mimetype: "video/mp4",
-                                fileName: `${title} - ${quality}.mp4`,
-                                caption: caption
-                            }, { quoted: metaQuote });
-
-                            downloadSuccess = true;
-                            console.log("CZ: Download SUCCESS via tokenized URL!");
+                            if (httpUrl && httpUrl.url) {
+                                console.log("CZ: Got tokenized URL:", httpUrl.url);
+                                await socket.sendMessage(sender, {
+                                    document: { url: httpUrl.url },
+                                    mimetype: "video/mp4",
+                                    fileName: `${title} - ${quality}.mp4`,
+                                    caption: caption
+                                }, { quoted: metaQuote });
+                                return true;
+                            }
                         }
+                        return false;
+                    } catch (e) {
+                        console.log("CZ: /download API failed for", urlToTry, "Error:", e.message);
+                        return false;
                     }
-                } catch (dlErr) {
-                    console.log("CZ: /download API failed:", dlErr.message);
+                };
+
+                // ═══════ TRY 1: /download API (Original Server) ═══════
+                downloadSuccess = await tryDownloadApi(downloadPageUrlOriginal);
+
+                // ═══════ TRY 2: /download API (Fallback Server 1) ═══════
+                if (!downloadSuccess && downloadPageUrlFallback !== downloadPageUrlOriginal) {
+                    console.log("CZ: Original server failed, falling back to server1...");
+                    downloadSuccess = await tryDownloadApi(downloadPageUrlFallback);
                 }
 
-                // ═══════ TRY 2: Direct resolvedUrl ═══════
+                // ═══════ TRY 3: Direct resolvedUrl (if API totally fails) ═══════
                 if (!downloadSuccess) {
                     try {
                         console.log("CZ: Trying direct resolvedUrl:", resolvedUrl);
-                        
-                        // HEAD check first
                         const headRes = await axios.head(resolvedUrl, { timeout: 10000 });
                         const contentType = headRes.headers['content-type'] || '';
                         
@@ -230,8 +237,6 @@ module.exports = {
                             }, { quoted: metaQuote });
                             downloadSuccess = true;
                             console.log("CZ: Download SUCCESS via direct URL!");
-                        } else {
-                            console.log("CZ: Direct URL returns HTML, skipping");
                         }
                     } catch (directErr) {
                         console.log("CZ: Direct URL failed:", directErr.message);
