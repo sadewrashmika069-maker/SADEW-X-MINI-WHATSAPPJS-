@@ -35,7 +35,7 @@ module.exports = {
                 }
 
                 const topResults = data.data.slice(0, 10);
-                let listText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝘀𝘂𝗯𝘇 𝗦𝗲𝗮𝗿𝗰𝗵 🎬] ¡! ❞*\n\n🔍 *සෙව්වේ:* ${query}\n👇 *ඔබට අවශ්‍ය ෆිල්ම් එකේ අංකය Reply කරන්න*\n\n`;
+                let listText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝘀𝘂𝗯𝘇 𝗦𝗲𝗮𝗿𝗰𝗵 🎬] ¡! ❞*\n\n🔍 *සෙව්වේ:* ${query}\n👇 *ඔබට අවශ්ය ෆිල්ම් එකේ අංකය Reply කරන්න*\n\n`;
                 
                 topResults.forEach((mv, index) => {
                     listText += `*${index + 1}.* ${mv.title} (${mv.year || 'N/A'})\n`;
@@ -72,16 +72,15 @@ module.exports = {
                             const extData = extRes.data;
 
                             if (!extData.status || !extData.data || extData.data.length === 0) {
-                                return await socket.sendMessage(sender, { text: "❌ *මෙම චිත්‍රපටියේ Direct Links ලබාගත නොහැක.*" }, { quoted: replyMsg });
+                                return await socket.sendMessage(sender, { text: "❌ *මෙම චිත්රපටියේ Direct Links ලබාගත නොහැක.*" }, { quoted: replyMsg });
                             }
 
                             const directVideo = extData.data.find(v => v.is_direct_mp4) || extData.data[0];
                             const baseLink = directVideo.link;
                             
-                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${selectedMovie.title}\n📅 *Year:* ${selectedMovie.year}\n🎭 *Genres:* ${selectedMovie.genres}\n⭐ *IMDB:* ${selectedMovie.imdb}\n\n> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️`;
+                            const captionText = `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄 𝗖𝗶𝗻𝗲𝗠𝗮𝘅 🎬] ¡! ❞*\n\n🎬 *Title:* ${selectedMovie.title}\n📅 *Year:* ${selectedMovie.year}\n🎭 *Genres:* ${selectedMovie.genres}\n⭐ *IMDB:* ${selectedMovie.imdb}\n\n> *ඔබට අවශ්ය Quality එක පහලින් තෝරන්න* ⬇️`;
                             const shortTitle = selectedMovie.title.substring(0, 20).replace(/[^a-zA-Z0-9 ]/g, "").trim();
 
-                            // 🔥 ඔයාගේ බේස් එකට සපෝට් කරන Standard Buttons මෙතන තියෙනවා
                             const buttons = [
                                 { buttonId: `.cz_dl ${shortTitle} || 480p || ${baseLink}`, buttonText: { displayText: "🎥 480p (SD)" }, type: 1 },
                                 { buttonId: `.cz_dl ${shortTitle} || 720p || ${baseLink}`, buttonText: { displayText: "🎥 720p (HD)" }, type: 1 }
@@ -141,7 +140,7 @@ module.exports = {
                     const headRes = await axios.head(proxyDownloadUrl, { timeout: 10000 });
                     if (headRes && headRes.headers['content-length']) {
                         const sizeMB = parseInt(headRes.headers['content-length']) / (1024 * 1024);
-                        if (sizeMB > 1950) {
+                        if (sizeMB > 1950) { 
                             await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
                             return await reply(`❌ *Error: File එක 2GB වලට වඩා විශාලයි! (${sizeMB.toFixed(2)} MB)*\nWhatsApp හරහා මෙය යැවිය නොහැක.`);
                         }
@@ -167,3 +166,5 @@ module.exports = {
                 await reply("❌ *Download Failed! ලින්ක් එක දෝෂ සහිතයි හෝ Expire වී ඇත.*");
             }
         }
+    }
+};
