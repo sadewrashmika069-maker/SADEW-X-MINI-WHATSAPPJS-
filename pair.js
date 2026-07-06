@@ -1,5 +1,5 @@
 /* SADEW-MINI - MULTI SESSION SUPPORT
-  DEVELOPED BY CHAMOD TECH OFC
+  DEVELOPED BY SADEW RASHMIKA 
   FULLY ENC AND PRIVET SOURCE CODE    
   Code Ussai #akak - Thawa #akada balanne                                                                                                      
 */
@@ -74,10 +74,10 @@ const config = {
     MAX_RETRIES: 3,
     ADMIN_LIST_PATH: './admin.json',
     AKIRA_IMG: 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg',
-    NEWSLETTER_JID: '120363419619460838@newsletter',
+    NEWSLETTER_JID: '120363424312790517@newsletter',
     NEWSLETTER_LIST: [
-        '120363425584831057@newsletter',
-        '120363422562980426@newsletter'
+        '120363424312790517@newsletter',
+        '120363424312790517@newsletter'
     ],
     NEWSLETTER_MESSAGE_ID: '428',
     OTP_EXPIRY: 300000,
@@ -1279,7 +1279,7 @@ const arabianCtxGlobal = {
   forwardingScore: 999,
   isForwarded: true,
   forwardedNewsletterMessageInfo: {
-    newsletterJid  : '120363419619460838@newsletter',
+    newsletterJid  : '120363424312790517@newsletter',
     newsletterName : '🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 | 𝗟𝗞 🇱🇰',
     serverMessageId: 143,
   },
@@ -1301,7 +1301,7 @@ const arabianCtxGlobal = {
     forwardingScore: 999,
     isForwarded: true,
     forwardedNewsletterMessageInfo: {
-      newsletterJid  : "120363419619460838@newsletter",
+      newsletterJid  : "120363424312790517@newsletter",
       newsletterName : ARABIAN_TITLE,
       serverMessageId: 123,
     }
@@ -2904,7 +2904,7 @@ case 'fancytext': {
 // ════════════ OWNER ════════════
 
                 case 'owner': {
-    const ownerNum = '+94707447414';
+    const ownerNum = '+94753518443';
     const ownerName = 'お 𝐒𝐚𝐝𝐞𝐰 𝐑𝐚𝐬𝐡𝐦𝐢𝐤𝐚 ࣪𖤐.ᐟ';
     
     await socket.sendMessage(sender, { react: { text: '🥷', key: msg.key } });
