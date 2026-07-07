@@ -1,31 +1,14 @@
-const figlet = require("figlet");
+const axios = require("axios");
 
-// ═══════ HELPER FUNCTION ═══════
-function makeArt(text) {
-    return new Promise((resolve, reject) => {
-        figlet.text(text, {
-            font: "Standard",
-            horizontalLayout: "default",
-            verticalLayout: "default",
-            width: 80,
-            whitespaceBreak: true
-        }, (err, data) => {
-            if (err) return reject(err);
-            resolve(data);
-        });
-    });
-}
-
-// ═══════ PLUGIN EXPORT ═══════
 module.exports = {
     name: "text-art",
     category: 5, // Tools & Edits Category
-    description: "Text එක ASCII art style එකට convert කරන්න",
+    description: "Text එක ASCII art style එකට convert කරන්න (No Lag API Version)",
     commands: ["art", "ascii", "textart"],
 
     handler: async ({ socket, msg, sender, args, reply }) => {
         try {
-            // 1. අකුරු ටික හොයාගැනීම (කමාන්ඩ් එකෙන් හෝ රිප්ලයි කරපු මැසේජ් එකෙන්)
+            // 1. අකුරු ටික හොයාගැනීම
             let textInput = args.join(" ").trim();
             
             const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -44,18 +27,23 @@ module.exports = {
             // 2. React කිරීම
             await socket.sendMessage(sender, { react: { text: "🎨", key: msg.key } });
 
-            // 3. Art එක හැදීම
-            const art = await makeArt(textInput);
+            // 3. බොට් හිරවෙන්නේ නැති වෙන්න API එක හරහා Art එක ලබාගැනීම
+            const apiUrl = `https://networkcalc.com/api/ascii?text=${encodeURIComponent(textInput)}&font=standard`;
+            const response = await axios.get(apiUrl, { timeout: 15000 });
 
-            // 4. මැසේජ් එක යැවීම
-            const finalMessage = "```\n" + art + "\n```\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*";
-            await reply(finalMessage);
-
-            // 5. සාර්ථක බව React කිරීම
-            await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+            if (response.data && response.data.status === "OK" && response.data.ascii) {
+                // 4. සාර්ථකව ආවොත් මැසේජ් එක යැවීම
+                const art = response.data.ascii;
+                const finalMessage = "```\n" + art + "\n```\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*";
+                
+                await reply(finalMessage);
+                await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
+            } else {
+                throw new Error("API Server එකෙන් ප්‍රතිචාරයක් නොලැබුණි.");
+            }
 
         } catch (err) {
-            console.error("Art command error:", err);
+            console.error("Art command error:", err.message);
             await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
             await reply("❌ *Art එක හදන්න බැරි වුණා.*\n\nහේතුව: " + err.message);
         }
