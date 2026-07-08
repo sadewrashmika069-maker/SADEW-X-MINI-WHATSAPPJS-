@@ -144,30 +144,32 @@ module.exports = {
             const aiName           = command.toUpperCase();
             const { text, blocks } = parseAIReply(data.result);
 
-            // ── Main reply with AI badge ──────────────────
+            // ── Main reply — plain text (visible on all WhatsApp clients) ──
+            // ai:true / aiDisclaimer are amiudmodz receiver-side features;
+            // sending them makes the message invisible on normal WhatsApp.
             const header =
-                `*↳ ❝ [🧠 ${aiName} 𝗔𝗜 ] ¡! ❞*\n\n` +
-                `${text}\n\n` +
-                `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                `╭──「 🤖 *${aiName} AI* 」──\n` +
+                `│\n` +
+                `${text.split('\n').map(l => `│ ${l}`).join('\n')}\n` +
+                `│\n` +
+                `╰─── *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝜗𝜚⋆* ───`;
 
-            // amiudmodz: ai:true → AI icon badge
             await socket.sendMessage(sender,
-                {
-                    text: header,
-                    ai: true,                                  // ✅ AI badge
-                    aiDisclaimer: `Powered by ${aiName} Model` // ✅ disclaimer
-                },
+                { text: header },
                 { quoted: msg }
             );
 
-            // ── Code blocks (separate messages) ──────────
+            // ── Code blocks — plain text (WhatsApp monospace) ────────────
+            // amiudmodz code+language is receiver-side rendering only;
+            // plain ``` format visible to everyone.
             for (const block of blocks) {
-                // amiudmodz: code + language → syntax-highlighted code block
+                const codeMsg =
+                    "```\n" +
+                    `[ ${block.language.toUpperCase()} ]\n\n` +
+                    `${block.code}\n` +
+                    "```";
                 await socket.sendMessage(sender,
-                    {
-                        code:     block.code,      // ✅ code content
-                        language: block.language   // ✅ syntax language
-                    },
+                    { text: codeMsg },
                     { quoted: msg }
                 );
             }
