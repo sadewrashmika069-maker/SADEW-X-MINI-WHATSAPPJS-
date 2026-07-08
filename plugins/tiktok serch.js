@@ -5,18 +5,16 @@ const {
     proto,
 } = require("baileys"); 
 
-const API_TOKEN = process.env.WHITESHADOW_API_TOKEN || "VK4fry";
-const WHITESHADOW_API = "https://whiteshadow-x-api.onrender.com/api/search/tiktok";
 const TIKWM_SEARCH_API = "https://tikwm.com/api/feed/search";
 
 const MAX_RESULTS = 5; 
 const MAX_VIDEO_MB = 80;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
-const EMOJI_SEARCH = "\uD83D\uDD0D";
-const EMOJI_SUCCESS = "\u26A1";
-const EMOJI_ERROR = "\u274C";
-const EMOJI_DOWNLOAD = "\uD83D\uDCE5";
+const EMOJI_SEARCH = "🔍";
+const EMOJI_SUCCESS = "⚡";
+const EMOJI_ERROR = "❌";
+const EMOJI_DOWNLOAD = "📥";
 const OUTER_HEADER_TITLE = toFullWidth("𝐥𝐥ı𝐥𝐥ı ıllıllı ★彡 *👑ＳＡＤＥＷ－Ｘ－ＭＤ*🔥 彡★ ıllıı 𝐥𝐥ı𝐥𝐥ı");
 const OUTER_FOOTER_TEXT = "| POWERED BY 👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥";
 const CARD_FOOTER_TEXT = "👑𝙎𝘼𝘿𝙀𝙒-𝙓-𝙈𝘿🔥";
@@ -112,11 +110,10 @@ function normalizeVideo(rawVideo, index) {
         )
     );
     
-    // 🔥 මෙතන තමයි වෙනස කරේ! hdplay මුලටම ගෙනාවා HD වීඩියෝ එක ගන්න.
     const directVideo = toAbsoluteTikwmUrl(
         pickFirstString(
-            rawVideo.hdplay,       // Priority 1: HD Quality (720p/1080p)
-            rawVideo.play,         // Priority 2: Normal Quality
+            rawVideo.hdplay,       
+            rawVideo.play,         
             rawVideo.no_watermark,
             rawVideo.nowm,
             rawVideo.nwm_video_url,
@@ -147,18 +144,12 @@ function normalizeVideo(rawVideo, index) {
 }
 
 // ── API Fetchers ──
-async function fetchWhiteShadowResults(searchQuery) {
-    const endpoint = `${WHITESHADOW_API}?query=${encodeURIComponent(searchQuery)}&apitoken=${API_TOKEN}&hd=1`;
-    const { data } = await axios.get(endpoint, { timeout: 15000 });
-    return pickResultsArray(data).map(normalizeVideo);
-}
-
 async function fetchTikwmResults(searchQuery) {
     const body = new URLSearchParams({
         keywords: searchQuery,
         count: String(MAX_RESULTS),
         cursor: "0",
-        hd: "1" // 🔥 HD ඉල්ලන්න Parameter එක දැම්මා
+        hd: "1" 
     });
 
     const { data } = await axios.post(TIKWM_SEARCH_API, body, {
@@ -178,17 +169,13 @@ async function fetchTikTokResults(searchQuery) {
         console.log(`Searching TikTok via TikWM for: ${searchQuery}`);
         const videos = await fetchTikwmResults(searchQuery);
         const usable = videos.filter((video) => video.url && video.directVideo).slice(0, MAX_RESULTS);
-        if (usable.length) return usable;
+
+        if (!usable.length) throw new Error("No downloadable TikTok videos found");
+        return usable;
     } catch (error) {
         console.error("TikWM Search API error:", error.message);
+        throw new Error("API දෝෂයක්. කරුණාකර වෙනත් වචනයක් Search කරන්න.");
     }
-
-    console.log(`Searching TikTok via WhiteShadow for: ${searchQuery}`);
-    const videos = await fetchWhiteShadowResults(searchQuery);
-    const usable = videos.filter((video) => video.url && video.directVideo).slice(0, MAX_RESULTS);
-
-    if (!usable.length) throw new Error("No downloadable TikTok videos found");
-    return usable;
 }
 
 async function downloadVideoBuffer(url) {
