@@ -3,11 +3,10 @@ const {
     generateWAMessageFromContent,
     prepareWAMessageMedia,
     proto,
-} = require("baileys"); 
+} = require("baileys"); // Spacky eke @whiskeysockets/baileys kiyala thibba eka Sadew-Mini ekata match wenna haduwa
 
 const TIKWM_SEARCH_API = "https://tikwm.com/api/feed/search";
-
-const MAX_RESULTS = 5; 
+const MAX_RESULTS = 5; // Loading time eka adu karanna 5k kara
 const MAX_VIDEO_MB = 80;
 const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 
@@ -30,16 +29,6 @@ function truncateText(value, maxLength) {
     const text = String(value || "").replace(/\s+/g, " ").trim();
     if (text.length <= maxLength) return text;
     return `${text.slice(0, maxLength - 1)}\u2026`;
-}
-
-function pickResultsArray(payload) {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.results)) return payload.results;
-    if (Array.isArray(payload?.data)) return payload.data;
-    if (Array.isArray(payload?.data?.results)) return payload.data.results;
-    if (Array.isArray(payload?.data?.videos)) return payload.data.videos;
-    if (Array.isArray(payload?.result)) return payload.result;
-    return [];
 }
 
 function pickFirstString(...values) {
@@ -85,97 +74,55 @@ function normalizeVideo(rawVideo, index) {
         rawVideo.text,
         `TikTok Result ${index + 1}`
     );
-    const author = pickFirstString(
-        rawVideo.author?.nickname,
-        rawVideo.author?.unique_id,
-        rawVideo.nickname,
-        rawVideo.username
-    );
     const body = pickFirstString(
         rawVideo.caption,
         rawVideo.desc,
-        rawVideo.description,
         rawVideo.hashtags,
-        author ? `Creator: ${author}` : "",
         title
     );
-    const thumbnail = toAbsoluteTikwmUrl(
-        pickFirstString(
-            rawVideo.thumbnail,
-            rawVideo.cover,
-            rawVideo.dynamic_cover,
-            rawVideo.origin_cover,
-            rawVideo.image,
-            rawVideo.thumb
-        )
-    );
     
+    // HD Video ekata Priority denawa
     const directVideo = toAbsoluteTikwmUrl(
         pickFirstString(
-            rawVideo.hdplay,       
-            rawVideo.play,         
-            rawVideo.no_watermark,
-            rawVideo.nowm,
-            rawVideo.nwm_video_url,
+            rawVideo.hdplay,
+            rawVideo.play,
+            rawVideo.wmplay,
             rawVideo.video,
             rawVideo.video_url,
-            rawVideo.play_url,
-            rawVideo.download,
-            rawVideo.download_url,
-            rawVideo.wmplay
+            rawVideo.play_url
         )
     );
     const pageUrl = pickFirstString(
         rawVideo.url,
         rawVideo.link,
-        rawVideo.share_url,
-        rawVideo.shareUrl,
-        rawVideo.webpage_url,
         buildTikTokPageUrl(rawVideo)
     );
 
-    return {
-        title,
-        body,
-        thumbnail,
-        directVideo,
-        url: pageUrl || directVideo,
-    };
+    return { title, body, directVideo, url: pageUrl || directVideo };
 }
 
-// ── API Fetchers ──
 async function fetchTikwmResults(searchQuery) {
-    const body = new URLSearchParams({
+    const body = newSearchParams({
         keywords: searchQuery,
         count: String(MAX_RESULTS),
         cursor: "0",
-        hd: "1" 
+        hd: "1"
     });
 
     const { data } = await axios.post(TIKWM_SEARCH_API, body, {
         timeout: 15000,
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
+            "User-Agent": "Mozilla/5.0",
             Referer: "https://tikwm.com/",
         },
     });
 
-    return pickResultsArray(data).map(normalizeVideo);
-}
+    let results = [];
+    if (Array.isArray(data?.data)) results = data.data;
+    else if (Array.isArray(data?.data?.videos)) results = data.data.videos;
 
-async function fetchTikTokResults(searchQuery) {
-    try {
-        console.log(`Searching TikTok via TikWM for: ${searchQuery}`);
-        const videos = await fetchTikwmResults(searchQuery);
-        const usable = videos.filter((video) => video.url && video.directVideo).slice(0, MAX_RESULTS);
-
-        if (!usable.length) throw new Error("No downloadable TikTok videos found");
-        return usable;
-    } catch (error) {
-        console.error("TikWM Search API error:", error.message);
-        throw new Error("API දෝෂයක්. කරුණාකර වෙනත් වචනයක් Search කරන්න.");
-    }
+    return results.map(normalizeVideo);
 }
 
 async function downloadVideoBuffer(url) {
@@ -184,41 +131,24 @@ async function downloadVideoBuffer(url) {
         timeout: 25000,
         maxContentLength: MAX_VIDEO_BYTES,
         maxBodyLength: MAX_VIDEO_BYTES,
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
-            Referer: "https://tikwm.com/",
-            Accept: "video/mp4,video/*,*/*",
-        },
+        headers: { "User-Agent": "Mozilla/5.0", Referer: "https://tikwm.com/" },
     });
 
     const buffer = Buffer.from(response.data);
     if (!buffer.length) throw new Error("Downloaded video buffer is empty");
-    if (buffer.length > MAX_VIDEO_BYTES) {
-        throw new Error(`Video is bigger than ${MAX_VIDEO_MB}MB`);
-    }
-
     return buffer;
 }
 
-// ── Media & Carousel Builder ──
 async function prepareVideoHeader(socket, video) {
     if (!video.directVideo) throw new Error("Missing direct video URL");
-
-    console.log(`Downloading carousel video buffer for: ${video.title}`);
     const buffer = await downloadVideoBuffer(video.directVideo);
     
     const media = await prepareWAMessageMedia(
-        {
-            video: buffer,
-            mimetype: "video/mp4",
-        },
-        {
-            upload: socket.waUploadToServer, 
-        }
+        { video: buffer, mimetype: "video/mp4" },
+        { upload: socket.waUploadToServer }
     );
 
     if (!media.videoMessage) throw new Error("Baileys did not create videoMessage");
-
     media.videoMessage.mimetype = "video/mp4";
     media.videoMessage.gifPlayback = false;
 
@@ -245,28 +175,23 @@ async function buildCarouselCards(socket, videos) {
                     text: CARD_FOOTER_TEXT,
                 }),
                 nativeFlowMessage: createProto(InteractiveMessage.NativeFlowMessage, {
-                    buttons: [
-                        {
-                            name: "quick_reply",
-                            buttonParamsJson: JSON.stringify({
-                                display_text: `${EMOJI_DOWNLOAD} Download Video`,
-                                id: `.tt ${video.url}`, 
-                            }),
-                        },
-                    ],
+                    buttons: [{
+                        name: "quick_reply",
+                        buttonParamsJson: JSON.stringify({
+                            display_text: `${EMOJI_DOWNLOAD} Download Video`,
+                            id: `.tt ${video.url}`,
+                        }),
+                    }],
                 }),
             });
-
             cards.push(card);
         } catch (error) {
             console.error(`TS video card skipped: ${video.title}`, error.message);
         }
     }
-
     return cards;
 }
 
-// ── SADEW-MINI PLUGIN EXPORT ──
 module.exports = {
     name: "tiktok-carousel-search",
     category: 1, 
@@ -283,13 +208,17 @@ module.exports = {
         try {
             await socket.sendMessage(sender, { react: { text: EMOJI_SEARCH, key: msg.key } });
 
-            const videos = await fetchTikTokResults(searchQuery);
+            // Only TikWM (Dead WhiteShadow අයින් කලා)
+            const videos = await fetchTikwmResults(searchQuery);
+            const usable = videos.filter((video) => video.url && video.directVideo).slice(0, MAX_RESULTS);
+
+            if (!usable.length) throw new Error("No downloadable TikTok videos found");
 
             try {
                 const InteractiveMessage = proto.Message.InteractiveMessage;
                 const CarouselMessage = InteractiveMessage?.CarouselMessage || proto.Message.CarouselMessage;
 
-                const cards = await buildCarouselCards(socket, videos);
+                const cards = await buildCarouselCards(socket, usable);
                 if (!cards.length) throw new Error("Could not process any video cards");
 
                 const interactiveMessage = createProto(InteractiveMessage, {
@@ -298,7 +227,7 @@ module.exports = {
                         hasMediaAttachment: false,
                     }),
                     body: createProto(InteractiveMessage.Body, {
-                        text: `${EMOJI_SEARCH} *TikTok Search:* _${searchQuery}_\n> HD වීඩියෝවක් තෝරා Download බටන් එක ඔබන්න.`,
+                        text: `${EMOJI_SEARCH} TikTok Search: ${searchQuery}`,
                     }),
                     footer: createProto(InteractiveMessage.Footer, {
                         text: OUTER_FOOTER_TEXT,
@@ -330,16 +259,16 @@ module.exports = {
                 });
 
             } catch (carouselError) {
-                console.error("TS video carousel failed, sending fallback:", carouselError);
+                console.error("Carousel failed, sending text fallback:", carouselError);
                 
+                // යම් හෙයකින් Carousel එක බ්ලොක් වුණොත්, Spacky එකේ වගේම ඔටෝමැටික් Text List එක එවනවා
                 const lines = [
-                    `${EMOJI_SEARCH} *TikTok search results for:* _${searchQuery}_`,
+                    `${EMOJI_SEARCH} TikTok search results for: ${searchQuery}`,
                     "",
-                    ...videos.slice(0, MAX_RESULTS).map((video, index) => {
+                    ...usable.map((video, index) => {
                         const title = truncateText(video.title || `TikTok Result ${index + 1}`, 80);
-                        return `*${index + 1}.* ${title}\n🔗 ${video.url}`;
+                        return `*${index + 1}.* ${title}\n📥 Download: .tt ${video.url}`;
                     }),
-                    `\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
                 ];
                 await reply(lines.join("\n\n"));
             }
@@ -349,12 +278,7 @@ module.exports = {
         } catch (error) {
             console.error("Main TS Command Error:", error);
             await socket.sendMessage(sender, { react: { text: EMOJI_ERROR, key: msg.key } });
-
-            return reply(
-                `${EMOJI_ERROR} *TikTok search failed.*\n_Reason: ${
-                    error?.response?.data?.message || error.message || "Unknown Error"
-                }_`
-            );
+            return reply(`${EMOJI_ERROR} TikTok search failed.\nReason: API දෝෂයකි, පසුව උත්සාහ කරන්න.`);
         }
     }
 };
