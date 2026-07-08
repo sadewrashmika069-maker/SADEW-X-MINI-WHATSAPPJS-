@@ -37,16 +37,15 @@ const aiEndpoints = {
     'blackbox': '/api/ai/blackbox',
     'replit': '/api/ai/replit',
     'notegpt': '/api/ai/notegpt',
-    'ndseek': '/api/ai/notegpt-deepseek', // දිග වැඩි නිසා .ndseek කළා
-    'npro': '/api/ai/notegpt-pro'         // දිග වැඩි නිසා .npro කළා
+    'ndseek': '/api/ai/notegpt-deepseek', 
+    'npro': '/api/ai/notegpt-pro'         
 };
 
 module.exports = {
     name: "all-ai-collection",
-    category: 2, // 'AI Commands' කැටගරි එකට වැටෙයි
+    category: 2, 
     description: "Multiple AI Models with Sinhala/English Mix",
-    
-// හැම AI එකකටම ඔටෝම ලස්සන Description එකක් හැදෙනවා
+
     commands: Object.keys(aiEndpoints).map(cmd => ({
         cmd: cmd,
         desc: `Chat with ${cmd.toUpperCase()} AI Model`
@@ -55,7 +54,6 @@ module.exports = {
     handler: async ({ socket, msg, sender, args, command, reply }) => {
         let query = args.join(' ');
 
-        // යූසර් වෙන මැසේජ් එකකට රිප්ලයි කරලා AI එකෙන් ඇහුවොත් ඒ මැසේජ් එක අල්ලගන්නවා
         if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
             query = msg.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
         } else if (!query && msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage?.text) {
@@ -68,10 +66,10 @@ module.exports = {
 
         try { await socket.sendMessage(sender, { react: { text: '🧠', key: msg.key } }); } catch (_) {}
 
-        // 🔥 ඔයා ඉල්ලපු System Prompt එක (Sinhala/English Mix)
+        // 🔥 1. AI එක හිතන ගමන් ඉද්දි උඩින් 'Typing...' කියලා පෙන්නන කෑල්ල මෙතනට ඇඩ් කළා
+        await socket.sendPresenceUpdate('composing', sender);
+
         const systemPrompt = "Reply in a natural Sinhala and English mixed style.nutural sinhala kind friendly sinhala latters.don'tUse singlish.use friendly clear Sinhala-English mix like a Sri Lankan WhatsApp chat. System instruction end. User Query: ";
-        
-        // System Prompt එකයි යූසර්ගේ ප්‍රශ්නෙයි එකට එකතු කරනවා
         const fullQuery = `${systemPrompt} \n\n${query}`;
 
         const endpoint = aiEndpoints[command];
@@ -83,14 +81,18 @@ module.exports = {
             const data = response.data;
 
             if (data && data.status && data.result) {
-                // කමාන්ඩ් එකේ නම (උදා: gpt) ලොකු අකුරු කරලා Title එකට දානවා (උදා: GPT)
                 const aiName = command.toUpperCase();
-                
+
                 let replyText = `*↳ ❝ [🧠 ${aiName} 𝗔𝗜 ] ¡! ❞*\n\n`;
                 replyText += `${data.result}\n\n`;
                 replyText += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                await socket.sendMessage(sender, { text: replyText }, { quoted: msg });
+                // 🔥 2. අලුත් AI Badge එකත් එක්ක මැසේජ් එක යවන විදිහ මෙතන හැදුවා
+                await socket.sendMessage(sender, { 
+                    text: replyText,
+                    ai: true // ඔරිජිනල් AI ලාංඡනය වැටෙන්න මේකයි ඕනේ!
+                }, { quoted: msg });
+                
                 try { await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } }); } catch (_) {}
             } else {
                 reply("❌ *AI ප්‍රතිචාරයක් නොලැබුණි. කරුණාකර වෙනත් AI එකක් (උදා: .gemini හෝ .claude) භාවිතා කරන්න.*");
