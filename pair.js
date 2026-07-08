@@ -363,89 +363,18 @@ const runtime = (seconds) => {
 }
 
 async function setupMessageHandlers(socket) {
-    // 💾 මැසේජ් මතක තියාගන්න Cache එක (Global)
-    if (!global.msgCache) global.msgCache = [];
-
     socket.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
-        if (!msg) return;
-
-        try {
-            // ==========================================
-            // 🚨 SADEW-MINI ADVANCED ANTI-DELETE SYSTEM 🚨
-            // ==========================================
-
-            // 1. මේක මැසේජ් එකක් මකන (REVOKE) සිග්නල් එකක්ද කියලා බලනවා
-            let isRevoke = msg.message?.protocolMessage?.type === 0 || 
-                           msg.message?.protocolMessage?.type === "REVOKE" || 
-                           msg.message?.protocolMessage?.type === 14;
-
-            if (isRevoke) {
-                let deletedId = msg.message.protocolMessage.key.id;
+        if (!msg.message || msg.key.remoteJid === 'status@broadcast' || msg.key.remoteJid === config.NEWSLETTER_JID) return;
                 
-                // Cache එකේ මේ මැකුව මැසේජ් එක තියෙනවද හොයනවා
-                let foundMsg = global.msgCache.find(m => m.id === deletedId);
+        const senderNumber = msg.key.participant ? msg.key.participant.split('@')[0] : msg.key.remoteJid.split('@')[0];
+        const botNumber = jidNormalizedUser(socket.user.id).split('@')[0];
+        const isReact = msg.message.reactionMessage;
 
-                if (foundMsg) {
-                    // 🔥 මෙන්න වෙනස: Bot owner ට නෙමේ, බොට්ව ලොග් කරන් ඉන්න කෙනාගේ (User ගේ) නම්බර් එකටම යවනවා!
-                    const { jidNormalizedUser } = require("baileys");
-                    let sessionOwnerJid = jidNormalizedUser(socket.user.id); 
-                    
-                    let deletedBy = foundMsg.sender.split("@")[0];
-                    let isGroup = foundMsg.chat.endsWith("@g.us");
-
-                    let textMsg = `🚫 *DELETED MESSAGE DETECTED* 🚫\n\n`;
-                    textMsg += `👤 *Sender:* @${deletedBy}\n`;
-                    textMsg += `📌 *Chat:* ${isGroup ? "Group" : "Private Inbox"}\n`;
-                    textMsg += `⏳ *Time:* ${new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Colombo" })}\n\n`;
-                    textMsg += `👇 *මැකූ පණිවිඩය පහතින් ඇත* 👇`;
-
-                    // 1. මැකුවේ කවුද කියලා විස්තරේ යවනවා (User ගේම Inbox එකට)
-                    await socket.sendMessage(sessionOwnerJid, { 
-                        text: textMsg, 
-                        mentions: [foundMsg.sender] 
-                    });
-
-                    // 2. ඇත්තම මැසේජ් එක (ෆොටෝ/වීඩියෝ/Text/Sticker) ඒ විදිහටම එවනවා
-                    await socket.relayMessage(sessionOwnerJid, foundMsg.message, { messageId: deletedId });
-                }
-            } 
-            // 2. මකන එකක් නෙමෙයි නම්, ඒක අනිවාර්යයෙන්ම අලුත් මැසේජ් එකක් (Media/Text ඔක්කොම Cache එකට දානවා)
-            else if (!msg.key.fromMe && msg.message && msg.key.remoteJid !== 'status@broadcast') {
-                const exists = global.msgCache.find(m => m.id === msg.key.id);
-                if (!exists) {
-                    global.msgCache.push({
-                        id: msg.key.id,
-                        message: msg.message,
-                        sender: msg.participant || msg.key.participant || msg.key.remoteJid,
-                        chat: msg.key.remoteJid
-                    });
-                    
-                    // මතකය පිරෙන එක නවත්තන්න මැසේජ් 500කට සීමා කරනවා
-                    if (global.msgCache.length > 500) {
-                        global.msgCache.shift();
-                    }
-                }
-            }
-
-            // ==========================================
-            // සාමාන්‍ය Message Handler කෑලි ටික 
-            // ==========================================
-            if (!msg.message || msg.key.remoteJid === 'status@broadcast' || msg.key.remoteJid === config.NEWSLETTER_JID) return;
-                    
-            const { jidNormalizedUser } = require("baileys");
-            const senderNumber = msg.key.participant ? msg.key.participant.split('@')[0] : msg.key.remoteJid.split('@')[0];
-            const botNumber = jidNormalizedUser(socket.user.id).split('@')[0];
-            const isReact = msg.message.reactionMessage;
-
-            const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
-            const sessionConfig = activeSockets.get(sanitizedNumber)?.config || config;
-
-        } catch (err) {
-            console.error("Anti-Delete Logic Error:", err);
-        }
+        const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
+        const sessionConfig = activeSockets.get(sanitizedNumber)?.config || config;
     });
-}
+} 
 
 function setupAutoRestart(socket, number) {
     const id = number;
