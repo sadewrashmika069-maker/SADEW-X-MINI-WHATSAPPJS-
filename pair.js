@@ -726,8 +726,8 @@ async function EmpirePair(number, res) {
 
                     activeSockets.set(sanitizedNumber, { socket, config: freshConfig });
                     console.log(`📌 Socket registered in activeSockets for ${sanitizedNumber}`);
-
-
+					// 🛡️ Auto-init Anti-Delete System
+                    try { require('./plugins/antidelete').init(socket); } catch(e) {}
                         try {
                             const combinedList = [];
                             
