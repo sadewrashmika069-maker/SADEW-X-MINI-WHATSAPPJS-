@@ -49,7 +49,7 @@ module.exports = {
             chatContext += `User: ${query}\nAlya:`;
 
             // Hercai AI එකෙන් උත්තරේ ගන්නවා (v3 model එක)
-            const response = await herc.question({ model:"v3-32k", content: chatContext });
+            const response = await herc.question({ model:"Gemini", content: chatContext });
             const aiReply = response.reply;
 
             if (!aiReply) throw new Error("AI Reply is empty");
