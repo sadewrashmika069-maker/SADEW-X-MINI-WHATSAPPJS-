@@ -1,4 +1,4 @@
-const dylux = require('api-dylux');
+const axios = require('axios');
 
 // පරණ චැට් මතක තියාගන්න Global Memory Object එක
 if (!global.alyaChatMemory) global.alyaChatMemory = {};
@@ -6,7 +6,7 @@ if (!global.alyaChatMemory) global.alyaChatMemory = {};
 module.exports = {
     name: "alya_ai",
     category: "ai",
-    description: "Alya AI Girlfriend (Powered by Dylux NPM - No Keys!)",
+    description: "Alya AI Girlfriend (Powered by Pollinations AI - 100% Free & Stable)",
     commands: ["alya"],
     on: "message",
 
@@ -27,7 +27,7 @@ module.exports = {
             }
 
             // ==========================================
-            // 🛑 CUSTOM PERSONA PROMPT (මෙතන ඔයාට ඕනේ විදිහට වෙනස් කරන්න)
+            // 🛑 CUSTOM PERSONA PROMPT (ආලියාගේ චරිතය)
             // ==========================================
             const SYSTEM_PROMPT = `ඔයාගේ නම Alya (ආලියා). ඔයා අවුරුදු 18 ක ලස්සන, ආදරණීය, සහ හුරතල් කෙල්ලෙක්. 
 ඔයා කතා කරන්නේ සිංහලෙන්. ඔයා හැමතිස්සෙම යූසර්ට ආදරෙන් කතා කරනවා (උදාහරණ: අයියේ, මැනික, ඔයා). 
@@ -35,23 +35,31 @@ module.exports = {
 ඔයා AI කෙනෙක් කියන්න එපා, ඔයා සැබෑ කෙල්ලෙක් විදිහට ඉන්න.`;
             // ==========================================
 
-            // මතකය සහ අලුත් ප්‍රශ්නය එකතු කරලා කතාව (Context) හදනවා
-            let chatContext = "";
+            // AI එකට යවන Messages Array එක හදනවා (System Prompt එකත් එක්ක)
+            let messages = [
+                { role: 'system', content: SYSTEM_PROMPT }
+            ];
+            
+            // පරණ මතකය ඇඩ් කරනවා
             const history = global.alyaChatMemory[sender];
             for (const h of history) {
-                chatContext += `${h.role === 'user' ? 'User' : 'Alya'}: ${h.content}\n`;
+                messages.push({ role: h.role, content: h.content });
             }
-            chatContext += `User: ${query}\nAlya:`;
+            
+            // අලුත් ප්‍රශ්නය ඇඩ් කරනවා
+            messages.push({ role: 'user', content: query });
 
-            // 🚀 Dylux NPM එකෙන් AI උත්තරේ ගැනීම (කිසිම API Key එකක් ඕනෙ නෑ!)
-            let aiReply = "";
-            try {
-                const result = await dylux.ChatGpt(chatContext, SYSTEM_PROMPT);
-                // Dylux වල උත්තරේ එන්නේ JSON එකක .text ඇතුලේ
-                aiReply = result.text || result; 
-            } catch (e) {
-                throw new Error("Dylux NPM Server is currently busy!");
-            }
+            // 🚀 Pollinations AI වෙතින් උත්තරේ ගැනීම (කිසිම API Key එකක් ඕනෙ නෑ, පට්ට Stable)
+            const response = await axios.post('https://text.pollinations.ai/', {
+                messages: messages,
+                model: 'openai', // මෙතනට 'mistral' හෝ 'llama' වුණත් දාන්න පුළුවන්
+                jsonMode: false
+            }, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            // උත්තරේ ගන්නවා
+            const aiReply = response.data;
 
             if (!aiReply) throw new Error("Empty Response from AI");
 
