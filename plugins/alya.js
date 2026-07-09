@@ -1,5 +1,4 @@
-const { Hercai } = require('hercai');
-const herc = new Hercai();
+const dylux = require('api-dylux');
 
 // පරණ චැට් මතක තියාගන්න Global Memory Object එක
 if (!global.alyaChatMemory) global.alyaChatMemory = {};
@@ -7,7 +6,7 @@ if (!global.alyaChatMemory) global.alyaChatMemory = {};
 module.exports = {
     name: "alya_ai",
     category: "ai",
-    description: "Alya AI with Custom Prompt & Chat Memory",
+    description: "Alya AI Girlfriend (Powered by Dylux NPM - No Keys!)",
     commands: ["alya"],
     on: "message",
 
@@ -17,7 +16,7 @@ module.exports = {
             
             // මැසේජ් එකක් ටයිප් කරලා නැත්නම්
             if (!query) {
-                return await reply("👋 හායි! මම ආලියා (Alya). ඔයාට මොනවා ගැනද දැනගන්න ඕනේ?");
+                return await reply("👋 හායි මැනික! මම ආලියා (Alya). ඔයාට මොනවා ගැනද දැනගන්න ඕනේ? 🥰");
             }
 
             await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
@@ -37,22 +36,24 @@ module.exports = {
             // ==========================================
 
             // මතකය සහ අලුත් ප්‍රශ්නය එකතු කරලා කතාව (Context) හදනවා
-            let chatContext = SYSTEM_PROMPT + "\n\n";
-            
-            // අන්තිමට යවපු මැසේජ් 10 විතරක් ගන්නවා (Memory ලොකු වැඩිවෙන එක නවත්තන්න)
+            let chatContext = "";
             const history = global.alyaChatMemory[sender];
             for (const h of history) {
                 chatContext += `${h.role === 'user' ? 'User' : 'Alya'}: ${h.content}\n`;
             }
-            
-            // අලුත් මැසේජ් එක කතාවට අමුණනවා
             chatContext += `User: ${query}\nAlya:`;
 
-            // Hercai AI එකෙන් උත්තරේ ගන්නවා (v3 model එක)
-            const response = await herc.question({ model:"Gemini", content: chatContext });
-            const aiReply = response.reply;
+            // 🚀 Dylux NPM එකෙන් AI උත්තරේ ගැනීම (කිසිම API Key එකක් ඕනෙ නෑ!)
+            let aiReply = "";
+            try {
+                const result = await dylux.ChatGpt(chatContext, SYSTEM_PROMPT);
+                // Dylux වල උත්තරේ එන්නේ JSON එකක .text ඇතුලේ
+                aiReply = result.text || result; 
+            } catch (e) {
+                throw new Error("Dylux NPM Server is currently busy!");
+            }
 
-            if (!aiReply) throw new Error("AI Reply is empty");
+            if (!aiReply) throw new Error("Empty Response from AI");
 
             // AI දුන්න උත්තරේ සෙන්ඩ් කරනවා
             await reply(aiReply);
