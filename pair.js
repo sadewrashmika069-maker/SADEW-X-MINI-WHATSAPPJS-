@@ -1125,31 +1125,7 @@ const quoted =
         const msg = messages[0];
         if (!msg.message) return;
 
-        // ==========================================
-        // 🛑 1. ANTI-COLLISION SYSTEM (මෙතනට උඩින්ම දාන්න!)
-        // ==========================================
-        const isBotId = (id) => {
-            if (!id) return false;
-            return id.startsWith("BAE5") || id.startsWith("3EB0") || id.length === 16;
-        };
-        
-        const messageId = msg.key.id || "";
-        const isMe = msg.key.fromMe;
-        
-        // මේක මගේ මැසේජ් එකක් නෙමෙයි නම් සහ ඒක වෙන බොට් කෙනෙක්ගේ නම්:
-        if (!isMe && isBotId(messageId)) {
-            console.log(`[COLLISION-FIX] Baileys බොට් කෙනෙක් (ID: ${messageId}) inbox detects. Applying 2.2s delay...`);
-            await new Promise(resolve => setTimeout(resolve, 2200)); 
-        }
-        // ==========================================
 
-        const type = getContentType(msg.message);
-        
-        // ---> මීට පහළින් ඔයාගේ පරණ කෝඩ් එක එලෙසම තියෙන්න අරින්න <---
-        // msg.message = (getContentType(msg.message) === 'ephemeralMessage')...
-        // const quoted = ...
-        // const body = ...
-        // if (!body) return;
         if (!body) return;
     
         const text = body;
