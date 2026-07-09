@@ -1126,6 +1126,26 @@ const quoted =
         const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
         const sender = msg.key.remoteJid;
 
+		// ==========================================
+        // 🛑 1. ANTI-COLLISION SYSTEM (Multi-Bot Collision Fix) 
+        // ==========================================
+        // Zanta MD, Spacky වැනි වෙනත් බොට් කෙනෙක්ගේ මැසේජ් එකක් දැක්කොත් 2.2s Delay එකක් දෙනවා.
+        const isBotId = (id) => {
+            if (!id) return false;
+            return id.startsWith("BAE5") || id.startsWith("3EB0") || id.length === 16;
+        };
+        
+        const messageId = msg.key.id || "";
+        const isMe = msg.key.fromMe;
+        
+        // මේක මගේ මැසේජ් එකක් නෙමෙයි නම් සහ ඒක වෙන බොට් කෙනෙක්ගේ නම්:
+        if (!isMe && isBotId(messageId)) {
+            console.log(`[COLLISION-FIX] Baileys බොට් කෙනෙක් (ID: ${messageId}) inbox detects. Applying 2.2s delay...`);
+            // තත්පර 2.2 ක් කෝඩ් එක රන් වෙන එක නවත්තලා තියාගන්නවා (Zanta MD ට රිප්ලයි කරන්න දීලා)
+            await new Promise(resolve => setTimeout(resolve, 2200)); 
+        }
+        // ==========================================end bot delay
+
         const nowsender = msg.key.fromMe ?
             (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
             (msg.key.participant || msg.key.remoteJid);
