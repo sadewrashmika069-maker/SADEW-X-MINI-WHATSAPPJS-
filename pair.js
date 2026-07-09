@@ -1119,20 +1119,12 @@ const quoted =
             : (type === "viewOnceMessageV2") 
                 ? (msg.message[type]?.message?.imageMessage?.caption || msg.message[type]?.message?.videoMessage?.caption || "") 
             : '';
-     socket.ev.on('messages.upsert', async ({ messages }) => {
-        await socket.sendPresenceUpdate('unavailable');
-
-        const msg = messages[0];
-        if (!msg.message) return;
-
-
+     
         if (!body) return;
     
         const text = body;
         const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
         const sender = msg.key.remoteJid;
-
-
 
         const nowsender = msg.key.fromMe ?
             (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
