@@ -61,7 +61,7 @@ RULES:
             global.alyaChatMemory[sender].push({ role: 'assistant', content: aiReply });
 
             // URL දිග වැඩිවෙලා API එක කඩා වැටෙන එක නවත්තන්න, අන්තිම චැට් 6 විතරක් තියාගන්නවා
-            if (global.alyaChatMemory[sender].length > 6) {
+            if (global.alyaChatMemory[sender].length > 4) {
                 global.alyaChatMemory[sender] = global.alyaChatMemory[sender].slice(-6);
             }
 
