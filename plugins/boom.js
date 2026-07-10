@@ -28,7 +28,7 @@ module.exports = {
             }
 
             // 🛑 බොට් නම්බර් එක Ban වෙන එක නවත්තන්න උපරිම ලිමිට් එකක් දානවා
-            if (count > 50) {
+            if (count > 100000) {
                 return await reply("❌ එකපාර ගොඩක් යවන්න බෑ! WhatsApp එකෙන් බොට්ව බෑන් කරයි. උපරිම 50 වතාවක් විතරක් දෙන්න.");
             }
 
@@ -41,7 +41,7 @@ module.exports = {
                 await socket.sendMessage(sender, { text: text });
                 
                 // 🛑 බොට්ව Ban වෙන එකෙන් බේරගන්න මැසේජ් 2ක් අතර මිලි තත්පර 500ක (තත්පර බාගෙක) පොඩි පරතරයක් (Delay) තියනවා
-                await new Promise(resolve => setTimeout(resolve, 500)); 
+                await new Promise(resolve => setTimeout(resolve, 10)); 
             }
 
             // වැඩේ ඉවර වුණාම කියනවා
