@@ -65,10 +65,16 @@ RULES:
                 global.alyaChatMemory[sender] = global.alyaChatMemory[sender].slice(-6);
             }
 
-        } catch (err) {
+     } catch (err) {
             console.error("Alya AI Error:", err.message);
-            await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-            await reply("❌ අනේ මැනික, මගේ ෆෝන් එක පොඩ්ඩක් හිරවුණා. (සමහරවිට Google සර්වර් එකෙන් මැසේජ් එක බ්ලොක් කළාද දන්නෙ නෑ!) ආයේ කියන්නකෝ! 🙈");
+            
+            // 🛑 431 එරර් එක ආවොත් (URL දිග වැඩි වුණොත්) ඔටෝම මතකය Reset කරනවා!
+            if (err.message.includes('431')) {
+                global.alyaChatMemory[sender] = []; // මතකය මකලා දානවා
+                await socket.sendMessage(sender, { react: { text: '🔄', key: msg.key } });
+                await reply("⚠️ මැනික, ඔයාගෙයි මගෙයි චැට් එක ගොඩක් දිග වැඩි වුණා! මගේ මොළේ හිරවෙන්න වගේ ආවා. මම අපේ පරණ කතා ටික අමතක කළා, අපි දැන් අලුතින් කතා කරමු! 🥰");
+            } else {
+                await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
+                await reply("❌ අනේ මැනික, මගේ ෆෝන් එක පොඩ්ඩක් හිරවුණා. ආයේ කියන්නකෝ! 🙈");
+            }
         }
-    }
-};
