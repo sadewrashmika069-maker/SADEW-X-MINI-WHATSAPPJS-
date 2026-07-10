@@ -7,7 +7,7 @@ module.exports = {
     name: "alya_ai",
     category: "ai",
     description: "Alya AI GF (WhiteShadow Gemini - High Safety Filters)",
-    commands: ["alya3"],
+    commands: ["alya"],
     on: "message",
 
     handler: async ({ socket, reply, msg, sender, args }) => {
