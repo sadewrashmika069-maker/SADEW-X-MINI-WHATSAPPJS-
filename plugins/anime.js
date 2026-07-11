@@ -48,7 +48,7 @@ module.exports = {
 
                 const topResults = data.results.slice(0, 10);
 
-                // Save context
+                // Save context with thumbnails
                 global.animeContexts[sender] = {
                     stage: 'search',
                     results: topResults
@@ -66,7 +66,19 @@ module.exports = {
                 listText += `> *📩 ඔබට අවශ්‍ය Anime එකේ අංකය Reply කරන්න (1-${topResults.length})*\n`;
                 listText += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                const listMsg = await socket.sendMessage(sender, { text: listText }, { quoted: metaQuote });
+                // Send first result's thumbnail as the search card image
+                const firstThumb = topResults[0]?.thumbnail;
+                let listMsg;
+
+                if (firstThumb) {
+                    listMsg = await socket.sendMessage(sender, {
+                        image: { url: firstThumb },
+                        caption: listText
+                    }, { quoted: metaQuote });
+                } else {
+                    listMsg = await socket.sendMessage(sender, { text: listText }, { quoted: metaQuote });
+                }
+
                 global.animeContexts[sender].msgId = listMsg.key.id;
 
                 // ══════ REPLY LISTENER ══════
@@ -93,6 +105,7 @@ module.exports = {
                             }
 
                             const selected = context.results[num - 1];
+                            const selectedThumb = selected.thumbnail || '';
                             socket.ev.off('messages.upsert', listener);
 
                             await socket.sendMessage(sender, { react: { text: "⏳", key: replyMsg.key } });
@@ -104,7 +117,7 @@ module.exports = {
                                 const epData = epRes.data;
 
                                 if (epData.success && epData.result && epData.result.is_series && epData.result.episode_list && epData.result.episode_list.length > 1) {
-                                    // ═══ SERIES — Show episode list ═══
+                                    // ═══ SERIES — Show episode list with THUMBNAIL ═══
                                     const episodes = epData.result.episode_list;
 
                                     let epText = `*↳ ❝ [🎌 ${selected.title} 🎌] ¡! ❞*\n\n`;
@@ -117,16 +130,22 @@ module.exports = {
                                     epText += `\n> *📩 ඔබට අවශ්‍ය Episode අංකය Reply කරන්න*\n`;
                                     epText += `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                                    const epMsg = await socket.sendMessage(sender, {
-                                        image: { url: selected.thumbnail },
-                                        caption: epText
-                                    }, { quoted: replyMsg });
+                                    let epMsg;
+                                    if (selectedThumb) {
+                                        epMsg = await socket.sendMessage(sender, {
+                                            image: { url: selectedThumb },
+                                            caption: epText
+                                        }, { quoted: replyMsg });
+                                    } else {
+                                        epMsg = await socket.sendMessage(sender, { text: epText }, { quoted: replyMsg });
+                                    }
 
                                     // Update context for episode selection
                                     global.animeContexts[sender] = {
                                         stage: 'episodes',
                                         episodes: episodes,
                                         title: selected.title,
+                                        thumbnail: selectedThumb,
                                         msgId: epMsg.key.id
                                     };
 
@@ -151,7 +170,7 @@ module.exports = {
                                             }
 
                                             socket.ev.off('messages.upsert', epListener);
-                                            await showQualityButtons(socket, sender, epReply, matchedEp.episode_url, `${epContext.title} - Ep ${matchedEp.episode_number}`, metaQuote);
+                                            await showQualityButtons(socket, sender, epReply, matchedEp.episode_url, `${epContext.title} - Ep ${matchedEp.episode_number}`, epContext.thumbnail, metaQuote);
                                         } catch (e) {
                                             console.log("Anime ep listener error:", e.message);
                                         }
@@ -161,13 +180,12 @@ module.exports = {
                                     setTimeout(() => socket.ev.off('messages.upsert', epListener), 120000);
 
                                 } else {
-                                    // ═══ SINGLE EPISODE — Show quality directly ═══
-                                    await showQualityButtons(socket, sender, replyMsg, selected.url, selected.title, metaQuote);
+                                    // ═══ SINGLE EPISODE — Show quality with THUMBNAIL ═══
+                                    await showQualityButtons(socket, sender, replyMsg, selected.url, selected.title, selectedThumb, metaQuote);
                                 }
                             } catch (epErr) {
                                 console.log("Anime ep check failed:", epErr.message);
-                                // Fallback: treat as single episode
-                                await showQualityButtons(socket, sender, replyMsg, selected.url, selected.title, metaQuote);
+                                await showQualityButtons(socket, sender, replyMsg, selected.url, selected.title, selectedThumb, metaQuote);
                             }
 
                             await socket.sendMessage(sender, { react: { text: "🎌", key: replyMsg.key } });
@@ -191,7 +209,7 @@ module.exports = {
         }
 
         // ==========================================
-        // 2. ANIME DOWNLOAD (.anime_dl url || quality)
+        // 2. ANIME DOWNLOAD (.anime_dl link || quality || title)
         // ==========================================
         else if (command === "anime_dl") {
             const inputData = args.join(" ").trim();
@@ -199,7 +217,7 @@ module.exports = {
 
             const parts = inputData.split(' || ');
             const videoUrl = parts[0] || '';
-            const quality = parts[1] || '720p';
+            const quality = parts[1] || '480p';
             const title = parts[2] || 'Anime';
             if (!videoUrl) return;
 
@@ -209,26 +227,18 @@ module.exports = {
                     text: `📥 *Downloading ${title} [${quality}]...*\n_රැඳී සිටින්න..._`
                 }, { quoted: msg });
 
-                // Try download API first to get direct link
-                try {
-                    await socket.sendMessage(sender, {
-                        video: { url: videoUrl },
-                        mimetype: 'video/mp4',
-                        caption: `*↳ ❝ [🎌 𝗔𝗻𝗶𝗺𝗲 𝗗𝗟 🎌] ¡! ❞*\n\n` +
-                                 `🎬 *${title}*\n` +
-                                 `📺 *Quality:* ${quality}\n\n` +
-                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
-                    }, { quoted: metaQuote });
-                } catch (vidErr) {
-                    // Fallback: send as document
-                    console.log("Anime video send failed, trying document:", vidErr.message);
-                    await socket.sendMessage(sender, {
-                        document: { url: videoUrl },
-                        mimetype: 'video/mp4',
-                        fileName: `${title} [${quality}].mp4`,
-                        caption: `🎌 *${title}* [${quality}]\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
-                    }, { quoted: metaQuote });
-                }
+                const caption = `*↳ ❝ [🎌 𝗔𝗻𝗶𝗺𝗲 𝗗𝗟 🎌] ¡! ❞*\n\n` +
+                                `🎬 *${title}*\n` +
+                                `📺 *Quality:* ${quality}\n\n` +
+                                `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                // Always send as document (faster, no re-encoding, supports large files)
+                await socket.sendMessage(sender, {
+                    document: { url: videoUrl },
+                    mimetype: 'video/mp4',
+                    fileName: `${title} [${quality}].mp4`,
+                    caption: caption
+                }, { quoted: metaQuote });
 
                 await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
 
@@ -242,9 +252,9 @@ module.exports = {
         }
 
         // ══════════════════════════════════════════
-        // HELPER: Show quality selection buttons
+        // HELPER: Quality buttons with THUMBNAIL
         // ══════════════════════════════════════════
-        async function showQualityButtons(sock, chatJid, quotedMsg, episodeUrl, title, mQuote) {
+        async function showQualityButtons(sock, chatJid, quotedMsg, episodeUrl, title, thumbnail, mQuote) {
             try {
                 const dlUrl = `${API_BASE}/dl?apiKey=${API_KEY}&url=${encodeURIComponent(episodeUrl)}`;
                 const dlRes = await axios.get(dlUrl, { timeout: 20000 });
@@ -259,23 +269,47 @@ module.exports = {
                 const links = dlData.result.download_links;
                 const shortTitle = title.length > 25 ? title.substring(0, 22) + '...' : title;
 
-                const buttons = links.map(link => ({
-                    buttonId: `.anime_dl ${link.direct_link} || ${link.quality} || ${shortTitle}`,
-                    buttonText: { displayText: `🎥 ${link.quality}` },
-                    type: 1
-                }));
+                // Quality order: 480p recommended first, then others
+                const qualityOrder = ['480p', '720p', '1080p', '240p'];
+                const sortedLinks = [...links].sort((a, b) => {
+                    const aIdx = qualityOrder.indexOf(a.quality);
+                    const bIdx = qualityOrder.indexOf(b.quality);
+                    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+                });
 
-                await sock.sendMessage(chatJid, {
-                    text: `*↳ ❝ [🎌 𝗔𝗻𝗶𝗺𝗲 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱 🎌] ¡! ❞*\n\n` +
-                          `🎬 *${title}*\n\n` +
-                          `📺 *Available Qualities:*\n` +
-                          links.map(l => `┊ 🎥 ${l.quality}`).join('\n') + `\n\n` +
-                          `> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️\n` +
-                          `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
-                    footer: '👑 SADEW-MINI 👑',
-                    buttons: buttons,
-                    headerType: 1
-                }, { quoted: quotedMsg });
+                const buttons = sortedLinks.map((link, idx) => {
+                    const label = idx === 0 ? `⚡ ${link.quality} (Recommended)` : `🎥 ${link.quality}`;
+                    return {
+                        buttonId: `.anime_dl ${link.direct_link} || ${link.quality} || ${shortTitle}`,
+                        buttonText: { displayText: label },
+                        type: 1
+                    };
+                });
+
+                const captionText = `*↳ ❝ [🎌 𝗔𝗻𝗶𝗺𝗲 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱 🎌] ¡! ❞*\n\n` +
+                      `🎬 *${title}*\n\n` +
+                      `📺 *Available Qualities:*\n` +
+                      sortedLinks.map((l, i) => `┊ ${i === 0 ? '⚡' : '🎥'} ${l.quality}${i === 0 ? ' ← වේගවත්ම' : ''}`).join('\n') + `\n\n` +
+                      `> *ඔබට අවශ්‍ය Quality එක පහලින් තෝරන්න* ⬇️\n` +
+                      `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                // Send with THUMBNAIL if available
+                if (thumbnail) {
+                    await sock.sendMessage(chatJid, {
+                        image: { url: thumbnail },
+                        caption: captionText,
+                        footer: '👑 SADEW-MINI 👑',
+                        buttons: buttons,
+                        headerType: 4
+                    }, { quoted: quotedMsg });
+                } else {
+                    await sock.sendMessage(chatJid, {
+                        text: captionText,
+                        footer: '👑 SADEW-MINI 👑',
+                        buttons: buttons,
+                        headerType: 1
+                    }, { quoted: quotedMsg });
+                }
 
             } catch (e) {
                 console.log("Anime quality buttons error:", e.message);
