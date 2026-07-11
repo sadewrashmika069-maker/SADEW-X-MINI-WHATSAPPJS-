@@ -1,4 +1,8 @@
 const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
+const os = require('os');
+const crypto = require('crypto');
 
 module.exports = {
     name: "anime-downloader",
@@ -221,20 +225,56 @@ module.exports = {
             const title = parts[2] || 'Anime';
             if (!videoUrl) return;
 
+            const tmpId = crypto.randomBytes(8).toString('hex');
+            const tmpPath = path.join(os.tmpdir(), `sadew_anime_${tmpId}.mp4`);
+
             try {
                 await socket.sendMessage(sender, { react: { text: "⬇️", key: msg.key } });
                 await socket.sendMessage(sender, {
-                    text: `📥 *Downloading ${title} [${quality}]...*\n_රැඳී සිටින්න..._`
+                    text: `📥 *Downloading ${title} [${quality}]...*\n_Server එකෙන් Download කරමින්, රැඳී සිටින්න..._`
                 }, { quoted: msg });
+
+                // Download video to temp file (handles PHP redirects properly)
+                const response = await axios({
+                    method: 'GET',
+                    url: videoUrl,
+                    responseType: 'stream',
+                    timeout: 120000,
+                    maxRedirects: 5,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': 'https://xanimeporn.com/'
+                    }
+                });
+
+                const writer = fs.createWriteStream(tmpPath);
+                response.data.pipe(writer);
+
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                });
+
+                // Check file exists and has size
+                const stats = fs.statSync(tmpPath);
+                if (stats.size < 1000) {
+                    throw new Error("Downloaded file is too small/empty");
+                }
+
+                const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(1);
+                console.log(`Anime DL: Downloaded ${fileSizeMB}MB to temp file`);
 
                 const caption = `*↳ ❝ [🎌 𝗔𝗻𝗶𝗺𝗲 𝗗𝗟 🎌] ¡! ❞*\n\n` +
                                 `🎬 *${title}*\n` +
-                                `📺 *Quality:* ${quality}\n\n` +
+                                `📺 *Quality:* ${quality}\n` +
+                                `📦 *Size:* ${fileSizeMB}MB\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // Always send as document (faster, no re-encoding, supports large files)
+                const videoBuffer = fs.readFileSync(tmpPath);
+
+                // Send as document (fast, no re-encode)
                 await socket.sendMessage(sender, {
-                    document: { url: videoUrl },
+                    document: videoBuffer,
                     mimetype: 'video/mp4',
                     fileName: `${title} [${quality}].mp4`,
                     caption: caption
@@ -248,6 +288,9 @@ module.exports = {
                 await socket.sendMessage(sender, {
                     text: `❌ *Download Failed!*\n_${e.message}_`
                 }, { quoted: msg });
+            } finally {
+                // Cleanup temp file
+                try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
             }
         }
 
