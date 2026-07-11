@@ -1,10 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-
-// 🛑 ඔයාගේ package.json එකට හරියන්නම හදපු Imports ටික
 const { downloadContentFromMessage } = require('baileys');
-const ffmpegPath = require('ffmpeg-static'); // ඔයාගේ බොට්ගෙම තියෙන FFmpeg එක
+const ffmpegPath = require('ffmpeg-static'); 
 
 module.exports = {
     name: "audio_editor",
@@ -15,11 +13,9 @@ module.exports = {
 
     handler: async ({ socket, reply, msg, sender, args }) => {
         try {
-            // කමාන්ඩ් එක අඳුරගන්නවා
             let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
             let command = text.split(" ")[0].toLowerCase().replace(/^[.#!]/, "");
 
-            // Audio එකකට Reply කරලා තියෙනවද කියලා බලනවා
             const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             const audioMsg = quotedMsg?.audioMessage;
 
@@ -29,21 +25,18 @@ module.exports = {
 
             await socket.sendMessage(sender, { react: { text: '🎧', key: msg.key } });
 
-            // 📥 Audio එක Download කරගන්නවා
             const stream = await downloadContentFromMessage(audioMsg, 'audio');
             let buffer = Buffer.from([]);
             for await (const chunk of stream) {
                 buffer = Buffer.concat([buffer, chunk]);
             }
 
-            // Temp files හැදීම
             const sessionId = Math.random().toString(36).substring(7);
             const inputPath = path.join(__dirname, `../temp_in_${sessionId}.mp3`);
             const outputPath = path.join(__dirname, `../temp_out_${sessionId}.mp3`);
 
             fs.writeFileSync(inputPath, buffer);
 
-            // 🎛️ කමාන්ඩ් එක අනුව ෆිල්ටර් (Filter) එක තෝරනවා
             let filter = "";
             if (command === "bass" || command === "base") {
                 filter = "-af bass=g=20:f=110:w=0.3"; 
@@ -55,7 +48,7 @@ module.exports = {
                 filter = "-filter:a volume=4.0"; 
             }
 
-            // 🚀 ඔයාගේ Package.json එකේ තියෙන FFmpeg එකෙන්ම වැඩේ කරනවා (කවදාවත් ෆේල් වෙන්නේ නෑ!)
+            // 🚀 MP3 විදිහට හරියටම Export වෙනවා
             const execCommand = `"${ffmpegPath}" -i "${inputPath}" ${filter} -c:a libmp3lame -q:a 2 "${outputPath}"`;
 
             exec(execCommand, async (error) => {
@@ -65,19 +58,18 @@ module.exports = {
                     return await reply("❌ Audio එක Edit කරන්න බැරි වුණා මචං!");
                 }
 
-                // ✅ Edit කරපු Audio එක ගන්නවා
                 const editedAudio = fs.readFileSync(outputPath);
 
-                // 📩 Audio එක ආපහු යවනවා (Voice Note එකක් විදිහටම)
+                // 📩 මෙන්න මෙතන තමයි Fix එක! 
+                // mimetype එක audio/mpeg (MP3) කරලා ptt එක false කළා.
                 await socket.sendMessage(sender, {
                     audio: editedAudio,
-                    mimetype: 'audio/mp4',
-                    ptt: true 
+                    mimetype: 'audio/mpeg', // ✅ Mobile Supported MP3 Format
+                    ptt: false // ✅ Voice note නෙමෙයි, Normal Audio එකක් විදිහට යවන්න
                 }, { quoted: msg });
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
 
-                // 🧹 තාවකාලික ෆයිල් ටික මකලා දානවා
                 if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
                 if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
             });
