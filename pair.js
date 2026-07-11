@@ -27,6 +27,7 @@ const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
 // 🛡️ ANTI-DELETE PLUGIN IMPORT
 const antiDeletePlugin = require('./plugins/antidelete');
+const emojiDlPlugin = require('./plugins/emoji_dl');
   const images = [
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783327996/zanta_media_uploads/vfq2mrf2hwkzhjerc3zz.jpg',
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783328021/zanta_media_uploads/tnuazopka24oahpvh3mc.jpg',
@@ -736,7 +737,15 @@ async function EmpirePair(number, res) {
                     } catch(e) {
                     console.log(`❌ Anti-Delete Error:`, e.message);
                     }
-                          // ==========================================
+					// 📥 EMOJI DOWNLOADER එක රන් වෙන තැන! 👈 (මෙන්න මේ කෑල්ල අලුතින් අලවන්න)
+                    try {
+                        emojiDlPlugin.init(socket);
+                        console.log(`📥 Emoji Downloader Auto-Started successfully!`);
+                    } catch(e) {
+                        console.log(`❌ Emoji DL Error:`, e.message);
+                    }
+                    // ==========================================
+                        
                         try {
                             const combinedList = [];
                             
