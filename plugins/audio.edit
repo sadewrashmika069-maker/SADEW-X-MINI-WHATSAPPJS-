@@ -66,7 +66,7 @@ module.exports = {
                 // ✅ Edit කරපු Audio එක ගන්නවා
                 const editedAudio = fs.readFileSync(outputPath);
 
-                // 📩 Audio එක ආපහු යවනවා (Voice Note එකක් විදිහටම)
+                // 📩 audio එක ආපහු යවනවා (Voice Note එකක් විදිහටම)
                 await socket.sendMessage(sender, {
                     audio: editedAudio,
                     mimetype: 'audio/mp4',
