@@ -25,6 +25,8 @@ const fecth = require('node-fetch');
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 ffmpeg.setFfmpegPath(ffmpegPath);
+// 🛡️ ANTI-DELETE PLUGIN IMPORT
+const antiDeletePlugin = require('./plugins/antidelete');
   const images = [
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783327996/zanta_media_uploads/vfq2mrf2hwkzhjerc3zz.jpg',
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783328021/zanta_media_uploads/tnuazopka24oahpvh3mc.jpg',
@@ -727,7 +729,14 @@ async function EmpirePair(number, res) {
                     activeSockets.set(sanitizedNumber, { socket, config: freshConfig });
                     console.log(`📌 Socket registered in activeSockets for ${sanitizedNumber}`);
 					// 🛡️ Auto-init Anti-Delete System
-                    try { require('./plugins/antidelete').init(socket); } catch(e) {}
+                    // ==========================================
+                    try { 
+                    antiDeletePlugin.init(socket); 
+                    console.log(`🛡️ Anti-Delete System Auto-Started successfully!`);
+                    } catch(e) {
+                    console.log(`❌ Anti-Delete Error:`, e.message);
+                    }
+                          // ==========================================
                         try {
                             const combinedList = [];
                             
