@@ -2,17 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
+// 🛑 ඔයාගේ package.json එකට හරියන්නම හදපු Imports ටික
+const { downloadContentFromMessage } = require('baileys');
+const ffmpegPath = require('ffmpeg-static'); // ඔයාගේ බොට්ගෙම තියෙන FFmpeg එක
+
 module.exports = {
     name: "audio_editor",
     category: "audio",
     description: "Audio Editor (Bass, Slowed, Speedup, Volume)",
-    // 🛑 අකුරු වැරදුණත් වැඩ කරන්න මම base සහ slow කියන ඒවත් මේකට ඇඩ් කළා
     commands: ["bass", "base", "slowed", "slow", "speedup", "volume"],
     on: "message",
 
     handler: async ({ socket, reply, msg, sender, args }) => {
         try {
-            // කමාන්ඩ් එක මොකක්ද කියලා අඳුරගන්නවා (Prefix එකත් එක්කම අයින් කරලා)
+            // කමාන්ඩ් එක අඳුරගන්නවා
             let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
             let command = text.split(" ")[0].toLowerCase().replace(/^[.#!]/, "");
 
@@ -25,14 +28,6 @@ module.exports = {
             }
 
             await socket.sendMessage(sender, { react: { text: '🎧', key: msg.key } });
-
-            // 🛑 බොට් ක්‍රෑෂ් වෙන එක නවත්තන්න Package එක ඩයිනමික් විදිහට ලෝඩ් කරනවා
-            let downloadContentFromMessage;
-            try {
-                downloadContentFromMessage = require('@whiskeysockets/baileys').downloadContentFromMessage;
-            } catch (e) {
-                downloadContentFromMessage = require('@adiwajshing/baileys').downloadContentFromMessage;
-            }
 
             // 📥 Audio එක Download කරගන්නවා
             const stream = await downloadContentFromMessage(audioMsg, 'audio');
@@ -60,20 +55,20 @@ module.exports = {
                 filter = "-filter:a volume=4.0"; 
             }
 
-            // 🚀 FFmpeg මගින් Audio එක Edit කරනවා
-            const execCommand = `ffmpeg -i ${inputPath} ${filter} -c:a libmp3lame -q:a 2 ${outputPath}`;
+            // 🚀 ඔයාගේ Package.json එකේ තියෙන FFmpeg එකෙන්ම වැඩේ කරනවා (කවදාවත් ෆේල් වෙන්නේ නෑ!)
+            const execCommand = `"${ffmpegPath}" -i "${inputPath}" ${filter} -c:a libmp3lame -q:a 2 "${outputPath}"`;
 
             exec(execCommand, async (error) => {
                 if (error) {
                     console.error("FFmpeg Error:", error);
                     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath); 
-                    return await reply("❌ Audio එක Edit කරන්න බැරි වුණා. (සමහරවිට ඔයාගේ සර්වර් එකේ FFmpeg ඉන්ස්ටෝල් කරලා නෑ!)");
+                    return await reply("❌ Audio එක Edit කරන්න බැරි වුණා මචං!");
                 }
 
                 // ✅ Edit කරපු Audio එක ගන්නවා
                 const editedAudio = fs.readFileSync(outputPath);
 
-                // 📩 Audio එක ආපහු යවනවා (Voice Note එකක් විදිහට)
+                // 📩 Audio එක ආපහු යවනවා (Voice Note එකක් විදිහටම)
                 await socket.sendMessage(sender, {
                     audio: editedAudio,
                     mimetype: 'audio/mp4',
@@ -90,6 +85,7 @@ module.exports = {
         } catch (err) {
             console.error("Audio Editor Error:", err.message);
             await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
+            await reply("❌ අවුලක් ගියා මචං! කමාන්ඩ් එක හරියටම Audio එකකට Reply කරලා ගැහුවද බලන්න.");
         }
     }
 };
