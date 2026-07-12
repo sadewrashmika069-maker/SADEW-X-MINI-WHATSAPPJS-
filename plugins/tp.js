@@ -58,30 +58,60 @@ module.exports = {
 
         try {
             let images = [];
+            let isVideo = false;
             
-            // 🛠️ API කීපයකින් ට්‍රයි කරනවා (කවදාවත් ඩවුන් නොවෙන්න)
+            // 🛠️ API 1 (TikWM - 🌟 ලෝකේ තියෙන හොඳම සහ ස්ථාවරම TikTok API එක)
             try {
-                const res1 = await axios.get(`https://api.vreden.my.id/api/tiktok?url=${encodeURIComponent(url)}`);
+                const res1 = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
                 if (res1.data?.data?.images && Array.isArray(res1.data.data.images)) {
                     images = res1.data.data.images;
+                } else if (res1.data?.data?.play) {
+                    isVideo = true;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.log("TikWM API Error:", e.message);
+            }
 
+            // 🛠️ API 2 (Vreden - Backup 1)
             if (images.length === 0) {
                 try {
-                    const res2 = await axios.get(`https://bk9.fun/download/tiktok?url=${encodeURIComponent(url)}`);
-                    if (res2.data?.BK9?.images && Array.isArray(res2.data.BK9.images)) {
-                        images = res2.data.BK9.images;
+                    const res2 = await axios.get(`https://api.vreden.my.id/api/tiktok?url=${encodeURIComponent(url)}`);
+                    if (res2.data?.data?.images && Array.isArray(res2.data.data.images)) {
+                        images = res2.data.data.images;
+                    } else if (res2.data?.data?.play || res2.data?.data?.video) {
+                        isVideo = true; 
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.log("Vreden API Error:", e.message);
+                }
             }
 
+            // 🛠️ API 3 (BK9 - Backup 2)
+            if (images.length === 0) {
+                try {
+                    const res3 = await axios.get(`https://bk9.fun/download/tiktok?url=${encodeURIComponent(url)}`);
+                    if (res3.data?.BK9?.images && Array.isArray(res3.data.BK9.images)) {
+                        images = res3.data.BK9.images;
+                    } else if (res3.data?.BK9?.video || res3.data?.BK9?.play) {
+                        isVideo = true; 
+                    }
+                } catch (e) {
+                    console.log("BK9 API Error:", e.message);
+                }
+            }
+
+            // 🛑 මුකුත්ම ආවේ නැත්නම්
             if (images.length === 0) {
                 await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
-                return await socket.sendMessage(sender, { text: "❌ *මෙය Photo Slide එකක් නොවේ හෝ ඩවුන්ලෝඩ් කිරීමට නොහැක!*" }, { quoted: msg });
+                
+                if (isVideo) {
+                    return await socket.sendMessage(sender, { text: "❌ *මෙය TikTok Video එකකි!* කරුණාකර Photo Slide (පින්තූර) සහිත ලින්ක් එකක් පමණක් ලබා දෙන්න." }, { quoted: msg });
+                } else {
+                    return await socket.sendMessage(sender, { text: "❌ *TikTok සර්වර් දෝෂයක්! කරුණාකර වෙනත් ලින්ක් එකක් ලබා දෙන්න හෝ පසුව උත්සාහ කරන්න.*" }, { quoted: msg });
+                }
             }
 
-            // 🛑 ෆොටෝ 20 දක්වා කෑලි 2 කට (10 ගානේ) කඩනවා (Row 2 යි)
+            // 🛑 ෆොටෝ 20 දක්වා කෑලි 2 කට (10 ගානේ) කඩනවා
             const chunk1 = images.slice(0, 10);
             const chunk2 = images.slice(10, 20);
 
