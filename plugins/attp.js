@@ -1,7 +1,17 @@
 const { spawn } = require("child_process");
 const sharp = require("sharp");
 
-const ffmpegBin = "ffmpeg";
+// 🛠️ බොට් ඇතුළේ හැංගිලා තියෙන FFmpeg එක හොයන ට්‍රික් එක
+let ffmpegBin = "ffmpeg";
+try {
+    ffmpegBin = require("ffmpeg-static"); // ffmpeg-static තියෙනවද බලනවා
+} catch (e1) {
+    try {
+        ffmpegBin = require("@ffmpeg-installer/ffmpeg").path; // නැත්නම් මේක තියෙනවද බලනවා
+    } catch (e2) {
+        ffmpegBin = "ffmpeg"; // මුකුත්ම නැත්නම් සාමාන්‍ය එක ගන්නවා
+    }
+}
 
 // 🛠️ Helper Functions
 function escapeXml(text) {
@@ -105,7 +115,7 @@ async function createAttpSticker(text) {
 
         ffmpeg.on("error", (err) => {
             clearTimeout(timeout);
-            reject(err.code === "ENOENT" ? new Error("FFmpeg install කරලා නෑ.") : err);
+            reject(err.code === "ENOENT" ? new Error("FFmpeg System එකේ සොයාගත නොහැක.") : err);
         });
 
         ffmpeg.on("close", (code) => {
@@ -144,7 +154,7 @@ module.exports = {
 
     handler: async ({ socket, msg, sender, command, args }) => {
         try {
-            // Text එක ලබා ගැනීම (Reply එකක් නම් ඒකෙන්, නැත්නම් Type කරපු එකෙන්)
+            // Text එක ලබා ගැනීම
             let text = args.join(" ").trim();
             
             if (!text) {
@@ -180,10 +190,7 @@ module.exports = {
             console.error("ATTP command error:", err);
             await socket.sendMessage(sender, { react: { text: "❌", key: msg.key } });
             
-            const errMsg = err.message.includes("FFmpeg install කරලා නෑ") 
-                ? "❌ *Server Error:* FFmpeg install කර නොමැත. Terminal එකේ `apt install ffmpeg` හෝ අදාල command එක භාවිතා කර එය install කරන්න." 
-                : "❌ *ATTP sticker එක හදාගන්න බැරි වුණා මචං.*\n\nහේතුව: " + err.message;
-
+            const errMsg = `❌ *ATTP sticker එක හදාගන්න බැරි වුණා මචං.*\n\nහේතුව: ${err.message}`;
             await socket.sendMessage(sender, { text: errMsg }, { quoted: msg });
         }
     }
