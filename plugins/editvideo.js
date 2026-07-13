@@ -11,12 +11,28 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // Colour level configs
 const COLOUR_LEVELS = {
     0: { name: "🎬 NON COLOUR — HD Only",     saturation: 1.0, contrast: 1.0, brightness: 0.0 },
-    1: { name: "🎨 Colour Level 1 — Light",    saturation: 1.3, contrast: 1.05, brightness: 0.02 },
-    2: { name: "🎨 Colour Level 2 — Medium",   saturation: 1.5, contrast: 1.08, brightness: 0.03 },
-    3: { name: "🎨 Colour Level 3 — Vivid",    saturation: 1.8, contrast: 1.12, brightness: 0.04 },
-    4: { name: "🎨 Colour Level 4 — Bold",     saturation: 2.1, contrast: 1.15, brightness: 0.05 },
-    5: { name: "🎨 Colour Level 5 — Ultra",    saturation: 2.5, contrast: 1.20, brightness: 0.06 }
+    1: { name: "🎨 Colour Level 1 — Light",    saturation: 1.2, contrast: 1.03, brightness: 0.01 },
+    2: { name: "🎨 Colour Level 2 — Medium",   saturation: 1.4, contrast: 1.06, brightness: 0.02 },
+    3: { name: "🎨 Colour Level 3 — Vivid",    saturation: 1.7, contrast: 1.10, brightness: 0.03 },
+    4: { name: "🎨 Colour Level 4 — Bold",     saturation: 2.0, contrast: 1.14, brightness: 0.04 },
+    5: { name: "🎨 Colour Level 5 — Ultra",    saturation: 2.4, contrast: 1.18, brightness: 0.05 }
 };
+
+// Get video info (resolution) using ffprobe
+function getVideoInfo(filePath) {
+    return new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+            if (err) return reject(err);
+            const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+            resolve({
+                width: videoStream ? videoStream.width : 0,
+                height: videoStream ? videoStream.height : 0,
+                bitrate: metadata.format.bit_rate ? parseInt(metadata.format.bit_rate) : 0,
+                duration: metadata.format.duration ? parseFloat(metadata.format.duration) : 0
+            });
+        });
+    });
+}
 
 module.exports = {
     name: "video-editor",
@@ -110,7 +126,8 @@ module.exports = {
                 await socket.sendMessage(sender, {
                     text: `*↳ ❝ [🎬 𝗩𝗶𝗱𝗲𝗼 𝗘𝗱𝗶𝘁𝗼𝗿 🎬] ¡! ❞*\n\n` +
                           `✅ *Video Ready!* (${fileSizeMB}MB)\n\n` +
-                          `📺 *Output:* 720p HD Quality\n\n` +
+                          `📺 *Output:* 1080p Full HD Quality\n` +
+                          `⚡ *Quality:* HIGH (No Quality Drop)\n\n` +
                           `🎨 *Colour Levels:*\n` +
                           `┊ 🎬 NON COLOUR — HD Quality පමණි\n` +
                           `┊ 🎨 Level 1 — සුළු Colour වැඩි කිරීම\n` +
@@ -173,34 +190,63 @@ module.exports = {
                 await socket.sendMessage(sender, {
                     text: `🎬 *Video Edit කරමින්...*\n\n` +
                           `📺 *Mode:* ${colourConfig.name}\n` +
-                          `🔄 *Quality:* 720p HD\n\n` +
+                          `🔄 *Quality:* 1080p Full HD (No Drop)\n\n` +
                           `_Processing... රැඳී සිටින්න..._`
                 }, { quoted: msg });
 
-                // Build ffmpeg filter
+                // Get original video info
+                let videoInfo;
+                try {
+                    videoInfo = await getVideoInfo(context.inputPath);
+                } catch (e) {
+                    videoInfo = { width: 0, height: 0, bitrate: 0 };
+                }
+
+                // Build ffmpeg filters
                 let videoFilters = [];
 
-                // Scale to 720p
-                videoFilters.push('scale=-2:720');
+                // Smart scale: upscale to 1080p if smaller, keep original if bigger
+                if (videoInfo.height > 0 && videoInfo.height < 1080) {
+                    videoFilters.push('scale=-2:1080:flags=lanczos');
+                } else if (videoInfo.height >= 1080) {
+                    // Keep original resolution — no downscale
+                } else {
+                    videoFilters.push('scale=-2:1080:flags=lanczos');
+                }
 
                 // Apply colour enhancement (skip for level 0)
                 if (level > 0) {
                     videoFilters.push(`eq=saturation=${colourConfig.saturation}:contrast=${colourConfig.contrast}:brightness=${colourConfig.brightness}`);
                 }
 
+                // Unsharp mask for slight sharpening (HD look)
+                videoFilters.push('unsharp=3:3:0.5:3:3:0.5');
+
                 const filterString = videoFilters.join(',');
 
-                // FFmpeg process
+                // Calculate target bitrate (preserve or boost original)
+                let targetBitrate = '4M'; // default 4Mbps
+                if (videoInfo.bitrate > 0) {
+                    const origMbps = videoInfo.bitrate / 1000000;
+                    // Use at least original bitrate, or 4Mbps, whichever is higher
+                    targetBitrate = Math.max(origMbps, 4).toFixed(1) + 'M';
+                }
+
+                // FFmpeg process — HIGH QUALITY settings
                 await new Promise((resolve, reject) => {
                     ffmpeg(context.inputPath)
                         .videoFilters(filterString)
                         .videoCodec('libx264')
                         .audioCodec('aac')
-                        .audioBitrate('128k')
+                        .audioBitrate('192k')
                         .outputOptions([
-                            '-preset', 'fast',
-                            '-crf', '23',
-                            '-movflags', '+faststart'
+                            '-preset', 'medium',
+                            '-crf', '15',
+                            '-b:v', targetBitrate,
+                            '-maxrate', targetBitrate,
+                            '-bufsize', '8M',
+                            '-movflags', '+faststart',
+                            '-pix_fmt', 'yuv420p'
                         ])
                         .format('mp4')
                         .on('end', resolve)
@@ -222,15 +268,16 @@ module.exports = {
                 const videoBuffer = fs.readFileSync(outputPath);
 
                 const caption = `*↳ ❝ [🎬 𝗩𝗶𝗱𝗲𝗼 𝗘𝗱𝗶𝘁𝗲𝗱 🎬] ¡! ❞*\n\n` +
-                                `📺 *Quality:* 720p HD\n` +
+                                `📺 *Quality:* 1080p Full HD\n` +
                                 `🎨 *Mode:* ${colourConfig.name}\n` +
                                 `📦 *Size:* ${outputSizeMB}MB\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // Send as video (playable in chat)
+                // Send as document to preserve full quality (no WhatsApp re-compress)
                 await socket.sendMessage(sender, {
-                    video: videoBuffer,
+                    document: videoBuffer,
                     mimetype: 'video/mp4',
+                    fileName: `Edited_HD_${colourConfig.name.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`,
                     caption: caption
                 }, { quoted: metaQuote });
 
