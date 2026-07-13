@@ -10,7 +10,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Colour level configs
 const COLOUR_LEVELS = {
-    0: { name: "🎬 NON COLOUR — Original Quality", saturation: 1.0, contrast: 1.0, brightness: 0.0 },
+    0: { name: "🎬 NON COLOUR — Original Quality", saturation: 1.0, contrast: 1.02, brightness: 0.0 },
     1: { name: "🎨 Colour Level 1 — Light",        saturation: 1.2, contrast: 1.03, brightness: 0.01 },
     2: { name: "🎨 Colour Level 2 — Medium",       saturation: 1.4, contrast: 1.06, brightness: 0.02 },
     3: { name: "🎨 Colour Level 3 — Vivid",        saturation: 1.7, contrast: 1.10, brightness: 0.03 },
@@ -21,8 +21,8 @@ const COLOUR_LEVELS = {
 module.exports = {
     name: "video-editor",
     category: 5,
-    description: "Enhance video quality with colour levels (Fixed Aspect Ratio & Max Quality)",
-    commands: ["editvideo", "evdl"],
+    description: "Enhance video quality, select format (Video/Document) & colour levels",
+    commands: ["editvideo", "evdl", "evformat"], // අලුත් කමාන්ඩ් එක evformat ඇඩ් කළා
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const botName = "👑 SADEW-MINI 👑";
@@ -110,8 +110,6 @@ module.exports = {
                 await socket.sendMessage(sender, {
                     text: `*↳ ❝ [🎬 𝗩𝗶𝗱𝗲𝗼 𝗘𝗱𝗶𝘁𝗼𝗿 🎬] ¡! ❞*\n\n` +
                           `✅ *Video Ready!* (${fileSizeMB}MB)\n\n` +
-                          `📺 *Output:* Original Max Quality\n` +
-                          `⚡ *Quality:* HIGH (Lossless Export)\n\n` +
                           `🎨 *Colour Levels:*\n` +
                           `┊ 🎬 NON COLOUR — Quality වැඩි කිරීම පමණි\n` +
                           `┊ 🎨 Level 1 — සුළු Colour වැඩි කිරීම\n` +
@@ -119,7 +117,7 @@ module.exports = {
                           `┊ 🎨 Level 3 — Vivid Colour\n` +
                           `┊ 🎨 Level 4 — Bold Colour\n` +
                           `┊ 🎨 Level 5 — Ultra Colour (උපරිම)\n\n` +
-                          `> *ඔබට අවශ්‍ය Level එක පහලින් තෝරන්න* ⬇️\n` +
+                          `> *ඔබට අවශ්‍ය Colour Level එක පහලින් තෝරන්න* ⬇️\n` +
                           `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
                     footer: '👑 SADEW-MINI 👑',
                     buttons: buttons,
@@ -146,7 +144,7 @@ module.exports = {
         }
 
         // ==========================================
-        // 2. PROCESS VIDEO (.evdl <level>)
+        // 2. CHOOSE FORMAT MENU (.evdl <level>)
         // ==========================================
         else if (command === "evdl") {
             const level = parseInt(args[0]);
@@ -159,14 +157,44 @@ module.exports = {
                 }, { quoted: msg });
             }
 
-            if (!fs.existsSync(context.inputPath)) {
-                delete global.editVideoContexts[sender];
+            // Save the selected colour level to context
+            context.level = level;
+
+            // Show Format Selection Buttons
+            const buttons = [
+                { buttonId: `.evformat doc`, buttonText: { displayText: '📄 Document File (UHD)' }, type: 1 },
+                { buttonId: `.evformat vid`, buttonText: { displayText: '🎥 Video File (HD)' }, type: 1 }
+            ];
+
+            await socket.sendMessage(sender, {
+                text: `*↳ ❝ [🎬 𝗙𝗼𝗿𝗺𝗮𝘁 𝗦𝗲𝗹𝗲𝗰𝘁𝗶𝗼𝗻 🎬] ¡! ❞*\n\n` +
+                      `🎨 *Colour Level:* ${COLOUR_LEVELS[level].name}\n\n` +
+                      `*ඔබට Video එක ලබාගැනීමට අවශ්‍ය කෙසේද?*\n\n` +
+                      `📄 *Document File:* කිසිදු Quality අඩුවීමකින් තොරව උපරිම (UHD) ලබාගැනීමට.\n` +
+                      `🎥 *Video File:* WhatsApp හි HD Quality යටතේ (Gallery එකට සේව් වේ).\n\n` +
+                      `> *පහතින් අවශ්‍ය ආකාරය තෝරන්න* ⬇️\n` +
+                      `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`,
+                footer: '👑 SADEW-MINI 👑',
+                buttons: buttons,
+                headerType: 1
+            }, { quoted: msg });
+        }
+
+        // ==========================================
+        // 3. PROCESS AND SEND VIDEO (.evformat <doc/vid>)
+        // ==========================================
+        else if (command === "evformat") {
+            const format = args[0];
+            if (format !== 'doc' && format !== 'vid') return;
+
+            const context = global.editVideoContexts[sender];
+            if (!context || !context.inputPath || context.level === undefined) {
                 return await socket.sendMessage(sender, {
                     text: `❌ *Video Session Expired! නැවත .editvideo කරන්න.*`
                 }, { quoted: msg });
             }
 
-            const colourConfig = COLOUR_LEVELS[level];
+            const colourConfig = COLOUR_LEVELS[context.level];
             const outputPath = path.join(os.tmpdir(), `sadew_edit_${context.tmpId}_output.mp4`);
 
             try {
@@ -174,22 +202,22 @@ module.exports = {
                 await socket.sendMessage(sender, {
                     text: `🎬 *Video Edit කරමින්...*\n\n` +
                           `📺 *Mode:* ${colourConfig.name}\n` +
-                          `🔄 *Quality:* Original Max (No Drop)\n\n` +
+                          `📤 *Format:* ${format === 'doc' ? 'Document (UHD)' : 'Video (HD)'}\n\n` +
                           `_Processing... රැඳී සිටින්න..._`
                 }, { quoted: msg });
 
                 // Build ffmpeg filters
                 let videoFilters = [];
 
-                // Aspect Ratio Fix (වීඩියෝ එක තැලෙන්නේ නැති වෙන්න)
+                // Aspect Ratio Fix
                 videoFilters.push('scale=trunc(iw/2)*2:trunc(ih/2)*2');
 
-                // Apply colour enhancement (skip for level 0)
-                if (level > 0) {
+                // Apply colour enhancement
+                if (context.level > 0) {
                     videoFilters.push(`eq=saturation=${colourConfig.saturation}:contrast=${colourConfig.contrast}:brightness=${colourConfig.brightness}`);
                 }
 
-                // Unsharp mask for slight sharpening (HD look)
+                // Unsharp mask for HD look
                 videoFilters.push('unsharp=3:3:0.5:3:3:0.5');
 
                 const filterString = videoFilters.join(',');
@@ -202,10 +230,10 @@ module.exports = {
                         .audioCodec('aac')
                         .audioBitrate('192k')
                         .outputOptions([
-                            '-preset', 'veryfast',    // FIX 1: 'slow' වෙනුවට 'veryfast' දැම්මා RAM එක ඉතුරු වෙන්න
-                            '-threads', '2',          // FIX 2: Thread ගාණ ලිමිට් කළා සර්වර් එක ක්‍රෑෂ් නොවෙන්න
-                            '-crf', '18',             // CRF 18 (Quality එක පට්ට විදිහට තියෙනවා)
-                            '-map_metadata', '0',     // Original Video එකේ Rotation එක තියාගන්නවා
+                            '-preset', 'veryfast',    // RAM එක ඉතුරු වෙන්න
+                            '-threads', '2',          // CPU ලෝඩ් එක ලිමිට් කරන්න
+                            '-crf', '18',             // Quality එක පට්ට විදිහට තියෙනවා
+                            '-map_metadata', '0',     // Original Video එකේ Rotation එක
                             '-movflags', '+faststart',
                             '-pix_fmt', 'yuv420p'
                         ])
@@ -229,18 +257,28 @@ module.exports = {
                 const videoBuffer = fs.readFileSync(outputPath);
 
                 const caption = `*↳ ❝ [🎬 𝗩𝗶𝗱𝗲𝗼 𝗘𝗱𝗶𝘁𝗲𝗱 🎬] ¡! ❞*\n\n` +
-                                `📺 *Quality:* Max Original HD\n` +
+                                `📺 *Quality:* ${format === 'doc' ? 'UHD Document' : 'HD Video'}\n` +
                                 `🎨 *Mode:* ${colourConfig.name}\n` +
                                 `📦 *Size:* ${outputSizeMB}MB\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // Send as document to preserve full quality
-                await socket.sendMessage(sender, {
-                    document: videoBuffer,
-                    mimetype: 'video/mp4',
-                    fileName: `Edited_${colourConfig.name.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`,
-                    caption: caption
-                }, { quoted: metaQuote });
+                // Send Based on User Selection
+                if (format === 'doc') {
+                    // Send as Document (UHD Quality)
+                    await socket.sendMessage(sender, {
+                        document: videoBuffer,
+                        mimetype: 'video/mp4',
+                        fileName: `Edited_${colourConfig.name.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`,
+                        caption: caption
+                    }, { quoted: metaQuote });
+                } else {
+                    // Send as Video (With HD quality tag automatically assigned by WA if size/resolution fits)
+                    await socket.sendMessage(sender, {
+                        video: videoBuffer,
+                        mimetype: 'video/mp4',
+                        caption: caption
+                    }, { quoted: metaQuote });
+                }
 
                 await socket.sendMessage(sender, { react: { text: "✅", key: msg.key } });
 
