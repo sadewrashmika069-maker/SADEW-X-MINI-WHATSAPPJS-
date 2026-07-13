@@ -199,60 +199,62 @@ module.exports = {
                 try {
                     videoInfo = await getVideoInfo(context.inputPath);
                 } catch (e) {
+                    videoInfo = { width: 0, height: 0, bitrate: 0, duration: 0 };
+                }
+
+                // Calculate original bitrate from file size if ffprobe didn't give it
+                const inputStats = fs.statSync(context.inputPath);
+                const inputSizeMB = (inputStats.size / (1024 * 1024)).toFixed(1);
+                let origBitrate = videoInfo.bitrate;
+                if (!origBitrate || origBitrate < 100000) {
+                    // Estimate from file size and duration
+                    if (videoInfo.duration > 0) {
+                        origBitrate = Math.floor((inputStats.size * 8) / videoInfo.duration);
+                    } else {
+                        origBitrate = 5000000; // fallback 5Mbps
+                    }
                     videoInfo = { width: 0, height: 0, bitrate: 0 };
                 }
 
-                // Build ffmpeg filters
-                let videoFilters = [];
+                console.log(`VideoEdit: Processing video (Original size: ${videoInfo.width}x${videoInfo.height})`);
 
-                // Smart scale: upscale to 1080p if smaller, keep original if bigger
-                if (videoInfo.height > 0 && videoInfo.height < 1080) {
-                    videoFilters.push('scale=-2:1080:flags=lanczos');
-                } else if (videoInfo.height >= 1080) {
-                    // Keep original resolution — no downscale
+                // ═══ NON COLOUR (Level 0): Stream copy — ZERO quality loss ═══
+                if (level === 0) {
+                    // Just copy video & audio streams — no re-encoding
+                    await new Promise((resolve, reject) => {
+                        ffmpeg(context.inputPath)
+                            .videoCodec('copy')
+                            .audioCodec('copy')
+                            .outputOptions(['-movflags', '+faststart'])
+                            .format('mp4')
+                            .on('end', resolve)
+                            .on('error', reject)
+                            .save(outputPath);
+                    });
                 } else {
-                    videoFilters.push('scale=-2:1080:flags=lanczos');
+                    // ═══ COLOUR LEVELS 1-5 ═══
+                    // Apply colour enhancement
+                    const filterString = `eq=saturation=${colourConfig.saturation}:contrast=${colourConfig.contrast}:brightness=${colourConfig.brightness}`;
+
+                    // FFmpeg — Pure CRF mode (Constant Quality)
+                    await new Promise((resolve, reject) => {
+                        ffmpeg(context.inputPath)
+                            .videoFilters(filterString)
+                            .videoCodec('libx264')
+                            .audioCodec('aac')
+                            .audioBitrate('192k')
+                            .outputOptions([
+                                '-preset', 'fast',  // Fast preset prevents OOM (Memory) errors
+                                '-crf', '18',       // High quality, but memory-safe
+                                '-movflags', '+faststart',
+                                '-pix_fmt', 'yuv420p'
+                            ])
+                            .format('mp4')
+                            .on('end', resolve)
+                            .on('error', reject)
+                            .save(outputPath);
+                    });
                 }
-
-                // Apply colour enhancement (skip for level 0)
-                if (level > 0) {
-                    videoFilters.push(`eq=saturation=${colourConfig.saturation}:contrast=${colourConfig.contrast}:brightness=${colourConfig.brightness}`);
-                }
-
-                // Unsharp mask for slight sharpening (HD look)
-                videoFilters.push('unsharp=3:3:0.5:3:3:0.5');
-
-                const filterString = videoFilters.join(',');
-
-                // Calculate target bitrate (preserve or boost original)
-                let targetBitrate = '4M'; // default 4Mbps
-                if (videoInfo.bitrate > 0) {
-                    const origMbps = videoInfo.bitrate / 1000000;
-                    // Use at least original bitrate, or 4Mbps, whichever is higher
-                    targetBitrate = Math.max(origMbps, 4).toFixed(1) + 'M';
-                }
-
-                // FFmpeg process — HIGH QUALITY settings
-                await new Promise((resolve, reject) => {
-                    ffmpeg(context.inputPath)
-                        .videoFilters(filterString)
-                        .videoCodec('libx264')
-                        .audioCodec('aac')
-                        .audioBitrate('192k')
-                        .outputOptions([
-                            '-preset', 'medium',
-                            '-crf', '15',
-                            '-b:v', targetBitrate,
-                            '-maxrate', targetBitrate,
-                            '-bufsize', '8M',
-                            '-movflags', '+faststart',
-                            '-pix_fmt', 'yuv420p'
-                        ])
-                        .format('mp4')
-                        .on('end', resolve)
-                        .on('error', reject)
-                        .save(outputPath);
-                });
 
                 if (!fs.existsSync(outputPath)) {
                     throw new Error("Video processing failed");
