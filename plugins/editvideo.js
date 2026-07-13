@@ -181,8 +181,7 @@ module.exports = {
                 // Build ffmpeg filters
                 let videoFilters = [];
 
-                // FIX 1: Aspect Ratio Fix (වීඩියෝ එක තැලෙන්නේ නැති වෙන්න)
-                // වීඩියෝ එකේ Original Size එකම තියාගන්නවා. හැබැයි width සහ height දෙකම 2න් බෙදෙන ඉලක්කම් කරනවා (x264 codec එකට අවශ්‍ය නිසා)
+                // Aspect Ratio Fix (වීඩියෝ එක තැලෙන්නේ නැති වෙන්න)
                 videoFilters.push('scale=trunc(iw/2)*2:trunc(ih/2)*2');
 
                 // Apply colour enhancement (skip for level 0)
@@ -195,7 +194,7 @@ module.exports = {
 
                 const filterString = videoFilters.join(',');
 
-                // FFmpeg process — HIGH QUALITY settings (FIXED)
+                // FFmpeg process — OPTIMIZED FOR SERVER (Prevents SIGKILL)
                 await new Promise((resolve, reject) => {
                     ffmpeg(context.inputPath)
                         .videoFilters(filterString)
@@ -203,9 +202,10 @@ module.exports = {
                         .audioCodec('aac')
                         .audioBitrate('192k')
                         .outputOptions([
-                            '-preset', 'slow',        // 'slow' නිසා Quality එක සුපිරියටම එනවා, compress වෙන විදිහ හොඳයි
-                            '-crf', '17',             // CRF 17 (Max Quality - මේක දැම්මම අර -b:v 4M වගේ ලිමිට් කරන්න ඕනෙ නෑ)
-                            '-map_metadata', '0',     // FIX 2: Original Video එකේ Rotation, orientation එක එලෙසම තියාගන්නවා
+                            '-preset', 'veryfast',    // FIX 1: 'slow' වෙනුවට 'veryfast' දැම්මා RAM එක ඉතුරු වෙන්න
+                            '-threads', '2',          // FIX 2: Thread ගාණ ලිමිට් කළා සර්වර් එක ක්‍රෑෂ් නොවෙන්න
+                            '-crf', '18',             // CRF 18 (Quality එක පට්ට විදිහට තියෙනවා)
+                            '-map_metadata', '0',     // Original Video එකේ Rotation එක තියාගන්නවා
                             '-movflags', '+faststart',
                             '-pix_fmt', 'yuv420p'
                         ])
@@ -234,7 +234,7 @@ module.exports = {
                                 `📦 *Size:* ${outputSizeMB}MB\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // Send as document to preserve full quality (WhatsApp eken aye compress kranne nati wenna)
+                // Send as document to preserve full quality
                 await socket.sendMessage(sender, {
                     document: videoBuffer,
                     mimetype: 'video/mp4',
