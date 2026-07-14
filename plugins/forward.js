@@ -1,4 +1,4 @@
-const { generateForwardMessageContent, generateWAMessageFromContent, getContentType } = require("baileys");
+const { generateForwardMessageContent, generateWAMessageFromContent, getContentType } = require("@whiskeysockets/baileys");
 
 // ෆයිල් නම හොයාගැනීමේ ෆන්ක්ශන්
 function getTextFromQuoted(quoted) {
