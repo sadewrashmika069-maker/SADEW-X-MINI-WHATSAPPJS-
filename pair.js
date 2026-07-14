@@ -29,7 +29,6 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const antiDeletePlugin = require('./plugins/antidelete');
 const emojiDlPlugin = require('./plugins/emoji_dl');
 const onceDlPlugin = require('./plugins/once_dl');
-
   const images = [
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783327996/zanta_media_uploads/vfq2mrf2hwkzhjerc3zz.jpg',
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783328021/zanta_media_uploads/tnuazopka24oahpvh3mc.jpg',
@@ -753,7 +752,6 @@ async function EmpirePair(number, res) {
                     } catch(e) {
                         console.log(`❌ ViewOnce DL Error:`, e.message);
                     }
-					
                     // ==========================================
                         
                         try {
@@ -1280,16 +1278,7 @@ const quoted =
         const isBotAdmins = groupAdmins.includes(socket.user.id);
         const isAdmins = groupAdmins.includes(sender);
 
-       const reply = async (text, options = {}) => {
-            try {
-                // 🛡️ ANTI-BAN: ටෙක්ස්ට් මැසේජ් එකක් යවන්න කලින් "Typing..." කියලා පෙන්නනවා (මනුස්සයෙක් වගේ)
-                await socket.presenceSubscribe(msg.key.remoteJid);
-                await socket.sendPresenceUpdate('composing', msg.key.remoteJid);
-                // තත්පර 1 කින් මැසේජ් එක යවනවා
-                await delay(1000); 
-                await socket.sendPresenceUpdate('paused', msg.key.remoteJid);
-            } catch (err) {}
-
+        const reply = async (text, options = {}) => {
             await socket.sendMessage(msg.key.remoteJid, {
                 text,
                 ...options
@@ -3072,11 +3061,21 @@ case 'hack': {
 const plugin = findPluginForCommand(command);
 if (plugin) {
     try {
-        await plugin.handler({ socket, msg, sender, command, args, reply, m, quoted, isOwner, isGroup, botNumber, senderNumber, metaQuote: metaQuote || msg });
-    } catch (pluginErr) {
-        console.error(`Plugin ${plugin.name} error:`, pluginErr.message);
+        await plugin.handler({ 
+            socket, 
+            msg, 
+            sender, 
+            args, 
+            text, 
+            command, 
+            reply 
+        });
+    } catch (err) {
+        console.error(`[PLUGIN ERROR] ${plugin.name}:`, err);
+        reply(`❌ *Plugin Error:* ${err.message}`);
     }
 }
+
 // ---------------------------------------------------------
         } catch (error) {
             console.error('Command handler error:', error);
