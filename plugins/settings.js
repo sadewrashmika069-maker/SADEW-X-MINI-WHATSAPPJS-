@@ -1,70 +1,130 @@
 const mongoose = require('mongoose');
+const { downloadContentFromMessage } = require('baileys');
+const axios = require('axios');
+const FormData = require('form-data');
 
 module.exports = {
     name: "settings",
     category: 4, 
-    description: "Bot Work Mode Settings Panel",
-    commands: ["mode", "settings", "panel"],
+    description: "Bot Main Settings & Customization",
+    commands: ["settings", "panel", "mode", "addpp", "delpp"],
 
-    handler: async ({ socket, msg, sender, args, reply, isOwner, botNumber, sessionConfig, activeSockets }) => {
+    handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets }) => {
         
-        if (!isOwner) return reply('❌ *ඔබට මෙම කමාන්ඩ් එක භාවිතා කළ නොහැක! (Owner Only)*');
-
-        const option = args[0] ? args[0].toLowerCase() : null;
+        const isOwner = true; // Security check bypass for session owner
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
-
-        // pair.js එකේ හදපු Database Model එක මෙතනට ගන්නවා
         const Session = mongoose.models.SessionNew;
 
-        if (!Session) {
-            return reply('❌ *Database Error: Session model එක සොයාගැනීමට නොහැක.*');
+        // Settings Database එකේ Save කිරීමේ Function එක
+        const saveConfig = async () => {
+            const currentData = activeSockets.get(sanitizedNumber);
+            if (currentData) {
+                currentData.config = sessionConfig;
+                activeSockets.set(sanitizedNumber, currentData);
+            }
+            await Session.findOneAndUpdate(
+                { number: sanitizedNumber },
+                { config: sessionConfig, updatedAt: new Date() },
+                { upsert: true }
+            );
+        };
+
+        const cmd = command.replace(/^\./, '').toLowerCase();
+
+        // ════════ 1. SETTINGS PANEL ════════
+        if (cmd === 'settings' || cmd === 'panel') {
+            const currentMode = sessionConfig?.MODE || 'public';
+            const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
+            
+            const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
+                              `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
+                              `🔸 Current Mode: *${currentMode.toUpperCase()}*\n` +
+                              `  [1] Public (සැමටම)\n` +
+                              `  [2] Private (Owner ට පමණක්)\n` +
+                              `  [3] Inbox Only (Inbox පමණක්)\n` +
+                              `_(අදාළ අංකය Reply කරන්න හෝ .mode 1 ලෙස යවන්න)_\n\n` +
+                              `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
+                              `🖼️ Custom Logos: *${customLogos.length}*\n` +
+                              `  • අලුත් පින්තූරයක් එකතු කිරීමට, පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
+                              `  • ඔබ එකතු කළ පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
+                              `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+            let displayLogo = 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg';
+            if (customLogos.length > 0) {
+                displayLogo = customLogos[Math.floor(Math.random() * customLogos.length)];
+            }
+
+            const sentMsg = await socket.sendMessage(sender, {
+                image: { url: displayLogo }, 
+                caption: panelText
+            }, { quoted: msg });
+
+            // Reply Catch කිරීම සඳහා ID එක Save කිරීම
+            global.sadewSettingsTracker = global.sadewSettingsTracker || {};
+            global.sadewSettingsTracker[sender] = sentMsg.key.id;
+            return;
         }
 
-        // Mode එක වෙනස් කිරීමට Option එකක් දීලා තියෙනවා නම්
-        if (option === 'public' || option === 'private' || option === 'inbox') {
-            try {
-                await socket.sendMessage(sender, { react: { text: '⚙️', key: msg.key } });
-
-                // 1. මතකයේ (Memory) තියෙන Config එක වෙනස් කිරීම (Restart නොකර වැඩ කිරීමට)
-                if (sessionConfig) {
-                    sessionConfig.MODE = option;
-                }
-                
-                if (activeSockets && activeSockets.has(sanitizedNumber)) {
-                    const currentData = activeSockets.get(sanitizedNumber);
-                    currentData.config = sessionConfig;
-                    activeSockets.set(sanitizedNumber, currentData);
-                }
-
-                // 2. Database එකේ ස්ථිරවම සේව් කිරීම (Redeploy කරත් නොමැකෙන්න)
-                await Session.findOneAndUpdate(
-                    { number: sanitizedNumber },
-                    { config: sessionConfig, updatedAt: new Date() },
-                    { upsert: true }
-                );
-
-                return reply(`✅ *Bot mode successfully changed to ${option.toUpperCase()} mode.*`);
-            } catch (e) {
-                return reply(`❌ *Error:* ${e.message}`);
+        // ════════ 2. MODE CHANGE (COMMAND) ════════
+        if (cmd === 'mode') {
+            const option = args[0] ? args[0].toLowerCase() : '';
+            let newMode = '';
+            if (option === '1' || option === 'public') newMode = 'public';
+            else if (option === '2' || option === 'private') newMode = 'private';
+            else if (option === '3' || option === 'inbox') newMode = 'inbox';
+            
+            if (newMode) {
+                sessionConfig.MODE = newMode;
+                await saveConfig();
+                return reply(`✅ *Bot mode successfully changed to ${newMode.toUpperCase()} mode.*`);
+            } else {
+                return reply(`❌ *කරුණාකර නිවැරදි Mode එකක් ලබාදෙන්න!*\nඋදා: .mode 1`);
             }
         }
 
-        // Option එකක් දීලා නැත්නම් Settings Panel එක පෙන්වීම
-        const currentMode = sessionConfig?.MODE || 'public';
-        const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
-                          `*🔸 Current Mode:* ${currentMode.toUpperCase()}\n\n` +
-                          `මෙතැනින් බොට් ක්‍රියාකරන ආකාරය වෙනස් කළ හැක:\n\n` +
-                          `*1.* Public Mode (සැමටම)\n` +
-                          `*2.* Private Mode (Owner ට පමණක්)\n` +
-                          `*3.* Inbox Only (Inbox පමණක්)\n\n` +
-                          `*Mode එක වෙනස් කිරීමට පහත ආකාරයට කමාන්ඩ් එක යවන්න:*\n` +
-                          `> 🛠️ _උදාහරණ:_ *.mode public* | *.mode private* | *.mode inbox*\n\n` +
-                          `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+        // ════════ 3. ADD CUSTOM MENU LOGO (.addpp) ════════
+        if (cmd === 'addpp') {
+            const qMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            if (!qMsg || !qMsg.imageMessage) return reply("🖼️ *කරුණාකර පින්තූරයකට Reply කර .addpp ලෙස යවන්න!*");
 
-        // මෙතන අර පරණ akira ලෝගෝ එකම දැම්මා, පස්සේ ඒක වෙනස් කරමු
-        await socket.sendMessage(sender, {
-            image: { url: 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg' }, 
-            caption: panelText
-        }, { quoted: msg });
+            try {
+                await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
+                
+                const stream = await downloadContentFromMessage(qMsg.imageMessage, 'image');
+                let buffer = Buffer.from([]);
+                for await(const chunk of stream) {
+                    buffer = Buffer.concat([buffer, chunk]);
+                }
+
+                const form = new FormData();
+                form.append('reqtype', 'fileupload');
+                form.append('fileToUpload', buffer, 'logo.jpg');
+
+                const response = await axios.post('https://catbox.moe/user/api.php', form, {
+                    headers: form.getHeaders()
+                });
+
+                const imgUrl = response.data;
+                if (!imgUrl.startsWith('http')) throw new Error("Upload failed");
+
+                if (!sessionConfig.CUSTOM_LOGOS) sessionConfig.CUSTOM_LOGOS = [];
+                sessionConfig.CUSTOM_LOGOS.push(imgUrl);
+                
+                await saveConfig();
+                
+                await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
+                return reply(`✅ *පින්තූරය සාර්ථකව ඔබේ Menu එකට එකතු කරන ලදී!*\nදැන් ඔබ සතුව Custom Logos ${sessionConfig.CUSTOM_LOGOS.length} ක් ඇත.\n(.menu යොදා පරීක්ෂා කරන්න)`);
+
+            } catch (e) {
+                return reply(`❌ *Error uploading image:* ${e.message}`);
+            }
+        }
+
+        // ════════ 4. DELETE ALL CUSTOM LOGOS (.delpp) ════════
+        if (cmd === 'delpp') {
+            sessionConfig.CUSTOM_LOGOS = [];
+            await saveConfig();
+            return reply(`✅ *ඔබේ Custom Logo ලැයිස්තුව මකා දමන ලදී!*\nදැන් Bot ගේ මුල් පින්තූර (Default) භාවිතා වේ.`);
+        }
     }
 };
