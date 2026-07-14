@@ -70,7 +70,7 @@ const {
     generateWAMessage, 
     delay, 
     Browsers
-} = require("baileys");
+} = require("@whiskeysockets/baileys");
 
 const config = {
     AUTO_VIEW_STATUS: 'false',
