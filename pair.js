@@ -3031,8 +3031,8 @@ case 'hack': {
 const plugin = findPluginForCommand(command);
 if (plugin) {
     try {
-        // මෙතන අගට sessionConfig, activeSockets කියන දෙක එකතු කරන්න
-        await plugin.handler({ socket, msg, sender, command, args, reply, m, quoted, isOwner, isGroup, botNumber, senderNumber, metaQuote: metaQuote || msg, sessionConfig, activeSockets });
+        // metaQuote අවුල මෙතනින් හැදුවා
+        await plugin.handler({ socket, msg, sender, command, args, reply, m, quoted, isOwner, isGroup, botNumber, senderNumber, metaQuote: msg, sessionConfig, activeSockets });
     } catch (pluginErr) {
         console.error(`Plugin ${plugin.name} error:`, pluginErr.message);
     }
