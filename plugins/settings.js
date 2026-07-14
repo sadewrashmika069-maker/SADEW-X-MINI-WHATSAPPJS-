@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { downloadContentFromMessage } = require('baileys');
 const axios = require('axios');
-const FormData = require('form-data');
 
 module.exports = {
     name: "settings",
@@ -96,19 +95,19 @@ module.exports = {
                     buffer = Buffer.concat([buffer, chunk]);
                 }
 
-                // --- 🚀 අලුත් Telegra.ph Upload කෑල්ල ---
-                const form = new FormData();
-                form.append('file', buffer, { filename: 'logo.jpg', contentType: 'image/jpeg' });
+                // --- 🚀 XWOLF IMGBB API UPLOAD කෑල්ල ---
+                const base64Image = buffer.toString('base64');
+                const apiUrl = 'https://apis.xwolf.space/api/url/imgbb?key=wxa_f_4e840b5e42';
 
-                const response = await axios.post('https://telegra.ph/upload', form, {
-                    headers: form.getHeaders()
-                });
+                const response = await axios.post(apiUrl, { image: base64Image });
 
-                if (!response.data || !response.data[0] || !response.data[0].src) {
-                    throw new Error("Telegraph Upload Failed");
+                // Wolf API එකෙන් එන ලින්ක් එක ගන්නවා
+                const imgUrl = response.data?.url || response.data?.data?.url || response.data?.result?.url;
+
+                if (!imgUrl || !imgUrl.startsWith('http')) {
+                    console.log("XWOLF API Response Error:", response.data);
+                    throw new Error("Wolf API එක හරහා පින්තූරය Upload කිරීම අසාර්ථක විය.");
                 }
-
-                const imgUrl = 'https://telegra.ph' + response.data[0].src;
                 // ----------------------------------------
 
                 if (!sessionConfig.CUSTOM_LOGOS) sessionConfig.CUSTOM_LOGOS = [];
