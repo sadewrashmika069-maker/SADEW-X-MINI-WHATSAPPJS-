@@ -1,4 +1,4 @@
-const { downloadContentFromMessage, getContentType, jidNormalizedUser } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage, getContentType, jidNormalizedUser } = require('baileys');
 
 // Duplicate ලෝඩ් වෙන එක නවත්තන්න Tracking Map එකක්
 if (!global.onceDlListeners) global.onceDlListeners = new Map();
