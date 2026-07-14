@@ -1,6 +1,6 @@
 const axios = require("axios");
 const FormData = require("form-data");
-const { downloadContentFromMessage, getContentType } = require("baileys");
+const { downloadContentFromMessage, getContentType } = require("@whiskeysockets/baileys");
 
 module.exports = {
     name: "tourl_uploader",
