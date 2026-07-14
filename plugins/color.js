@@ -1,5 +1,5 @@
 const sharp = require("sharp");
-const { downloadContentFromMessage, getContentType, generateWAMessageFromContent } = require("baileys");
+const { downloadContentFromMessage, getContentType, generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 
 // 🔴 Global Context (Photo එක මතක තියාගන්න)
 if (!global.colorContexts) global.colorContexts = {};
