@@ -1,4 +1,4 @@
-const { downloadContentFromMessage, getContentType, jidNormalizedUser } = require('baileys');
+const { downloadContentFromMessage, getContentType, jidNormalizedUser } = require('@whiskeysockets/baileys');
 
 // ==========================================
 // 🛡️ ANTI-CRASH GUARD (බොට් හිරවෙන එක නවත්තන්න)
