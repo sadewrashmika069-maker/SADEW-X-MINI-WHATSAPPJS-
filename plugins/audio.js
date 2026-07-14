@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-const { downloadContentFromMessage } = require('baileys');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const ffmpegPath = require('ffmpeg-static'); 
 
 module.exports = {
