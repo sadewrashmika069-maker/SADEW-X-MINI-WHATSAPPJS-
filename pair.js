@@ -29,7 +29,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const antiDeletePlugin = require('./plugins/antidelete');
 const emojiDlPlugin = require('./plugins/emoji_dl');
 const onceDlPlugin = require('./plugins/once_dl');
-const antibanPlugin = require('./plugins/antiban');
+
   const images = [
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783327996/zanta_media_uploads/vfq2mrf2hwkzhjerc3zz.jpg',
     'https://res.cloudinary.com/dqlh378fb/image/upload/v1783328021/zanta_media_uploads/tnuazopka24oahpvh3mc.jpg',
@@ -753,13 +753,7 @@ async function EmpirePair(number, res) {
                     } catch(e) {
                         console.log(`❌ ViewOnce DL Error:`, e.message);
                     }
-					// onceDlPlugin.init(socket) lamata:
-                    try {
-                        antibanPlugin.init(socket);
-                        console.log(`🛡️ Anti-Ban Stealth System Auto-Started successfully!`);
-                   } catch(e) {
-                        console.log(`❌ Anti-Ban Error:`, e.message);
-                  }
+					
                     // ==========================================
                         
                         try {
