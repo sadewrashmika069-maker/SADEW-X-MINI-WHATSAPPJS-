@@ -1214,7 +1214,36 @@ const quoted =
                     return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
                 }
             }
+                                       // ── SADEW-MINI SETTINGS REPLY CATCHER ──
+            if (
+                global.sadewSettingsTracker &&
+                global.sadewSettingsTracker[sender] === quotedStanzaId &&
+                /^[1-3]$/.test(replyText)
+            ) {
+                let newMode = '';
+                if (replyText === '1') newMode = 'public';
+                else if (replyText === '2') newMode = 'private';
+                else if (replyText === '3') newMode = 'inbox';
 
+                sessionConfig.MODE = newMode;
+                
+                // Database එක Update කිරීම
+                const Session = mongoose.models.SessionNew;
+                const sNum = botNumber.replace(/[^0-9]/g, '');
+                if (activeSockets.has(sNum)) {
+                    const currentData = activeSockets.get(sNum);
+                    currentData.config = sessionConfig;
+                    activeSockets.set(sNum, currentData);
+                }
+                await Session.findOneAndUpdate(
+                    { number: sNum },
+                    { config: sessionConfig, updatedAt: new Date() },
+                    { upsert: true }
+                );
+
+                delete global.sadewSettingsTracker[sender];
+                return await socket.sendMessage(msg.key.remoteJid, { text: `✅ *Bot mode successfully updated to ${newMode.toUpperCase()} mode.*` }, { quoted: msg });
+            }
             // 🔥🔥🔥 XNXX REPLY CATCHER (INSIDE the if block) 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
@@ -1414,8 +1443,14 @@ try {
 ⊱ ─────── { 𑁍 } ─────── ⊰`;
 
       // 8 category buttons sent alongside the image+caption (WhatsApp button msgs support image header + buttons together)
+	  // යූසර්ගේ Custom පින්තූර තිබේ නම් එයින් එකක් තෝරාගැනීම
+      let menuImageUrl = akira; // Default පින්තූරය
+      if (sessionConfig.CUSTOM_LOGOS && sessionConfig.CUSTOM_LOGOS.length > 0) {
+          const randomIndex = Math.floor(Math.random() * sessionConfig.CUSTOM_LOGOS.length);
+          menuImageUrl = sessionConfig.CUSTOM_LOGOS[randomIndex];
+      }
       const sentMenu = await socket.sendMessage(sender, {
-        image: { url: akira },
+        image: { url: menuImageUrl },
         caption: menuText,
         footer: '👑 SADEW-MINI 👑',
         buttons: buildMainMenuCategoryButtons(),
