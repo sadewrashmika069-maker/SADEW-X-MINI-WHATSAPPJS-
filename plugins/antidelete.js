@@ -1,4 +1,4 @@
-const { jidNormalizedUser } = require("baileys");
+const { jidNormalizedUser } = require("@whiskeysockets/baileys");
 
 // 💾 Global Cache + Listener Tracking (hot-reload safe)
 if (!global.adCache) global.adCache = [];
