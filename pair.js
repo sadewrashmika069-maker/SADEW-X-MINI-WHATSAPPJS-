@@ -3031,18 +3031,10 @@ case 'hack': {
 const plugin = findPluginForCommand(command);
 if (plugin) {
     try {
-        await plugin.handler({ 
-            socket, 
-            msg, 
-            sender, 
-            args, 
-            text, 
-            command, 
-            reply 
-        });
-    } catch (err) {
-        console.error(`[PLUGIN ERROR] ${plugin.name}:`, err);
-        reply(`❌ *Plugin Error:* ${err.message}`);
+        // මෙතන අගට sessionConfig, activeSockets කියන දෙක එකතු කරන්න
+        await plugin.handler({ socket, msg, sender, command, args, reply, m, quoted, isOwner, isGroup, botNumber, senderNumber, metaQuote: metaQuote || msg, sessionConfig, activeSockets });
+    } catch (pluginErr) {
+        console.error(`Plugin ${plugin.name} error:`, pluginErr.message);
     }
 }
 
