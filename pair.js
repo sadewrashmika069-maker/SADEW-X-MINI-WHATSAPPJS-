@@ -1286,7 +1286,16 @@ const quoted =
         const isBotAdmins = groupAdmins.includes(socket.user.id);
         const isAdmins = groupAdmins.includes(sender);
 
-        const reply = async (text, options = {}) => {
+       const reply = async (text, options = {}) => {
+            try {
+                // 🛡️ ANTI-BAN: ටෙක්ස්ට් මැසේජ් එකක් යවන්න කලින් "Typing..." කියලා පෙන්නනවා (මනුස්සයෙක් වගේ)
+                await socket.presenceSubscribe(msg.key.remoteJid);
+                await socket.sendPresenceUpdate('composing', msg.key.remoteJid);
+                // තත්පර 1 කින් මැසේජ් එක යවනවා
+                await delay(1000); 
+                await socket.sendPresenceUpdate('paused', msg.key.remoteJid);
+            } catch (err) {}
+
             await socket.sendMessage(msg.key.remoteJid, {
                 text,
                 ...options
@@ -3069,18 +3078,11 @@ case 'hack': {
 const plugin = findPluginForCommand(command);
 if (plugin) {
     try {
-        // 🛡️ Go ONLINE when command starts
-        if (socket.antiban_goOnline) await socket.antiban_goOnline();
-        
         await plugin.handler({ socket, msg, sender, command, args, reply, m, quoted, isOwner, isGroup, botNumber, senderNumber, metaQuote: metaQuote || msg });
     } catch (pluginErr) {
         console.error(`Plugin ${plugin.name} error:`, pluginErr.message);
-    } finally {
-        // 🛡️ Go OFFLINE when command ends
-        if (socket.antiban_goOffline) await socket.antiban_goOffline();
     }
 }
-
 // ---------------------------------------------------------
         } catch (error) {
             console.error('Command handler error:', error);
