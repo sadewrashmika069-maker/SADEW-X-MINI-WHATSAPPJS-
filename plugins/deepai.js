@@ -1,6 +1,6 @@
 const axios = require("axios");
 const FormData = require("form-data");
-const { downloadContentFromMessage, getContentType } = require("baileys");
+const { downloadContentFromMessage, getContentType } = require("@whiskeysockets/baileys");
 
 // 🔄 DeepAI Bypass Endpoint & Token
 const AI_EDIT_API_URL = "https://whiteshadow-x-api.onrender.com/api/ai/deepai-edit";
