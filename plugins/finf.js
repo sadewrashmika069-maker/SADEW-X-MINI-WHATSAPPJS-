@@ -1,6 +1,6 @@
 const axios = require('axios');
 const FormData = require('form-data');
-const { downloadContentFromMessage } = require('baileys');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 // 🎵 Music Recognition API Keys
 const API_KEYS = [
