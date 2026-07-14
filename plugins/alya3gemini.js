@@ -38,7 +38,7 @@ RULES:
             let chatContext = SYSTEM_PROMPT + "\n\n";
             const history = global.alyaChatMemory[sender];
             for (const h of history) {
-                chatContext += `${h.role === 'user' ? 'Sajana' : 'Alya'}: ${h.content}\n`;
+                chatContext += `${h.role === 'user' ? 'MANIKA' : 'Alya'}: ${h.content}\n`;
             }
             chatContext += `Sajana: ${query}\nAlya:`;
 
