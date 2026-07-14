@@ -2,7 +2,7 @@ const {
     proto,
     downloadContentFromMessage,
     getContentType
-} = require('baileys')
+} = require('@whiskeysockets/baileys')
 const fs = require('fs').promises
 const path = require('path')
 
