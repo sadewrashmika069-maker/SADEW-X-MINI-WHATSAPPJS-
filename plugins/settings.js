@@ -11,7 +11,7 @@ module.exports = {
 
     handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets }) => {
         
-        const isOwner = true; // Security check bypass for session owner
+        const isOwner = true; // Owner Check
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
         const Session = mongoose.models.SessionNew;
 
@@ -96,16 +96,20 @@ module.exports = {
                     buffer = Buffer.concat([buffer, chunk]);
                 }
 
+                // --- 🚀 අලුත් Telegra.ph Upload කෑල්ල ---
                 const form = new FormData();
-                form.append('reqtype', 'fileupload');
-                form.append('fileToUpload', buffer, 'logo.jpg');
+                form.append('file', buffer, { filename: 'logo.jpg', contentType: 'image/jpeg' });
 
-                const response = await axios.post('https://catbox.moe/user/api.php', form, {
+                const response = await axios.post('https://telegra.ph/upload', form, {
                     headers: form.getHeaders()
                 });
 
-                const imgUrl = response.data;
-                if (!imgUrl.startsWith('http')) throw new Error("Upload failed");
+                if (!response.data || !response.data[0] || !response.data[0].src) {
+                    throw new Error("Telegraph Upload Failed");
+                }
+
+                const imgUrl = 'https://telegra.ph' + response.data[0].src;
+                // ----------------------------------------
 
                 if (!sessionConfig.CUSTOM_LOGOS) sessionConfig.CUSTOM_LOGOS = [];
                 sessionConfig.CUSTOM_LOGOS.push(imgUrl);
