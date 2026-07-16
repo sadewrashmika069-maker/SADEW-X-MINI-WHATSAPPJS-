@@ -1092,104 +1092,105 @@ function buildMainMenuCategoryButtons() {
 
 async function setupCommandHandlers(socket, number) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
-                
+
+    // 🔴 1. GLOBAL BUTTON OVERRIDE (බොට්ගේ සෙටින්ග් එක ඔන්/ඕෆ් නම් බටන් පාලනය)
+    if (!socket.isSmartOverridden) {
+        socket.originalSendMessage = socket.sendMessage;
+        socket.sendMessage = async (jid, content, options) => {
+            const userPref = global.userButtonPrefs?.[jid];
+            if (content.buttons && userPref === 'false') {
+                let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
+                let map = {};
+                content.buttons.forEach((btn, index) => {
+                    let num = index + 1;
+                    fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
+                    map[num.toString()] = btn.buttonId;
+                });
+                if (content.footer) fallbackText += `\n> ${content.footer}`;
+                let finalOpts = { ...content };
+                delete finalOpts.buttons;
+                delete finalOpts.headerType;
+                if (finalOpts.image) finalOpts.caption = fallbackText;
+                else if (finalOpts.video) finalOpts.caption = fallbackText;
+                else finalOpts.text = fallbackText;
+                const sentMsg = await socket.originalSendMessage(jid, finalOpts, options);
+                global.btnFallbackTracker = global.btnFallbackTracker || {};
+                global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
+                return sentMsg;
+            }
+            return await socket.originalSendMessage(jid, content, options);
+        };
+        socket.isSmartOverridden = true;
+    }
+
     let sessionConfig = await loadUserConfig(sanitizedNumber);
-    activeSockets.set(sanitizedNumber, {
-        socket,
-        config: sessionConfig
-    });
+    activeSockets.set(sanitizedNumber, { socket, config: sessionConfig });
 
-const recentCallers = new Set();
-
-    socket.ev.on('messages.upsert', async ({
-        messages
-    }) => {
-		await socket.sendPresenceUpdate('unavailable');
-
-
-      const msg = messages[0];
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        await socket.sendPresenceUpdate('unavailable');
+        const msg = messages[0];
         if (!msg.message) return;
-        
-const type = getContentType(msg.message);
-        if (!msg.message) return;
+
+        const type = getContentType(msg.message);
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
-                                                       const m = sms(socket, msg);                                              
-const quoted =
-            type == "extendedTextMessage" &&
-            msg.message.extendedTextMessage.contextInfo != null
-              ? msg.message.extendedTextMessage.contextInfo.quotedMessage || []
-              : [];
         const body = (type === 'conversation') ? msg.message.conversation 
-            : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') 
-                ? msg.message.extendedTextMessage.text 
-            : (type == 'interactiveResponseMessage') 
-                ? msg.message.interactiveResponseMessage?.nativeFlowResponseMessage 
-                    && JSON.parse(msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson)?.id 
-            : (type == 'templateButtonReplyMessage') 
-                ? msg.message.templateButtonReplyMessage?.selectedId 
-            : (type === 'extendedTextMessage') 
-                ? msg.message.extendedTextMessage.text 
-            : (type == 'imageMessage') && msg.message.imageMessage.caption 
-                ? msg.message.imageMessage.caption 
-            : (type == 'videoMessage') && msg.message.videoMessage.caption 
-                ? msg.message.videoMessage.caption 
-            : (type == 'buttonsResponseMessage') 
-                ? msg.message.buttonsResponseMessage?.selectedButtonId 
-            : (type == 'listResponseMessage') 
-                ? msg.message.listResponseMessage?.singleSelectReply?.selectedRowId 
-            : (type == 'messageContextInfo') 
-                ? (msg.message.buttonsResponseMessage?.selectedButtonId 
-                    || msg.message.listResponseMessage?.singleSelectReply?.selectedRowId 
-                    || msg.text) 
-            : (type === 'viewOnceMessage') 
-                ? msg.message[type]?.message[getContentType(msg.message[type].message)] 
-            : (type === "viewOnceMessageV2") 
-                ? (msg.message[type]?.message?.imageMessage?.caption || msg.message[type]?.message?.videoMessage?.caption || "") 
+            : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') ? msg.message.extendedTextMessage.text 
+            : (type == 'interactiveResponseMessage') ? msg.message.interactiveResponseMessage?.nativeFlowResponseMessage && JSON.parse(msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson)?.id 
+            : (type == 'templateButtonReplyMessage') ? msg.message.templateButtonReplyMessage?.selectedId 
+            : (type === 'extendedTextMessage') ? msg.message.extendedTextMessage.text 
+            : (type == 'imageMessage') && msg.message.imageMessage.caption ? msg.message.imageMessage.caption 
+            : (type == 'videoMessage') && msg.message.videoMessage.caption ? msg.message.videoMessage.caption 
+            : (type == 'buttonsResponseMessage') ? msg.message.buttonsResponseMessage?.selectedButtonId 
+            : (type == 'listResponseMessage') ? msg.message.listResponseMessage?.singleSelectReply?.selectedRowId 
+            : (type == 'messageContextInfo') ? (msg.message.buttonsResponseMessage?.selectedButtonId || msg.message.listResponseMessage?.singleSelectReply?.selectedRowId || msg.text) 
             : '';
-     
+
         if (!body) return;
-    
         const text = body;
-        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
         const sender = msg.key.remoteJid;
 
-        const nowsender = msg.key.fromMe ?
-            (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
-            (msg.key.participant || msg.key.remoteJid);
+        // 🔥 SMART NUMBER CATCHER
+        const quotedStanzaIdBtn = msg.message?.extendedTextMessage?.contextInfo?.stanzaId;
+        if (quotedStanzaIdBtn && global.btnFallbackTracker && global.btnFallbackTracker[sender]) {
+            if (global.btnFallbackTracker[sender].msgId === quotedStanzaIdBtn) {
+                const mappedCmd = global.btnFallbackTracker[sender].map[text.trim()];
+                if (mappedCmd) {
+                    let fakeMsg = JSON.parse(JSON.stringify(msg));
+                    fakeMsg.key.id = crypto.randomBytes(16).toString("hex").toUpperCase();
+                    fakeMsg.message = { conversation: mappedCmd };
+                    socket.ev.emit('messages.upsert', { messages: [fakeMsg], type: 'notify' });
+                    delete global.btnFallbackTracker[sender];
+                    return;
+                }
+            }
+        }
 
+        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
+        const nowsender = msg.key.fromMe ? (socket.user.id.split(':')[0] + '@s.whatsapp.net') : (msg.key.participant || msg.key.remoteJid);
         const senderNumber = nowsender.split('@')[0];
         const developers = `${config.OWNER_NUMBER}`;
         const botNumber = socket.user.id.split(':')[0];
-
-        const isbot = botNumber.includes(senderNumber);
-        const isOwner = isbot ? isbot : developers.includes(senderNumber);
-        const isAshuu = sender === `${config.OWNER_NUMBER}@s.whatsapp.net` ||
-            jidNormalizedUser(socket.user.id) === sender;
+        const isOwner = botNumber.includes(senderNumber) || developers.includes(senderNumber);
         const isGroup = msg.key.remoteJid.endsWith('@g.us');
 
         if (!isOwner && sessionConfig.MODE === 'private') return;
         if (!isOwner && isGroup && sessionConfig.MODE === 'inbox') return;
         if (!isOwner && !isGroup && sessionConfig.MODE === 'groups') return;
 
-        // ════════════ NO-PREFIX REPLY CATCHER ════════════
-        if (msg.message && msg.message.extendedTextMessage && msg.message.extendedTextMessage.contextInfo && msg.message.extendedTextMessage.contextInfo.quotedMessage) {
+        // ════════ NO-PREFIX REPLY CATCHER ════════
+        if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
             const replyText = text.trim();
-            const quotedMsg = msg.message.extendedTextMessage.contextInfo.quotedMessage;
-            const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
             const quotedStanzaId = msg.message.extendedTextMessage.contextInfo.stanzaId;
-
-            // ── SADEW-MINI MENU CATEGORY REPLY CATCHER ──
-            if (
-                global.sadewMenuTracker[sender] &&
-                global.sadewMenuTracker[sender] === quotedStanzaId &&
-                /^[1-9]$/.test(replyText)
-            ) {
-                const catNum = parseInt(replyText);
-                const buttonMsg = buildCategoryButtonMessage(catNum);
-                if (buttonMsg) {
-                    return await socket.sendMessage(msg.key.remoteJid, buttonMsg, { quoted: msg });
-                }
+            if (global.sadewMenuTracker?.[sender] === quotedStanzaId && /^[1-9]$/.test(replyText)) {
+                const buttonMsg = buildCategoryButtonMessage(parseInt(replyText));
+                if (buttonMsg) return await socket.sendMessage(msg.key.remoteJid, buttonMsg, { quoted: msg });
             }
+        }
+        
+        // ඉතුරු කෝඩ් එක (Plugins handler එක) මෙතනට දාන්න
+        // (බොට්ගේ ඉතුරු ටික මෙතනින් පහළට එනවා)
+    });
+}
 
             // ── VIDEO SEARCH REPLY CATCHER ──
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
