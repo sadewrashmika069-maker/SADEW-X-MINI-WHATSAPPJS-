@@ -197,28 +197,29 @@ module.exports = {
             return reply(`✅ *ඔබේ Custom Logo ලැයිස්තුව මකා දමන ලදී!*\nදැන් Bot ගේ මුල් පින්තූර (Default) භාවිතා වේ.`);
         }
 
-        // 🛠️ Settings Panel එක (settings / panel)
+// 🛠️ Settings Panel එක (settings / panel)
         if (cmd === 'settings' || cmd === 'panel') {
             const currentMode = sessionConfig?.MODE || 'public';
             const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
-            const btnStatus = (sessionConfig.BUTTON_MODE === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
+            
+            // මෙතන logic එක පොඩ්ඩක් ස්ට්‍රෝන්ග් කරමු
+            const isBtnOff = sessionConfig.BUTTON_MODE === 'false' || sessionConfig.BUTTON_MODE === false;
+            const btnStatus = isBtnOff ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
             
             const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
                               `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🔸 Current Mode: *${currentMode.toUpperCase()}*\n` +
-                              `  [1] Public (සැමටම)\n` +
-                              `  [2] Private (Owner ට පමණක්)\n` +
-                              `  [3] Inbox Only (Inbox පමණක්)\n` +
+                              `  [1] Public | [2] Private | [3] Inbox\n` +
                               `_(වෙනස් කිරීමට .mode 1, 2 හෝ 3 යොදන්න)_\n\n` +
                               `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🖼️ Custom Logos: *${customLogos.length}*\n` +
-                              `  • පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
-                              `  • පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
+                              `  • .addpp / .delpp\n\n` +
                               `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🔘 Current Status: *${btnStatus}*\n` +
                               `  • වෙනස් කිරීමට *.btnmode on* හෝ *.btnmode off* යවන්න.\n\n` +
                               `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
-
+            
+            // ... (ඉතුරු ටික එහෙම්මම තියන්න)
             let displayLogo = 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg';
             if (customLogos.length > 0) {
                 displayLogo = customLogos[Math.floor(Math.random() * customLogos.length)];
