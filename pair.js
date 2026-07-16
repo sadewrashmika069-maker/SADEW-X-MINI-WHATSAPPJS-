@@ -1095,44 +1095,53 @@ async function setupCommandHandlers(socket, number) {
 
     let sessionConfig = await loadUserConfig(sanitizedNumber);
     activeSockets.set(sanitizedNumber, { socket, config: sessionConfig });
+// 🔴 GLOBAL BUTTON OVERRIDE (DB SYNCED) 🔴
+        if (!socket.isSmartOverridden) {
+            socket.originalSendMessage = socket.sendMessage;
+            socket.sendMessage = async (jid, content, options) => {
+                
+                // Database එකෙන් අලුත්ම සෙටින්ග්ස් ගන්නවා
+                const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
+                const userPref = currentConfig.USER_BTN_PREFS?.[jid];
+                
+                if (content.buttons && userPref === 'false') {
+                    
+                    // මේක Main Menu එකද කියලා අඳුරගන්නවා (.catmenu තියෙනවද බලනවා)
+                    const isMainMenu = content.buttons.some(btn => btn?.buttonId && btn.buttonId.startsWith('.catmenu'));
+                    
+                    let finalOpts = { ...content };
+                    delete finalOpts.buttons;     // බටන් ටික අයින් කරනවා
+                    delete finalOpts.headerType;
 
-    // 🔴 1. GLOBAL BUTTON OVERRIDE (DB SYNCED - ඩේටාබේස් එකට සබැඳිව)
-    if (!socket.isSmartOverridden) {
-        socket.originalSendMessage = socket.sendMessage;
-        socket.sendMessage = async (jid, content, options) => {
-            // Memory එකෙන් නෙමෙයි, කෙලින්ම Database Config එකෙන් ගන්නවා!
-            const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
-            const userPrefs = currentConfig.USER_BTN_PREFS || {};
-            const userPref = userPrefs[jid];
-            
-            if (content.buttons && userPref === 'false') {
-                let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
-                let map = {};
-                content.buttons.forEach((btn, index) => {
-                    let num = index + 1;
-                    fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
-                    map[num.toString()] = btn.buttonId;
-                });
-                if (content.footer) fallbackText += `\n> ${content.footer}`;
-                
-                let finalOpts = { ...content };
-                delete finalOpts.buttons;
-                delete finalOpts.headerType;
-                
-                if (finalOpts.image) finalOpts.caption = fallbackText;
-                else if (finalOpts.video) finalOpts.caption = fallbackText;
-                else finalOpts.text = fallbackText;
-                
-                const sentMsg = await socket.originalSendMessage(jid, finalOpts, options);
-                global.btnFallbackTracker = global.btnFallbackTracker || {};
-                global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
-                return sentMsg;
-            }
-            return await socket.originalSendMessage(jid, content, options);
-        };
-        socket.isSmartOverridden = true;
-    }
-
+                    if (isMainMenu) {
+                        // 🟢 Menu එක නම්: අලුතින් අංක ලියන්නේ නෑ, නිකන්ම බටන් ටික විතරක් ගලවලා යවනවා!
+                        // (එතකොට ඔයාගේ පරණ Number Reply සිස්ටම් එක විතරක් නියමෙට වැඩ)
+                        return await socket.originalSendMessage(jid, finalOpts, options);
+                    } else {
+                        // 🟢 අනිත් කමාන්ඩ් නම්: බටන් ටික Number List එකක් විදිහට හරවලා යටින් ලියනවා!
+                        let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
+                        let map = {};
+                        content.buttons.forEach((btn, index) => {
+                            let num = index + 1;
+                            fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
+                            map[num.toString()] = btn.buttonId;
+                        });
+                        if (content.footer) fallbackText += `\n> ${content.footer}`;
+                        
+                        if (finalOpts.image) finalOpts.caption = fallbackText;
+                        else if (finalOpts.video) finalOpts.caption = fallbackText;
+                        else finalOpts.text = fallbackText;
+                        
+                        const sentMsg = await socket.originalSendMessage(jid, finalOpts, options);
+                        global.btnFallbackTracker = global.btnFallbackTracker || {};
+                        global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
+                        return sentMsg;
+                    }
+                }
+                return await socket.originalSendMessage(jid, content, options);
+            };
+            socket.isSmartOverridden = true;
+        }
     const recentCallers = new Set();
 
     socket.ev.on('messages.upsert', async ({ messages }) => {
