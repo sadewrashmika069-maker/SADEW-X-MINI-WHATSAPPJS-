@@ -6,7 +6,7 @@ module.exports = {
     name: "settings",
     category: 4, 
     description: "Bot Main Settings & Customization",
-    commands: ["settings", "panel", "mode", "addpp", "delpp", "btnmode"],
+    commands: ["settings", "panel", "mode", "addpp", "delpp"],
 
     handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets }) => {
         
@@ -35,9 +35,6 @@ module.exports = {
             const currentMode = sessionConfig?.MODE || 'public';
             const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
             
-            // Button Mode එකේ තත්ත්වය පරීක්ෂා කිරීම
-            const buttonModeStatus = (sessionConfig?.BUTTON_MODE === 'false') ? '🔴 OFF (Number Reply)' : '🟢 ON (Buttons)';
-            
             const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
                               `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🔸 Current Mode: *${currentMode.toUpperCase()}*\n` +
@@ -47,11 +44,8 @@ module.exports = {
                               `_(අදාළ අංකය Reply කරන්න හෝ .mode 1 ලෙස යවන්න)_\n\n` +
                               `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🖼️ Custom Logos: *${customLogos.length}*\n` +
-                              `  • පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
-                              `  • පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
-                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
-                              `🔘 Current Status: *${buttonModeStatus}*\n` +
-                              `  • වෙනස් කිරීමට *.btnmode on* හෝ *.btnmode off* ලෙස යවන්න.\n\n` +
+                              `  • අලුත් පින්තූරයක් එකතු කිරීමට, පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
+                              `  • ඔබ එකතු කළ පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
                               `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
             let displayLogo = 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg';
@@ -87,23 +81,7 @@ module.exports = {
             }
         }
 
-        // ════════ 3. BUTTON MODE TOGGLE (NEW) ════════
-        if (cmd === 'btnmode') {
-            const option = args[0] ? args[0].toLowerCase() : '';
-            if (option === 'on') {
-                sessionConfig.BUTTON_MODE = 'true';
-                await saveConfig();
-                return reply(`✅ *Button Mode successfully turned ON!*\nමින් ඉදිරියට බොට් Buttons පෙන්වනු ඇත.`);
-            } else if (option === 'off') {
-                sessionConfig.BUTTON_MODE = 'false';
-                await saveConfig();
-                return reply(`✅ *Button Mode successfully turned OFF!*\nමින් ඉදිරියට Buttons වෙනුවට Number Reply ක්‍රමය ක්‍රියාත්මක වේ.`);
-            } else {
-                return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
-            }
-        }
-
-        // ════════ 4. ADD CUSTOM MENU LOGO (.addpp) ════════
+        // ════════ 3. ADD CUSTOM MENU LOGO (.addpp) ════════
         if (cmd === 'addpp') {
             const qMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!qMsg || !qMsg.imageMessage) return reply("🖼️ *කරුණාකර පින්තූරයකට Reply කර .addpp ලෙස යවන්න!*");
@@ -122,11 +100,15 @@ module.exports = {
                 const apiUrl = 'https://apis.xwolf.space/api/url/imgbb?key=wxa_f_4e840b5e42';
 
                 const response = await axios.post(apiUrl, { image: base64Image });
+
+                // Wolf API එකෙන් එන ලින්ක් එක ගන්නවා
                 const imgUrl = response.data?.url || response.data?.data?.url || response.data?.result?.url;
 
                 if (!imgUrl || !imgUrl.startsWith('http')) {
+                    console.log("XWOLF API Response Error:", response.data);
                     throw new Error("Wolf API එක හරහා පින්තූරය Upload කිරීම අසාර්ථක විය.");
                 }
+                // ----------------------------------------
 
                 if (!sessionConfig.CUSTOM_LOGOS) sessionConfig.CUSTOM_LOGOS = [];
                 sessionConfig.CUSTOM_LOGOS.push(imgUrl);
@@ -141,7 +123,7 @@ module.exports = {
             }
         }
 
-        // ════════ 5. DELETE ALL CUSTOM LOGOS (.delpp) ════════
+        // ════════ 4. DELETE ALL CUSTOM LOGOS (.delpp) ════════
         if (cmd === 'delpp') {
             sessionConfig.CUSTOM_LOGOS = [];
             await saveConfig();
