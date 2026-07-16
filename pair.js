@@ -1092,33 +1092,62 @@ function buildMainMenuCategoryButtons() {
 
 async function setupCommandHandlers(socket, number) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
-                
+
     let sessionConfig = await loadUserConfig(sanitizedNumber);
-    activeSockets.set(sanitizedNumber, {
-        socket,
-        config: sessionConfig
-    });
+    activeSockets.set(sanitizedNumber, { socket, config: sessionConfig });
 
-const recentCallers = new Set();
+    // 🔴 1. GLOBAL BUTTON OVERRIDE (DB SYNCED - ඩේටාබේස් එකට සබැඳිව)
+    if (!socket.isSmartOverridden) {
+        socket.originalSendMessage = socket.sendMessage;
+        socket.sendMessage = async (jid, content, options) => {
+            // Memory එකෙන් නෙමෙයි, කෙලින්ම Database Config එකෙන් ගන්නවා!
+            const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
+            const userPrefs = currentConfig.USER_BTN_PREFS || {};
+            const userPref = userPrefs[jid];
+            
+            if (content.buttons && userPref === 'false') {
+                let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
+                let map = {};
+                content.buttons.forEach((btn, index) => {
+                    let num = index + 1;
+                    fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
+                    map[num.toString()] = btn.buttonId;
+                });
+                if (content.footer) fallbackText += `\n> ${content.footer}`;
+                
+                let finalOpts = { ...content };
+                delete finalOpts.buttons;
+                delete finalOpts.headerType;
+                
+                if (finalOpts.image) finalOpts.caption = fallbackText;
+                else if (finalOpts.video) finalOpts.caption = fallbackText;
+                else finalOpts.text = fallbackText;
+                
+                const sentMsg = await socket.originalSendMessage(jid, finalOpts, options);
+                global.btnFallbackTracker = global.btnFallbackTracker || {};
+                global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
+                return sentMsg;
+            }
+            return await socket.originalSendMessage(jid, content, options);
+        };
+        socket.isSmartOverridden = true;
+    }
 
-    socket.ev.on('messages.upsert', async ({
-        messages
-    }) => {
-		await socket.sendPresenceUpdate('unavailable');
+    const recentCallers = new Set();
 
-
-      const msg = messages[0];
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        await socket.sendPresenceUpdate('unavailable');
+        const msg = messages[0];
         if (!msg.message) return;
-        
-const type = getContentType(msg.message);
+
+        const type = getContentType(msg.message);
         if (!msg.message) return;
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
-                                                       const m = sms(socket, msg);                                              
-const quoted =
-            type == "extendedTextMessage" &&
-            msg.message.extendedTextMessage.contextInfo != null
+        const m = sms(socket, msg);                                              
+        const quoted = type == "extendedTextMessage" && msg.message.extendedTextMessage.contextInfo != null
               ? msg.message.extendedTextMessage.contextInfo.quotedMessage || []
               : [];
+        
         const body = (type === 'conversation') ? msg.message.conversation 
             : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') 
                 ? msg.message.extendedTextMessage.text 
@@ -1150,9 +1179,25 @@ const quoted =
         if (!body) return;
     
         const text = body;
-        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
         const sender = msg.key.remoteJid;
 
+        // 🔥 SMART NUMBER CATCHER
+        const quotedStanzaIdBtn = msg.message?.extendedTextMessage?.contextInfo?.stanzaId;
+        if (quotedStanzaIdBtn && global.btnFallbackTracker && global.btnFallbackTracker[sender]) {
+            if (global.btnFallbackTracker[sender].msgId === quotedStanzaIdBtn) {
+                const mappedCmd = global.btnFallbackTracker[sender].map[text.trim()];
+                if (mappedCmd) {
+                    let fakeMsg = JSON.parse(JSON.stringify(msg));
+                    fakeMsg.key.id = crypto.randomBytes(16).toString("hex").toUpperCase();
+                    fakeMsg.message = { conversation: mappedCmd };
+                    socket.ev.emit('messages.upsert', { messages: [fakeMsg], type: 'notify' });
+                    delete global.btnFallbackTracker[sender];
+                    return;
+                }
+            }
+        }
+
+        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
         const nowsender = msg.key.fromMe ?
             (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
             (msg.key.participant || msg.key.remoteJid);
@@ -1198,7 +1243,7 @@ const quoted =
                     const targetUrl = global.sadewVideoSearch[sender][num - 1];
                     if (targetUrl) {
                         const buttonMessage = {
-                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්ය Video Quality එක තෝරන්න:*`,
+                            text: `*🎥 Video Selected!*\n\n🔗 ${targetUrl}\n\n> *පහතින් ඔබට අවශ්‍ය Video Quality එක තෝරන්න:*`,
                             footer: '👑 SADEW-X-MINI 👑',
                             buttons: [
                                 { buttonId: `.viddl ${targetUrl} 720`, buttonText: { displayText: '🎥 720p HD' }, type: 1 },
@@ -1215,7 +1260,8 @@ const quoted =
                     return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *කරුණාකර වීඩියෝව මුල සිට Search කරන්න!*" }, { quoted: msg });
                 }
             }
-                                       // ── SADEW-MINI SETTINGS REPLY CATCHER ──
+
+            // ── SADEW-MINI SETTINGS REPLY CATCHER ──
             if (
                 global.sadewSettingsTracker &&
                 global.sadewSettingsTracker[sender] === quotedStanzaId &&
@@ -1245,7 +1291,8 @@ const quoted =
                 delete global.sadewSettingsTracker[sender];
                 return await socket.sendMessage(msg.key.remoteJid, { text: `✅ *Bot mode successfully updated to ${newMode.toUpperCase()} mode.*` }, { quoted: msg });
             }
-            // 🔥🔥🔥 XNXX REPLY CATCHER (INSIDE the if block) 🔥🔥🔥
+
+            // 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     try {
@@ -1293,7 +1340,6 @@ const quoted =
                 }
             }
         }
-
         if (!isCmd) return;
 
         const parts = text.slice((sessionConfig.PREFIX || '!').length).trim().split(/\s+/);
