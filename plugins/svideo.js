@@ -1,20 +1,35 @@
-const puppeteer = require("puppeteer");
-const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
-const ffmpegPath = require("ffmpeg-static");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+
+// Packages තියෙනවද කියලා මුලින්ම චෙක් කරනවා (නැත්නම් බොට් ලෝඩ් වෙන්නේ නෑ)
+let puppeteer, PuppeteerScreenRecorder, ffmpegPath;
+let isInstalled = false;
+
+try {
+    puppeteer = require("puppeteer");
+    PuppeteerScreenRecorder = require("puppeteer-screen-recorder").PuppeteerScreenRecorder;
+    ffmpegPath = require("ffmpeg-static");
+    isInstalled = true;
+} catch (err) {
+    isInstalled = false; // Packages නැත්නම් False කරනවා
+}
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = {
     name: "svideo",
-    category: 5, 
+    category: 5,
     description: "📹 වෙබ් අඩවියක් ස්ක්‍රෝල් කරලා Video එකක් හදන්න",
     commands: ["svideo", "webvideo", "scrollvideo"],
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         
+        // 🔴 Package එක නැත්නම් කෙලින්ම දැනුවත් කරනවා
+        if (!isInstalled) {
+            return reply(`❌ *Packages Missing!*\n\nමෙම කමාන්ඩ් එක භාවිතා කිරීමට පෙර ඔබගේ සර්වර් එකේ පහත විධානය (Command) ලබාදී Packages Install කළ යුතුය:\n\n*Terminal/Console එකේ Type කරන්න:*\n\`\`\`npm install puppeteer puppeteer-screen-recorder ffmpeg-static\`\`\`\n\nඉන්පසු බොට්ව Restart කරන්න.`);
+        }
+
         let input = args.join(" ").trim();
         const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         
@@ -43,14 +58,13 @@ module.exports = {
             let recorder = null;
 
             try {
-                // සර්වර් එකේ Crash වෙන එක නවත්තන්න විශේෂිත විධානයන් (Server-optimized args)
                 browser = await puppeteer.launch({
-                    headless: true, // Server එකේ අනිවාර්යයෙන් true විය යුතුය
+                    headless: "new",
                     args: [
                         '--no-sandbox', 
                         '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage', // RAM එක පිරෙන එක වලක්වයි
-                        '--disable-gpu',           // Server එකට GPU නැති නිසා මේක අත්‍යවශ්‍යයි
+                        '--disable-dev-shm-usage', 
+                        '--disable-gpu',           
                         '--single-process'
                     ]
                 });
@@ -63,10 +77,10 @@ module.exports = {
 
                 recorder = new PuppeteerScreenRecorder(page, {
                     ffmpegPath: ffmpegPath,
-                    fps: 24, // RAM භාවිතය අඩු කිරීමට FPS 24ට අඩු කළා
+                    fps: 24,
                     videoFrame: { width: 1280, height: 800 },
                     aspectRatio: '16:9',
-                    videoCrf: 28, // Quality එක ගාණට තියලා Size එක අඩු කරනවා
+                    videoCrf: 28,
                     videoCodec: 'libx264',
                     videoPreset: 'ultrafast',
                     videoBitrate: 1000, 
@@ -122,9 +136,7 @@ module.exports = {
         } catch (error) {
             console.error("Scroll video error:", error);
             await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-            
-            // Error එක WhatsApp එකට එවනවා
-            reply(`❌ *Video Capture Failed!*\n\n_ඔබගේ Hosting Server එකේ Google Chrome/Puppeteer ධාවනය කිරීමට අවශ්‍ය පහසුකම් නොමැත හෝ RAM එක ප්‍රමාණවත් නොවේ._\n\n*(Error: ${error.message.substring(0, 100)})*`);
+            reply(`❌ *Video Capture Failed!*\n\n_(Error: ${error.message.substring(0, 100)})*`);
         }
     }
 };
