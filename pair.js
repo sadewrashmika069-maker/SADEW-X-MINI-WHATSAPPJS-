@@ -1186,6 +1186,21 @@ async function setupCommandHandlers(socket, number) {
                 if (buttonMsg) return await socket.sendMessage(msg.key.remoteJid, buttonMsg, { quoted: msg });
             }
         }
+		// ════════ PLUGIN COMMAND HANDLER ════════
+        if (isCmd) {
+            const cmdName = text.slice(1).trim().split(/ +/).shift().toLowerCase();
+            const args = text.trim().split(/ +/).slice(1);
+            const plugin = findPluginForCommand(cmdName);
+            if (plugin) {
+                await plugin.handler({ 
+                    socket, msg, sender, command: cmdName, args, 
+                    reply: (txt) => socket.sendMessage(msg.key.remoteJid, { text: txt }, { quoted: msg }), 
+                    botNumber, sessionConfig, activeSockets 
+                });
+            }
+        }
+    });
+}
         
         // ඉතුරු කෝඩ් එක (Plugins handler එක) මෙතනට දාන්න
         // (බොට්ගේ ඉතුරු ටික මෙතනින් පහළට එනවා)
