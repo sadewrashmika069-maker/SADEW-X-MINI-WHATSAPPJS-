@@ -1093,7 +1093,7 @@ function buildMainMenuCategoryButtons() {
 async function setupCommandHandlers(socket, number) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
 
-    // 🔴 1. GLOBAL BUTTON OVERRIDE (බොට්ගේ සෙටින්ග් එක ඔන්/ඕෆ් නම් බටන් පාලනය)
+    // 🔴 1. GLOBAL BUTTON OVERRIDE
     if (!socket.isSmartOverridden) {
         socket.originalSendMessage = socket.sendMessage;
         socket.sendMessage = async (jid, content, options) => {
@@ -1107,12 +1107,15 @@ async function setupCommandHandlers(socket, number) {
                     map[num.toString()] = btn.buttonId;
                 });
                 if (content.footer) fallbackText += `\n> ${content.footer}`;
+                
                 let finalOpts = { ...content };
                 delete finalOpts.buttons;
                 delete finalOpts.headerType;
+                
                 if (finalOpts.image) finalOpts.caption = fallbackText;
                 else if (finalOpts.video) finalOpts.caption = fallbackText;
                 else finalOpts.text = fallbackText;
+                
                 const sentMsg = await socket.originalSendMessage(jid, finalOpts, options);
                 global.btnFallbackTracker = global.btnFallbackTracker || {};
                 global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
@@ -1133,6 +1136,11 @@ async function setupCommandHandlers(socket, number) {
 
         const type = getContentType(msg.message);
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
+        
+        // quoted text එක ගන්න තැන
+        const quoted = type == "extendedTextMessage" && msg.message.extendedTextMessage.contextInfo != null ? msg.message.extendedTextMessage.contextInfo.quotedMessage || [] : [];
+        const quotedText = quoted.conversation || quoted.extendedTextMessage?.text || "";
+
         const body = (type === 'conversation') ? msg.message.conversation 
             : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') ? msg.message.extendedTextMessage.text 
             : (type == 'interactiveResponseMessage') ? msg.message.interactiveResponseMessage?.nativeFlowResponseMessage && JSON.parse(msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson)?.id 
@@ -1181,12 +1189,26 @@ async function setupCommandHandlers(socket, number) {
         if (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
             const replyText = text.trim();
             const quotedStanzaId = msg.message.extendedTextMessage.contextInfo.stanzaId;
+            
+            // Sadew Menu Catcher
             if (global.sadewMenuTracker?.[sender] === quotedStanzaId && /^[1-9]$/.test(replyText)) {
                 const buttonMsg = buildCategoryButtonMessage(parseInt(replyText));
                 if (buttonMsg) return await socket.sendMessage(msg.key.remoteJid, buttonMsg, { quoted: msg });
             }
+            
+            // Video Search Catcher
+            if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
+                if (global.sadewVideoSearch && global.sadewVideoSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const targetUrl = global.sadewVideoSearch[sender][num - 1];
+                    if (targetUrl) {
+                        // මෙතන ඔයාගේ Video search එකේ වැඩ ටික කරන්න
+                    }
+                }
+            }
         }
-		// ════════ PLUGIN COMMAND HANDLER ════════
+
+        // ════════ PLUGIN COMMAND HANDLER ════════
         if (isCmd) {
             const cmdName = text.slice(1).trim().split(/ +/).shift().toLowerCase();
             const args = text.trim().split(/ +/).slice(1);
@@ -1199,8 +1221,8 @@ async function setupCommandHandlers(socket, number) {
                 });
             }
         }
-    });
-}
+    }); // socket.ev.on වහන එක
+} // setupCommandHandlers වහන එක
         
         // ඉතුරු කෝඩ් එක (Plugins handler එක) මෙතනට දාන්න
         // (බොට්ගේ ඉතුරු ටික මෙතනින් පහළට එනවා)
