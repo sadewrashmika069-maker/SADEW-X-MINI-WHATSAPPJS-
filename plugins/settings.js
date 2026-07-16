@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
 const { downloadContentFromMessage } = require('baileys');
 const axios = require('axios');
-
-global.btnFallbackTracker = global.btnFallbackTracker || {};
 
 module.exports = {
     name: "settings",
@@ -16,7 +13,6 @@ module.exports = {
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
         const Session = mongoose.models.SessionNew;
 
-        // 💾 ඩේටාබේස් එකට සේව් කරන ෆන්ක්ෂන් එක
         const saveConfig = async () => {
             const currentData = activeSockets.get(sanitizedNumber);
             if (currentData) {
@@ -30,94 +26,21 @@ module.exports = {
             );
         };
 
-        // 🔴 GLOBAL HACK (DATABASE-BACKED) 🔴
-        if (!socket.isSmartOverridden) {
-            const originalSendMessage = socket.sendMessage.bind(socket);
-            
-            socket.sendMessage = async (jid, content, options) => {
-                // ඩේටාබේස් එකෙන් අලුත්ම සෙටින්ග්ස් ටික ගන්නවා (Restart වුණත් මේකේ තියෙනවා)
-                const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
-                const userPrefs = currentConfig.USER_BTN_PREFS || {};
-                const userPref = userPrefs[jid];
-                
-                // යූසර් '.btnmode off' ගහලා නම් විතරක් නම්බර් රිප්ලයි යවනවා
-                if (content.buttons && userPref === 'false') {
-                    let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
-                    let map = {};
-                    
-                    content.buttons.forEach((btn, index) => {
-                        let num = index + 1;
-                        fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
-                        map[num.toString()] = btn.buttonId;
-                    });
-                    
-                    if (content.footer) fallbackText += `\n> ${content.footer}`;
-
-                    let finalOpts = { ...content };
-                    delete finalOpts.buttons;
-                    delete finalOpts.headerType;
-                    
-                    if (finalOpts.image) finalOpts.caption = fallbackText;
-                    else if (finalOpts.video) finalOpts.caption = fallbackText;
-                    else finalOpts.text = fallbackText;
-
-                    const sentMsg = await originalSendMessage(jid, finalOpts, options);
-                    global.btnFallbackTracker[jid] = { msgId: sentMsg?.key?.id, map: map };
-                    
-                    return sentMsg;
-                }
-                
-                return await originalSendMessage(jid, content, options);
-            };
-
-            // නම්බර් රිප්ලයි අල්ලගන්න පිටින් අලුත් කනක් (Listener) දානවා
-            socket.ev.on('messages.upsert', async ({ messages }) => {
-                try {
-                    const m = messages[0];
-                    if (!m.message) return;
-                    
-                    const mSender = m.key.remoteJid;
-                    const quotedStanzaId = m.message.extendedTextMessage?.contextInfo?.stanzaId;
-                    const replyText = m.message.conversation || m.message.extendedTextMessage?.text || "";
-
-                    if (quotedStanzaId && global.btnFallbackTracker[mSender]) {
-                        if (global.btnFallbackTracker[mSender].msgId === quotedStanzaId) {
-                            const mappedCmd = global.btnFallbackTracker[mSender].map[replyText.trim()];
-                            if (mappedCmd) {
-                                let fakeMsg = JSON.parse(JSON.stringify(m)); 
-                                fakeMsg.key.id = crypto.randomBytes(16).toString("hex").toUpperCase(); 
-                                fakeMsg.message = { conversation: mappedCmd }; 
-                                socket.ev.emit('messages.upsert', { messages: [fakeMsg], type: 'notify' });
-                                delete global.btnFallbackTracker[mSender];
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log("Settings Plugin Error:", e);
-                }
-            });
-
-            socket.isSmartOverridden = true;
-            console.log("✅ Smart Button Override (DB-Synced) Activated!");
-        }
-
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Per User - Saved to DB)
+        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Database Sync)
         if (cmd === 'btnmode') {
             const option = args[0] ? args[0].toLowerCase() : '';
-            
-            // Database object එක නැත්නම් අලුතින් හදනවා
             if (!sessionConfig.USER_BTN_PREFS) sessionConfig.USER_BTN_PREFS = {};
 
             if (option === 'on') {
                 sessionConfig.USER_BTN_PREFS[sender] = 'true';
-                await saveConfig(); // 💾 Database එකටම සේව් කරනවා!
-                return reply(`✅ *Button Mode ON!*\nමින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.\n_(මෙම සැකසුම ස්ථිරවම Save කර ඇත)_`);
+                await saveConfig();
+                return reply(`✅ *Button Mode ON!*\nමින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.`);
             } else if (option === 'off') {
                 sessionConfig.USER_BTN_PREFS[sender] = 'false';
-                await saveConfig(); // 💾 Database එකටම සේව් කරනවා!
-                return reply(`✅ *Button Mode OFF!*\nමින් ඉදිරියට ඔබට Buttons වෙනුවට Number Reply පෙනෙනු ඇත.\n_(මෙම සැකසුම ස්ථිරවම Save කර ඇත)_`);
+                await saveConfig();
+                return reply(`✅ *Button Mode OFF!*\nමින් ඉදිරියට ඔබට Buttons වෙනුවට Number Reply පෙනෙනු ඇත.`);
             } else {
                 return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
             }
@@ -128,7 +51,6 @@ module.exports = {
             const currentMode = sessionConfig?.MODE || 'public';
             const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
             
-            // Database එකෙන් User ගේ සෙටින්ග් එක ගන්නවා
             const userPrefs = sessionConfig?.USER_BTN_PREFS || {};
             const userPref = userPrefs[sender];
             const btnStatus = (userPref === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
@@ -141,7 +63,7 @@ module.exports = {
                               `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🖼️ Custom Logos: *${customLogos.length}*\n` +
                               `  • .addpp / .delpp\n\n` +
-                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 (ඔබට පමණක්):*\n` +
+                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 (ඔබට පමණක්):*\n` +
                               `🔘 Current Status: *${btnStatus}*\n` +
                               `  • වෙනස් කිරීමට *.btnmode on* හෝ *.btnmode off* යවන්න.\n\n` +
                               `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
@@ -156,6 +78,7 @@ module.exports = {
                 caption: panelText
             }, { quoted: msg });
 
+            // මේක අනිවාර්යයෙන් තියෙන්න ඕනේ settings panel එකෙන් mode එක වෙනස් කරන්න
             global.sadewSettingsTracker = global.sadewSettingsTracker || {};
             global.sadewSettingsTracker[sender] = sentMsg.key.id;
             return;
