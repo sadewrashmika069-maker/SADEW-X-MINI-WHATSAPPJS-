@@ -8,8 +8,14 @@ module.exports = {
     description: "Bot Main Settings & Customization",
     commands: ["settings", "panel", "mode", "addpp", "delpp", "btnmode"],
 
-    handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets }) => {
+    // මෙතනට isOwner එකතු කළා
+    handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets, isOwner }) => {
         
+        // 🔴 OWNER CHECK - ඕනර්ට විතරක් වැඩ කරන්න හදන කෑල්ල 🔴
+        if (!isOwner) {
+            return reply('❌ *මෙම විධානය භාවිතා කළ හැක්කේ Bot Owner ට පමණි!*');
+        }
+
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
         const Session = mongoose.models.SessionNew;
 
@@ -28,7 +34,7 @@ module.exports = {
 
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (මුළු බොට්ටම බලපානවා)
+        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Global)
         if (cmd === 'btnmode') {
             const option = args[0] ? args[0].toLowerCase() : '';
             
