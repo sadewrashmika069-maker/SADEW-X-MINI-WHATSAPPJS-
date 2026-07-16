@@ -1194,7 +1194,29 @@ async function setupCommandHandlers(socket, number) {
                 ? (msg.message[type]?.message?.imageMessage?.caption || msg.message[type]?.message?.videoMessage?.caption || "") 
             : '';
      
+        if (!body) return;
+     
+        let text = body;
+        const sender = msg.key.remoteJid;
 
+        // 🔥 SMART NUMBER CATCHER INTERCEPTOR 🔥
+        const quotedStanzaIdBtn = msg.message?.extendedTextMessage?.contextInfo?.stanzaId;
+        if (quotedStanzaIdBtn && global.btnFallbackTracker && global.btnFallbackTracker[sender]) {
+            if (global.btnFallbackTracker[sender].msgId === quotedStanzaIdBtn) {
+                const mappedCmd = global.btnFallbackTracker[sender].map[text.trim()];
+                if (mappedCmd) {
+                    text = mappedCmd; 
+                    delete global.btnFallbackTracker[sender]; 
+                }
+            }
+        }
+        
+        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
+        const sender = msg.key.remoteJid;
+
+        const nowsender = msg.key.fromMe ?
+            (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
+            (msg.key.participant || msg.key.remoteJid);
 
         const senderNumber = nowsender.split('@')[0];
         const developers = `${config.OWNER_NUMBER}`;
