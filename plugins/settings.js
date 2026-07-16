@@ -28,19 +28,18 @@ module.exports = {
 
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Database Sync)
+        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (මුළු බොට්ටම බලපානවා)
         if (cmd === 'btnmode') {
             const option = args[0] ? args[0].toLowerCase() : '';
-            if (!sessionConfig.USER_BTN_PREFS) sessionConfig.USER_BTN_PREFS = {};
-
+            
             if (option === 'on') {
-                sessionConfig.USER_BTN_PREFS[sender] = 'true';
+                sessionConfig.BUTTON_MODE = 'true';
                 await saveConfig();
-                return reply(`✅ *Button Mode ON!*\nමින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.`);
+                return reply(`✅ *Global Button Mode ON!*\nමින් ඉදිරියට බොට් භාවිතා කරන සියලු දෙනාට Buttons පෙනෙනු ඇත.`);
             } else if (option === 'off') {
-                sessionConfig.USER_BTN_PREFS[sender] = 'false';
+                sessionConfig.BUTTON_MODE = 'false';
                 await saveConfig();
-                return reply(`✅ *Button Mode OFF!*\nමින් ඉදිරියට ඔබට Buttons වෙනුවට Number Reply පෙනෙනු ඇත.`);
+                return reply(`✅ *Global Button Mode OFF!*\nමින් ඉදිරියට බොට් භාවිතා කරන සියලු දෙනාට Buttons වෙනුවට Number Reply පෙනෙනු ඇත.`);
             } else {
                 return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
             }
@@ -51,9 +50,7 @@ module.exports = {
             const currentMode = sessionConfig?.MODE || 'public';
             const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
             
-            const userPrefs = sessionConfig?.USER_BTN_PREFS || {};
-            const userPref = userPrefs[sender];
-            const btnStatus = (userPref === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
+            const btnStatus = (sessionConfig?.BUTTON_MODE === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
             
             const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
                               `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
@@ -63,7 +60,7 @@ module.exports = {
                               `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
                               `🖼️ Custom Logos: *${customLogos.length}*\n` +
                               `  • .addpp / .delpp\n\n` +
-                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 (ඔබට පමණක්):*\n` +
+                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 (Global):*\n` +
                               `🔘 Current Status: *${btnStatus}*\n` +
                               `  • වෙනස් කිරීමට *.btnmode on* හෝ *.btnmode off* යවන්න.\n\n` +
                               `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
@@ -78,7 +75,6 @@ module.exports = {
                 caption: panelText
             }, { quoted: msg });
 
-            // මේක අනිවාර්යයෙන් තියෙන්න ඕනේ settings panel එකෙන් mode එක වෙනස් කරන්න
             global.sadewSettingsTracker = global.sadewSettingsTracker || {};
             global.sadewSettingsTracker[sender] = sentMsg.key.id;
             return;
