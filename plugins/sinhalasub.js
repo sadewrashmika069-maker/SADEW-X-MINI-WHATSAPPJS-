@@ -4,12 +4,11 @@ const crypto = require("crypto");
 const API_KEY = "zan_FIAO7Ayh_eo1vllkep6";
 const API_BASE = "https://api.zanta-mini.store/api/sinhalasub";
 
-// ඩේටා තාවකාලිකව රඳවා ගැනීමට Cache එකක් (Button IDs කෙටිව තබා ගැනීමට)
 global.sadewMovieCache = global.sadewMovieCache || {};
 
 module.exports = {
     name: "movie",
-    category: 1, // Download Menu
+    category: 1, 
     description: "🎬 සිංහල උපසිරැසි චිත්‍රපට Button හරහා ලබාගන්න",
     commands: ["movie", "cinema", "films", "moviedl", "movieget"],
 
@@ -35,7 +34,6 @@ module.exports = {
                     return reply(`❌ *"${query}" සඳහා ප්‍රතිඵල හමු නොවිණි.*`);
                 }
 
-                // WhatsApp Buttons වල උපරිම සීමාව 3ක් වන බැවින් පළමු ප්‍රතිඵල 3 පමණක් ගනිමු.
                 const results = data.results.slice(0, 3);
                 
                 let buttons = [];
@@ -45,13 +43,11 @@ module.exports = {
                               `> *පහතින් ඔබට අවශ්‍ය චිත්‍රපටය තෝරන්න:*`;
 
                 results.forEach((movie) => {
-                    // Button ID දිග වැඩිවීම වළක්වා ගැනීමට Cache කිරීම
                     let cacheId = crypto.randomBytes(3).toString("hex");
                     global.sadewMovieCache[cacheId] = { url: movie.url, title: movie.title };
 
                     buttons.push({
                         buttonId: `.moviedl ${cacheId}`,
-                        // Button Text එක දිග වැඩි වුවහොත් කපා හැරීම (Max 20 chars)
                         buttonText: { displayText: `🎬 ${movie.title.substring(0, 18)}...` },
                         type: 1
                     });
@@ -147,7 +143,7 @@ module.exports = {
             }
         }
 
-        // ════════ 3. SEND MOVIE DOCUMENT ════════
+        // ════════ 3. SEND MOVIE DOCUMENT / LINK ════════
         if (cmd === "movieget") {
             const cacheId = args[0];
             const dlData = global.sadewMovieCache[cacheId];
@@ -158,15 +154,28 @@ module.exports = {
 
             try {
                 await socket.sendMessage(sender, { react: { text: '⬇️', key: msg.key } });
-                await reply(`⬇️ *Download Started!*\n\n🎬 *${dlData.title}*\n📺 *Quality:* ${dlData.q}\n\n_⏳ WhatsApp වෙත Upload වෙමින් පවතී. කරුණාකර රැඳී සිටින්න..._`);
+                
+                let downloadUrl = dlData.url;
+                // 🔥 Pixeldrain Link Fix එක: Webpage ලින්ක් එක අමු File ලින්ක් එකක් බවට පත්කිරීම
+                if (downloadUrl.includes("pixeldrain.com/u/")) {
+                    downloadUrl = downloadUrl.replace("/u/", "/api/file/");
+                }
+
+                await reply(`⬇️ *Download Started!*\n\n🎬 *${dlData.title}*\n📺 *Quality:* ${dlData.q}\n\n_⏳ WhatsApp වෙත Upload වෙමින් පවතී. (ෆයිල් එක විශාල නම් ටික වෙලාවක් ගතවෙයි)_`);
+
+                // 🔥 Backup එකක් විදිහට අනිවාර්යයෙන් ලින්ක් එක දෙනවා
+                await socket.sendMessage(sender, { 
+                    text: `🔗 *Direct Download Link:*\n${downloadUrl}\n\n> WhatsApp upload එක ප්‍රමාද නම් හෝ HTML ෆයිල් එකක් ආවොත්, ඉහත Link එකෙන් කෙලින්ම Browser එකෙන් Download කරගන්න. (1GB+ ෆයිල් සඳහා මෙය වඩාත් සුදුසුය)`
+                }, { quoted: msg });
 
                 const cleanTitle = dlData.title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 60);
 
+                // Document එක යවන්න උත්සාහ කරනවා
                 await socket.sendMessage(sender, {
-                    document: { url: dlData.url },
+                    document: { url: downloadUrl },
                     mimetype: 'video/mp4',
                     fileName: `${cleanTitle} - ${dlData.q}.mp4`,
-                    caption: `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎬] ¡! ❞*\n\n✅ *Download Complete*\n\n🎬 *Title:* ${dlData.title}\n📺 *Quality:* ${dlData.q}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮*`
+                    caption: `*↳ ❝ [🎬 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎬] ¡! ❞*\n\n✅ *Download Complete*\n\n🎬 *Title:* ${dlData.title}\n📺 *Quality:* ${dlData.q}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄*`
                 }, { quoted: msg });
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
@@ -174,7 +183,7 @@ module.exports = {
             } catch (err) {
                 console.error("Movie Upload error:", err);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                reply(`❌ *Download Failed!* Server එක මගින් Upload කිරීම Block කර තිබිය හැක.`);
+                reply(`❌ *Download Failed!* Server එක මගින් Upload කිරීම Block කර තිබිය හැක. කරුණාකර ඉහත ලබාදුන් ලින්ක් එක භාවිතා කර Download කරගන්න.`);
             }
         }
     }
