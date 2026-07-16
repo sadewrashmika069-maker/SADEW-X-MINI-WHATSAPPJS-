@@ -1091,33 +1091,81 @@ function buildMainMenuCategoryButtons() {
 
 async function setupCommandHandlers(socket, number) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
+
+    // 🔴 GLOBAL BUTTON OVERRIDE (MAGIC TRICK) 🔴
+    // මේකෙන් මුළු බොට්ගේම Button යවන සිස්ටම් එක එකපාරම පාලනය කරනවා
+    if (!socket.isSmartOverridden) {
+        const originalSendMessage = socket.sendMessage.bind(socket);
+        
+        socket.sendMessage = async (jid, content, options) => {
+            const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
+            
+            // Button තියෙනවා නම් සහ Button Mode OFF නම්
+            if (content.buttons && currentConfig.BUTTON_MODE === 'false') {
+                let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
+                let map = {};
                 
+                content.buttons.forEach((btn, index) => {
+                    let num = index + 1;
+                    fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
+                    map[num.toString()] = btn.buttonId;
+                });
+                
+                if (content.footer) fallbackText += `\n> ${content.footer}`;
+
+                let finalOpts = {};
+                if (content.contextInfo) finalOpts.contextInfo = content.contextInfo;
+
+                if (content.image) {
+                    finalOpts.image = content.image;
+                    finalOpts.caption = fallbackText;
+                } else if (content.video) {
+                    finalOpts.video = content.video;
+                    finalOpts.caption = fallbackText;
+                } else {
+                    finalOpts.text = fallbackText;
+                }
+
+                const sentMsg = await originalSendMessage(jid, finalOpts, options);
+                
+                let targetSender = options?.quoted?.key?.remoteJid || jid;
+                global.btnFallbackTracker = global.btnFallbackTracker || {};
+                global.btnFallbackTracker[targetSender] = { msgId: sentMsg.key.id, map: map };
+                
+                return sentMsg;
+            }
+            
+            // Button Mode ON නම් අර මුල් විදිහටම යවනවා
+            return await originalSendMessage(jid, content, options);
+        };
+        socket.isSmartOverridden = true;
+    }
+
     let sessionConfig = await loadUserConfig(sanitizedNumber);
     activeSockets.set(sanitizedNumber, {
         socket,
         config: sessionConfig
     });
 
-const recentCallers = new Set();
+    const recentCallers = new Set();
 
-    socket.ev.on('messages.upsert', async ({
-        messages
-    }) => {
-		await socket.sendPresenceUpdate('unavailable');
+    socket.ev.on('messages.upsert', async ({ messages }) => {
+        await socket.sendPresenceUpdate('unavailable');
 
-
-      const msg = messages[0];
+        const msg = messages[0];
         if (!msg.message) return;
-        
-const type = getContentType(msg.message);
+
+        const type = getContentType(msg.message);
         if (!msg.message) return;
         msg.message = (getContentType(msg.message) === 'ephemeralMessage') ? msg.message.ephemeralMessage.message : msg.message;
-                                                       const m = sms(socket, msg);                                              
-const quoted =
+        const m = sms(socket, msg);
+        
+        const quoted =
             type == "extendedTextMessage" &&
             msg.message.extendedTextMessage.contextInfo != null
               ? msg.message.extendedTextMessage.contextInfo.quotedMessage || []
               : [];
+              
         const body = (type === 'conversation') ? msg.message.conversation 
             : msg.message?.extendedTextMessage?.contextInfo?.hasOwnProperty('quotedMessage') 
                 ? msg.message.extendedTextMessage.text 
@@ -1146,15 +1194,7 @@ const quoted =
                 ? (msg.message[type]?.message?.imageMessage?.caption || msg.message[type]?.message?.videoMessage?.caption || "") 
             : '';
      
-        if (!body) return;
-    
-        const text = body;
-        const isCmd = text.startsWith(sessionConfig.PREFIX || '!');
-        const sender = msg.key.remoteJid;
 
-        const nowsender = msg.key.fromMe ?
-            (socket.user.id.split(':')[0] + '@s.whatsapp.net') :
-            (msg.key.participant || msg.key.remoteJid);
 
         const senderNumber = nowsender.split('@')[0];
         const developers = `${config.OWNER_NUMBER}`;
