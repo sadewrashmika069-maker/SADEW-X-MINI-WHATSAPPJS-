@@ -1095,30 +1095,27 @@ async function setupCommandHandlers(socket, number) {
 
     let sessionConfig = await loadUserConfig(sanitizedNumber);
     activeSockets.set(sanitizedNumber, { socket, config: sessionConfig });
-// 🔴 GLOBAL BUTTON OVERRIDE (DB SYNCED) 🔴
+// 🔴 GLOBAL BUTTON OVERRIDE (DB SYNCED - මුළු බොට්ටම) 🔴
         if (!socket.isSmartOverridden) {
             socket.originalSendMessage = socket.sendMessage;
             socket.sendMessage = async (jid, content, options) => {
                 
-                // Database එකෙන් අලුත්ම සෙටින්ග්ස් ගන්නවා
+                // Database එකෙන් බොට්ගේ Global සෙටින්ග් එක ගන්නවා (Per-user නෙමෙයි)
                 const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
-                const userPref = currentConfig.USER_BTN_PREFS?.[jid];
+                const botButtonMode = currentConfig.BUTTON_MODE || 'true'; // Default 'true'
                 
-                if (content.buttons && userPref === 'false') {
+                // බොට්ගේ බටන් ඕෆ් කරලා නම් හැමෝටම නම්බර් යවනවා!
+                if (content.buttons && botButtonMode === 'false') {
                     
-                    // මේක Main Menu එකද කියලා අඳුරගන්නවා (.catmenu තියෙනවද බලනවා)
                     const isMainMenu = content.buttons.some(btn => btn?.buttonId && btn.buttonId.startsWith('.catmenu'));
                     
                     let finalOpts = { ...content };
-                    delete finalOpts.buttons;     // බටන් ටික අයින් කරනවා
+                    delete finalOpts.buttons;     
                     delete finalOpts.headerType;
 
                     if (isMainMenu) {
-                        // 🟢 Menu එක නම්: අලුතින් අංක ලියන්නේ නෑ, නිකන්ම බටන් ටික විතරක් ගලවලා යවනවා!
-                        // (එතකොට ඔයාගේ පරණ Number Reply සිස්ටම් එක විතරක් නියමෙට වැඩ)
                         return await socket.originalSendMessage(jid, finalOpts, options);
                     } else {
-                        // 🟢 අනිත් කමාන්ඩ් නම්: බටන් ටික Number List එකක් විදිහට හරවලා යටින් ලියනවා!
                         let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
                         let map = {};
                         content.buttons.forEach((btn, index) => {
