@@ -1189,8 +1189,6 @@ async function setupCommandHandlers(socket, number) {
         
         // ඉතුරු කෝඩ් එක (Plugins handler එක) මෙතනට දාන්න
         // (බොට්ගේ ඉතුරු ටික මෙතනින් පහළට එනවා)
-    });
-}
 
             // ── VIDEO SEARCH REPLY CATCHER ──
             if (quotedText.includes("*🔍 SADEW-X-MINI VIDEO SEARCH*") && /^[1-5]$/.test(replyText)) {
