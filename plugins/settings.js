@@ -121,22 +121,21 @@ module.exports = {
 
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // 🔘 බොත්තම් ක්‍රමය On / Off කරන කමාන්ඩ් එක (btnmode)
-        if (cmd === 'btnmode') {
-            const option = args[0] ? args[0].toLowerCase() : '';
-            if (option === 'on') {
-                sessionConfig.BUTTON_MODE = 'true';
-                await saveConfig();
-                return reply(`✅ *Button Mode successfully turned ON!*\nමින් ඉදිරියට බොට් Buttons පෙන්වනු ඇත.`);
-            } else if (option === 'off') {
-                sessionConfig.BUTTON_MODE = 'false';
-                await saveConfig();
-                return reply(`✅ *Button Mode successfully turned OFF!*\nමින් ඉදිරියට Buttons වෙනුවට Number Reply ක්‍රමය ක්‍රියාත්මක වේ.`);
-            } else {
-                return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
-            }
-        }
+       // 🔘 බොත්තම් ක්‍රමය On / Off කරන කමාන්ඩ් එක (දැන් මේක User ට විතරක් වැඩ කරයි)
+if (cmd === 'btnmode') {
+    const option = args[0] ? args[0].toLowerCase() : '';
+    global.userButtonPrefs = global.userButtonPrefs || {}; // මැප් එකක් හදනවා
 
+    if (option === 'on') {
+        global.userButtonPrefs[sender] = 'true';
+        return reply(`✅ *Button Mode ON!* මින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.`);
+    } else if (option === 'off') {
+        global.userButtonPrefs[sender] = 'false';
+        return reply(`✅ *Button Mode OFF!* මින් ඉදිරියට ඔබට Number Reply පෙනෙනු ඇත.`);
+    } else {
+        return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
+    }
+}
         // ⚙️ Mode වෙනස් කිරීම (mode)
         if (cmd === 'mode') {
             const option = args[0] ? args[0].toLowerCase() : '';
