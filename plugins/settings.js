@@ -3,7 +3,6 @@ const crypto = require('crypto');
 const { downloadContentFromMessage } = require('baileys');
 const axios = require('axios');
 
-global.userButtonPrefs = global.userButtonPrefs || {};
 global.btnFallbackTracker = global.btnFallbackTracker || {};
 
 module.exports = {
@@ -17,6 +16,7 @@ module.exports = {
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
         const Session = mongoose.models.SessionNew;
 
+        // 💾 ඩේටාබේස් එකට සේව් කරන ෆන්ක්ෂන් එක
         const saveConfig = async () => {
             const currentData = activeSockets.get(sanitizedNumber);
             if (currentData) {
@@ -30,12 +30,15 @@ module.exports = {
             );
         };
 
-        // 🔴 GLOBAL HACK (PAIR.JS අල්ලන්නේ නැතුව පිටින් ඉඳන් බොට්ව පාලනය කිරීම) 🔴
+        // 🔴 GLOBAL HACK (DATABASE-BACKED) 🔴
         if (!socket.isSmartOverridden) {
             const originalSendMessage = socket.sendMessage.bind(socket);
             
             socket.sendMessage = async (jid, content, options) => {
-                const userPref = global.userButtonPrefs[jid];
+                // ඩේටාබේස් එකෙන් අලුත්ම සෙටින්ග්ස් ටික ගන්නවා (Restart වුණත් මේකේ තියෙනවා)
+                const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
+                const userPrefs = currentConfig.USER_BTN_PREFS || {};
+                const userPref = userPrefs[jid];
                 
                 // යූසර් '.btnmode off' ගහලා නම් විතරක් නම්බර් රිප්ලයි යවනවා
                 if (content.buttons && userPref === 'false') {
@@ -95,20 +98,26 @@ module.exports = {
             });
 
             socket.isSmartOverridden = true;
-            console.log("✅ Button Hack Injected via Plugin!");
+            console.log("✅ Smart Button Override (DB-Synced) Activated!");
         }
 
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Per User)
+        // 🔘 බොත්තම් ක්‍රමය On / Off කිරීම (Per User - Saved to DB)
         if (cmd === 'btnmode') {
             const option = args[0] ? args[0].toLowerCase() : '';
+            
+            // Database object එක නැත්නම් අලුතින් හදනවා
+            if (!sessionConfig.USER_BTN_PREFS) sessionConfig.USER_BTN_PREFS = {};
+
             if (option === 'on') {
-                global.userButtonPrefs[sender] = 'true';
-                return reply(`✅ *Button Mode ON!*\nමින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.`);
+                sessionConfig.USER_BTN_PREFS[sender] = 'true';
+                await saveConfig(); // 💾 Database එකටම සේව් කරනවා!
+                return reply(`✅ *Button Mode ON!*\nමින් ඉදිරියට ඔබට Buttons පෙනෙනු ඇත.\n_(මෙම සැකසුම ස්ථිරවම Save කර ඇත)_`);
             } else if (option === 'off') {
-                global.userButtonPrefs[sender] = 'false';
-                return reply(`✅ *Button Mode OFF!*\nමින් ඉදිරියට ඔබට Buttons වෙනුවට Number Reply ක්‍රමය ක්‍රියාත්මක වේ.`);
+                sessionConfig.USER_BTN_PREFS[sender] = 'false';
+                await saveConfig(); // 💾 Database එකටම සේව් කරනවා!
+                return reply(`✅ *Button Mode OFF!*\nමින් ඉදිරියට ඔබට Buttons වෙනුවට Number Reply පෙනෙනු ඇත.\n_(මෙම සැකසුම ස්ථිරවම Save කර ඇත)_`);
             } else {
                 return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
             }
@@ -119,7 +128,9 @@ module.exports = {
             const currentMode = sessionConfig?.MODE || 'public';
             const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
             
-            const userPref = global.userButtonPrefs[sender];
+            // Database එකෙන් User ගේ සෙටින්ග් එක ගන්නවා
+            const userPrefs = sessionConfig?.USER_BTN_PREFS || {};
+            const userPref = userPrefs[sender];
             const btnStatus = (userPref === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
             
             const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
