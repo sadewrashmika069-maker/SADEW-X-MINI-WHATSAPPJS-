@@ -1,20 +1,97 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const { downloadContentFromMessage } = require('baileys');
 const axios = require('axios');
+
+// මැසේජ් ට්‍රැක් කරන්න හදන Global Variable එක
+global.btnFallbackTracker = global.btnFallbackTracker || {};
 
 module.exports = {
     name: "settings",
     category: 4, 
-    description: "Bot Main Settings & Customization",
-    commands: ["settings", "panel", "mode", "addpp", "delpp"],
+    description: "Bot Settings & Button Mode",
+    commands: ["settings", "panel", "mode", "addpp", "delpp", "btnmode"],
 
     handler: async ({ socket, msg, sender, command, args, reply, botNumber, sessionConfig, activeSockets }) => {
         
-        const isOwner = true; // Owner Check
         const sanitizedNumber = botNumber.replace(/[^0-9]/g, '');
         const Session = mongoose.models.SessionNew;
 
-        // Settings Database එකේ Save කිරීමේ Function එක
+        // 🔴 1. GLOBAL HACK (PAIR.JS අල්ලන්නේ නැතුව බොට්ව පාලනය කිරීම) 🔴
+        if (!socket.isSmartOverridden) {
+            const originalSendMessage = socket.sendMessage.bind(socket);
+            
+            // මැසේජ් යවන සිස්ටම් එක හයිජැක් කරනවා
+            socket.sendMessage = async (jid, content, options) => {
+                const currentConfig = activeSockets.get(sanitizedNumber)?.config || {};
+                
+                // Button තියෙනවා නම් සහ Button Mode OFF නම්
+                if (content.buttons && currentConfig.BUTTON_MODE === 'false') {
+                    let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
+                    let map = {};
+                    
+                    content.buttons.forEach((btn, index) => {
+                        let num = index + 1;
+                        fallbackText += `*${num}.* ${btn.buttonText.displayText}\n`;
+                        map[num.toString()] = btn.buttonId; // හැංගිලා තියෙන Command එක සේව් කරනවා
+                    });
+                    
+                    if (content.footer) fallbackText += `\n> ${content.footer}`;
+
+                    let finalOpts = { ...content };
+                    delete finalOpts.buttons;
+                    delete finalOpts.headerType;
+                    
+                    if (finalOpts.image) finalOpts.caption = fallbackText;
+                    else if (finalOpts.video) finalOpts.caption = fallbackText;
+                    else finalOpts.text = fallbackText;
+
+                    const sentMsg = await originalSendMessage(jid, finalOpts, options);
+                    
+                    let targetSender = options?.quoted?.key?.remoteJid || jid;
+                    global.btnFallbackTracker[targetSender] = { msgId: sentMsg?.key?.id, map: map };
+                    
+                    return sentMsg;
+                }
+                
+                return await originalSendMessage(jid, content, options);
+            };
+
+            // නම්බර් රිප්ලයි එක අල්ලගන්න අලුත් Listener එකක් බඳිනවා
+            socket.ev.on('messages.upsert', async ({ messages }) => {
+                try {
+                    const m = messages[0];
+                    if (!m.message) return;
+                    
+                    const quotedStanzaId = m.message.extendedTextMessage?.contextInfo?.stanzaId;
+                    const replyText = m.message.conversation || m.message.extendedTextMessage?.text || "";
+                    const mSender = m.key.remoteJid;
+
+                    if (quotedStanzaId && global.btnFallbackTracker[mSender]) {
+                        if (global.btnFallbackTracker[mSender].msgId === quotedStanzaId) {
+                            const mappedCmd = global.btnFallbackTracker[mSender].map[replyText.trim()];
+                            if (mappedCmd) {
+                                // යූසර් නම්බර් එක ගැහුවම, ඇත්ත බටන් කමාන්ඩ් එක එබුවා වගේ බොට්ව රවට්ටනවා
+                                let fakeMsg = JSON.parse(JSON.stringify(m)); 
+                                fakeMsg.key.id = crypto.randomBytes(16).toString("hex").toUpperCase(); 
+                                fakeMsg.message = { conversation: mappedCmd }; 
+                                
+                                // ෆේක් කරපු මැසේජ් එක ආයෙත් බොට්ටම යවනවා Process වෙන්න
+                                socket.ev.emit('messages.upsert', { messages: [fakeMsg], type: 'notify' });
+                                delete global.btnFallbackTracker[mSender];
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Smart Button Error:", e);
+                }
+            });
+
+            socket.isSmartOverridden = true;
+            console.log("✅ Smart Button Override Activated via Plugin!");
+        }
+
+        // ════════ 2. PLUGIN COMMANDS LOGIC ════════
         const saveConfig = async () => {
             const currentData = activeSockets.get(sanitizedNumber);
             if (currentData) {
@@ -30,41 +107,23 @@ module.exports = {
 
         const cmd = command.replace(/^\./, '').toLowerCase();
 
-        // ════════ 1. SETTINGS PANEL ════════
-        if (cmd === 'settings' || cmd === 'panel') {
-            const currentMode = sessionConfig?.MODE || 'public';
-            const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
-            
-            const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
-                              `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
-                              `🔸 Current Mode: *${currentMode.toUpperCase()}*\n` +
-                              `  [1] Public (සැමටම)\n` +
-                              `  [2] Private (Owner ට පමණක්)\n` +
-                              `  [3] Inbox Only (Inbox පමණක්)\n` +
-                              `_(අදාළ අංකය Reply කරන්න හෝ .mode 1 ලෙස යවන්න)_\n\n` +
-                              `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
-                              `🖼️ Custom Logos: *${customLogos.length}*\n` +
-                              `  • අලුත් පින්තූරයක් එකතු කිරීමට, පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
-                              `  • ඔබ එකතු කළ පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
-                              `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
-
-            let displayLogo = 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg';
-            if (customLogos.length > 0) {
-                displayLogo = customLogos[Math.floor(Math.random() * customLogos.length)];
+        // 🔘 බොත්තම් ක්‍රමය On / Off කරන කමාන්ඩ් එක (btnmode)
+        if (cmd === 'btnmode') {
+            const option = args[0] ? args[0].toLowerCase() : '';
+            if (option === 'on') {
+                sessionConfig.BUTTON_MODE = 'true';
+                await saveConfig();
+                return reply(`✅ *Button Mode successfully turned ON!*\nමින් ඉදිරියට බොට් Buttons පෙන්වනු ඇත.`);
+            } else if (option === 'off') {
+                sessionConfig.BUTTON_MODE = 'false';
+                await saveConfig();
+                return reply(`✅ *Button Mode successfully turned OFF!*\nමින් ඉදිරියට Buttons වෙනුවට Number Reply ක්‍රමය ක්‍රියාත්මක වේ.`);
+            } else {
+                return reply(`❌ *කරුණාකර නිවැරදි විධානයක් ලබාදෙන්න!*\nඋදා: .btnmode on (හෝ) .btnmode off`);
             }
-
-            const sentMsg = await socket.sendMessage(sender, {
-                image: { url: displayLogo }, 
-                caption: panelText
-            }, { quoted: msg });
-
-            // Reply Catch කිරීම සඳහා ID එක Save කිරීම
-            global.sadewSettingsTracker = global.sadewSettingsTracker || {};
-            global.sadewSettingsTracker[sender] = sentMsg.key.id;
-            return;
         }
 
-        // ════════ 2. MODE CHANGE (COMMAND) ════════
+        // ⚙️ Mode වෙනස් කිරීම (mode)
         if (cmd === 'mode') {
             const option = args[0] ? args[0].toLowerCase() : '';
             let newMode = '';
@@ -81,7 +140,7 @@ module.exports = {
             }
         }
 
-        // ════════ 3. ADD CUSTOM MENU LOGO (.addpp) ════════
+        // 🖼️ Custom Logo එකතු කිරීම (addpp)
         if (cmd === 'addpp') {
             const qMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
             if (!qMsg || !qMsg.imageMessage) return reply("🖼️ *කරුණාකර පින්තූරයකට Reply කර .addpp ලෙස යවන්න!*");
@@ -95,20 +154,14 @@ module.exports = {
                     buffer = Buffer.concat([buffer, chunk]);
                 }
 
-                // --- 🚀 XWOLF IMGBB API UPLOAD කෑල්ල ---
                 const base64Image = buffer.toString('base64');
                 const apiUrl = 'https://apis.xwolf.space/api/url/imgbb?key=wxa_f_4e840b5e42';
-
                 const response = await axios.post(apiUrl, { image: base64Image });
-
-                // Wolf API එකෙන් එන ලින්ක් එක ගන්නවා
                 const imgUrl = response.data?.url || response.data?.data?.url || response.data?.result?.url;
 
                 if (!imgUrl || !imgUrl.startsWith('http')) {
-                    console.log("XWOLF API Response Error:", response.data);
                     throw new Error("Wolf API එක හරහා පින්තූරය Upload කිරීම අසාර්ථක විය.");
                 }
-                // ----------------------------------------
 
                 if (!sessionConfig.CUSTOM_LOGOS) sessionConfig.CUSTOM_LOGOS = [];
                 sessionConfig.CUSTOM_LOGOS.push(imgUrl);
@@ -123,11 +176,44 @@ module.exports = {
             }
         }
 
-        // ════════ 4. DELETE ALL CUSTOM LOGOS (.delpp) ════════
+        // 🗑️ Custom Logos මැකීම (delpp)
         if (cmd === 'delpp') {
             sessionConfig.CUSTOM_LOGOS = [];
             await saveConfig();
             return reply(`✅ *ඔබේ Custom Logo ලැයිස්තුව මකා දමන ලදී!*\nදැන් Bot ගේ මුල් පින්තූර (Default) භාවිතා වේ.`);
+        }
+
+        // 🛠️ Settings Panel එක (settings / panel)
+        if (cmd === 'settings' || cmd === 'panel') {
+            const currentMode = sessionConfig?.MODE || 'public';
+            const customLogos = sessionConfig?.CUSTOM_LOGOS || [];
+            const btnStatus = (sessionConfig.BUTTON_MODE === 'false') ? "🔴 OFF (Number Reply)" : "🟢 ON (Buttons)";
+            
+            const panelText = `*↳ ❝ [⚙️ 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀 ⚙️] ¡! ❞*\n\n` +
+                              `*1️⃣ 𝗪𝗼𝗿𝗸 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
+                              `🔸 Current Mode: *${currentMode.toUpperCase()}*\n` +
+                              `  [1] Public (සැමටම)\n` +
+                              `  [2] Private (Owner ට පමණක්)\n` +
+                              `  [3] Inbox Only (Inbox පමණක්)\n` +
+                              `_(වෙනස් කිරීමට .mode 1, 2 හෝ 3 යොදන්න)_\n\n` +
+                              `*2️⃣ 𝗠𝗲𝗻𝘂 𝗟𝗼𝗴𝗼 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
+                              `🖼️ Custom Logos: *${customLogos.length}*\n` +
+                              `  • පින්තූරයකට Reply ලෙස *.addpp* යවන්න.\n` +
+                              `  • පින්තූර ලැයිස්තුව මකා දැමීමට *.delpp* යවන්න.\n\n` +
+                              `*3️⃣ 𝗕𝘂𝘁𝘁𝗼𝗻 𝗠𝗼𝗱𝗲 𝗦𝗲𝘁𝘁𝗶𝗻𝗴𝘀:*\n` +
+                              `🔘 Current Status: *${btnStatus}*\n` +
+                              `  • වෙනස් කිරීමට *.btnmode on* හෝ *.btnmode off* යවන්න.\n\n` +
+                              `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+            let displayLogo = 'https://res.cloudinary.com/dqlh378fb/image/upload/v1780590033/zanta_media_uploads/dttqjshprca9zvqcpbwg.jpg';
+            if (customLogos.length > 0) {
+                displayLogo = customLogos[Math.floor(Math.random() * customLogos.length)];
+            }
+
+            return await socket.sendMessage(sender, {
+                image: { url: displayLogo }, 
+                caption: panelText
+            }, { quoted: msg });
         }
     }
 };
