@@ -75,6 +75,7 @@ const {
 const config = {
     AUTO_VIEW_STATUS: 'false',
     AUTO_LIKE_STATUS: 'false',
+	BUTTON_MODE: 'true',
     MODE: 'public',
     PREFIX: '.',
     MAX_RETRIES: 3,
