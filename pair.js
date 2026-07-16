@@ -517,17 +517,17 @@ async function deleteSession(number) {
 async function loadUserConfig(number) {
     try {
         const sanitizedNumber = number.replace(/[^0-9]/g, '');
-        const configDoc = await Session.findOne({
-            number: sanitizedNumber
-        }, 'config');
-        return configDoc?.config || {
-            ...config
-        };
+        const configDoc = await Session.findOne({ number: sanitizedNumber }, 'config');
+        
+        // 🔥 මෙන්න මේ කෑල්ල තමයි රහස! 
+        // පරණ සෙටින්ග්ස් තිබ්බත්, නැති වුණත් අලුත් defaults (BUTTON_MODE) ඔක්කොම එකතු කරලා තමයි බොට්ට දෙන්නේ.
+        if (configDoc?.config) {
+            return { ...config, ...configDoc.config };
+        }
+        return { ...config };
     } catch (error) {
         console.warn(`No configuration found for ${number}, using default config`);
-        return {
-            ...config
-        };
+        return { ...config };
     }
 }
 
