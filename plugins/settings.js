@@ -27,6 +27,20 @@ module.exports = {
                 
                 // Button තියෙනවා නම් සහ Button Mode OFF නම්
                 if (content.buttons && currentConfig.BUTTON_MODE === 'false') {
+                    
+                    // 🔥 මේක Main Menu එකද කියලා බලනවා (catmenu කියන කමාන්ඩ් එක තියෙනවද කියලා)
+                    let isMainMenu = content.buttons.some(b => b.buttonId && b.buttonId.includes('.catmenu'));
+
+                    if (isMainMenu) {
+                        // Main Menu එක නම්, Buttons ටික විතරක් අයින් කරනවා. 
+                        // අලුතින් ලිස්ට් එකක් හදන්නේ නෑ, Track කරන්නේ නෑ! (පරණ කෝඩ් එකෙන් ඒක බලාගනීවි)
+                        let finalOpts = { ...content };
+                        delete finalOpts.buttons;
+                        delete finalOpts.headerType;
+                        return await originalSendMessage(jid, finalOpts, options);
+                    }
+
+                    // අනිත් සාමාන්‍ය Buttons (උදා: Video Quality වගේ) වලට Auto List එක හදනවා
                     let fallbackText = (content.caption || content.text || "") + "\n\n*👇 පහතින් අවශ්‍ය අංකය Reply කරන්න:*\n\n";
                     let map = {};
                     
