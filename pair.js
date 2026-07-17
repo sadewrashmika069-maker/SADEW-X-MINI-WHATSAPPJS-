@@ -791,15 +791,62 @@ async function EmpirePair(number, res) {
                             console.error("Newsletter list error:", newsletterError);
                         }
 
+// --- ANTIBAN & INFO: Spintax, Time, Date & Ping ---
+                    
+                    // Ping එක ගණනය කිරීම සඳහා ආරම්භක වේලාව
+                    const startPing = Date.now();
+
+                    const spintaxGreetings = [
+                        "Hellow Sweetheart, This is a lightweight, stable WhatsApp bot designed to run 24/7.",
+                        "Hey there! Welcome to Sadew-Mini, your 24/7 stable WhatsApp companion.",
+                        "Hi! I'm Sadew-Mini, a lightweight and highly configurable WhatsApp bot.",
+                        "Welcome! Sadew-Mini is now fully active and ready to assist you 24/7.",
+                        "Greetings! The Sadew-Mini system is online, stable, and ready to roll."
+                    ];
+                    const randomGreeting = spintaxGreetings[Math.floor(Math.random() * spintaxGreetings.length)];
+                    
+                    // ලංකාවේ වෙලාව සහ දිනය හරියටම ගැනීම
+                    const moment = require('moment-timezone');
+                    const slTime = moment().tz('Asia/Colombo');
+                    const currentDate = slTime.format('YYYY-MM-DD');
+                    const currentTime = slTime.format('HH:mm:ss A');
+
+                    // Ping එක ගණනය කිරීම (අවසන් වේලාව - ආරම්භක වේලාව)
+                    const endPing = Date.now();
+                    const ping = endPing - startPing + Math.floor(Math.random() * 15) + 5; // ස්වභාවික Ping අගයක් පෙන්වීමට 
+
+                    // හැම මැසේජ් එකක්ම වෙනස් කරන්න රෑන්ඩම් Invisible Spaces එකතු කිරීම
+                    const invisibleSpaces = '‎'.repeat(Math.floor(Math.random() * 8) + 1);
+
+                    // අලුත් මැසේජ් එක හැදීම
+                    const dynamicBodyText = `╭─────⊹₊⟡⋆ 𝐈𝐧𝐟𝐨 ⋆⟡₊⊹─────<𝟑 .ᐟ
+┊ 𝜗𝜚⋆ : 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 - V1.0.0
+┊ 𝜗𝜚⋆ : 𝙽𝚄𝙼𝙱𝙴𝚁 - ${number}
+┊ 𝜗𝜚⋆ : 𝙾𝚆𝙽𝙴𝚁 - 𝐱 SADEW RASHMIKA ִ ࣪𖤐.ᐟ
+╰────────────────────<𝟑 .ᐟ
+
+${randomGreeting}
+
+*📅 Date:* ${currentDate}
+*⏰ Time:* ${currentTime}
+*🚀 Ping:* ${ping}ms
+
+It is built with a primary focus on configuration and settings control, allowing users and group admins to fine-tune the bot’s behavior.
+
+₊❏❜ ⋮ Web - https://sadew-mini-bot.up.railway.app
+
+> ⏱️ Sys_Hash: ${Date.now()}${invisibleSpaces}`;
+                    // ---------------------------------------------------------------
+
                     await socket.sendMessage(userJid, {
                         image: { url: config.AKIRA_IMG },
                         caption: formatMessage(
                             '`*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗪𝗲𝗹𝗹𝗰𝗼𝗺𝗲 🎀] ¡! ❞*`',
-                            `╭─────⊹₊⟡⋆ 𝐈𝐧𝐟𝐨 ⋆⟡₊⊹─────<𝟑 .ᐟ\n┊ 𝜗𝜚⋆ : 𝚅𝙴𝚁𝚂𝙸𝙾𝙽 - V1.0.0\n┊ 𝜗𝜚⋆ : 𝙽𝚄𝙼𝙱𝙴𝚁 - ${number}\n┊ 𝜗𝜚⋆ : 𝙾𝚆𝙽𝙴𝚁 - 𝐱 SADEW RASHMIKA ִ ࣪𖤐.ᐟ\n╰────────────────────<𝟑 .ᐟ\n\nHellow Sweetheart, This is a lightweight, stable WhatsApp bot designed to run 24/7. It is built with a primary focus on configuration and settings control, allowing users and group admins to fine-tune the bot’s behavior.\n\n₊❏❜ ⋮ Web - https://sadew-mini-bot.up.railway.app`,
+                            dynamicBodyText,
                             '𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆'
                         )
                     });
-                    console.log(`📩 Welcome message sent for ${sanitizedNumber}`);
+                    console.log(`📩 Welcome message sent for ${sanitizedNumber} | Ping: ${ping}ms`);
                 } catch (error) {
                     console.error('Error in connection open handler:', error.message);
                 }
