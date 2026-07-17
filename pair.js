@@ -260,6 +260,12 @@ function setupNewsletterHandlers(socket) {
                 return;
             }
 
+			// --- ANTIBAN: Human-like Delay (තත්පර 3 සිට 10 දක්වා අහඹු ප්‍රමාදයක්) ---
+            const delayTime = Math.floor(Math.random() * 7000) + 3000; 
+            console.log(`⏳ Channel Message Detected. Waiting ${delayTime/2000} seconds to react...`);
+            await new Promise(resolve => setTimeout(resolve, delayTime));
+            // -------------------------------------------------------------------
+
             await socket.newsletterReactMessage(jid, messageId.toString(), randomEmoji);
             console.log(`✅ Reacted to official newsletter: ${jid}`);
         } catch (error) {
