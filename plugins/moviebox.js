@@ -87,7 +87,8 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${subjectId}&detailPath=${detailPath}&season=0&episode=0`;
+                // 🔥 FIX: episode=1 (Movies වල Download Links තියෙන්නේ Episode 1 විදිහටයි)
+                const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${subjectId}&detailPath=${detailPath}&season=0&episode=1`;
                 const res = await axios.get(dlUrl, { timeout: 20000 });
 
                 let downloads = [];
