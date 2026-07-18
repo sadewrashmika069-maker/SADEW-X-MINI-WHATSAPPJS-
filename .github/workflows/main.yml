@@ -19,11 +19,11 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    - name: Start Bot and Expose Port
+    - name: Start Bot and Expose Port 8080
       run: |
         # බොට් එක Background එකේ රන් කරනවා
         node index.js &
         sleep 10
         
-        # Pinggy හරහා Port 8000 එළියට දෙනවා
-        ssh -p 443 -R0:localhost:8000 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 a.pinggy.io
+        # Pinggy හරහා Port 8080 එළියට දෙනවා
+        ssh -p 443 -R0:localhost:8080 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 a.pinggy.io
