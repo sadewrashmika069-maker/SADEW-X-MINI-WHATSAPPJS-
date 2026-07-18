@@ -1350,7 +1350,115 @@ async function setupCommandHandlers(socket, number) {
                 delete global.sadewSettingsTracker[sender];
                 return await socket.sendMessage(msg.key.remoteJid, { text: `✅ *Bot mode successfully updated to ${newMode.toUpperCase()} mode.*` }, { quoted: msg });
             }
+// ── MOVIEBOX SEARCH REPLY CATCHER (CHOOSE MOVIE) ──
+            if (quotedText.includes("*🔍 SADEW-MINI MOVIEBOX SEARCH*") && /^[0-9]+$/.test(replyText)) {
+                if (global.movieBoxSearch && global.movieBoxSearch[sender]) {
+                    const num = parseInt(replyText);
+                    const items = global.movieBoxSearch[sender];
+                    
+                    if (num >= 1 && num <= items.length) {
+                        const selectedMovie = items[num - 1];
+                        try {
+                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } });
+                            
+                            const apikey = "frontoffice9876@gmail.com:vajira-88173";
+                            const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${selectedMovie.subjectId}&detailPath=${selectedMovie.detailPath}&season=0&episode=0`;
 
+                            const res = await axios.get(dlUrl, { timeout: 20000 });
+                            
+                            // Download links ටික API එකෙන් වෙන්කර ගැනීම
+                            let downloads = [];
+                            if (res.data?.data?.downloads?.data?.downloads) {
+                                downloads = res.data.data.downloads.data.downloads;
+                            } else if (Array.isArray(res.data?.data?.downloads)) {
+                                downloads = res.data.data.downloads;
+                            }
+
+                            if (!downloads || downloads.length === 0) {
+                                await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+                                return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.* (API අවහිරතාවක් විය හැක)" }, { quoted: msg });
+                            }
+
+                            // Global Tracker එකට Quality එකයි Movie එකයි සේව් කිරීම
+                            if (!global.movieBoxQualities) global.movieBoxQualities = {};
+                            if (!global.movieBoxMovie) global.movieBoxMovie = {};
+
+                            global.movieBoxQualities[sender] = downloads;
+                            global.movieBoxMovie[sender] = selectedMovie;
+
+                            let qList = `*🎬 SADEW-MINI MOVIE QUALITY*\n\n📽️ *${selectedMovie.title}*\n\n`;
+                            downloads.forEach((dl, i) => {
+                                const qlty = dl.resolution || dl.quality || 'HD';
+                                const size = dl.size || 'Unknown Size';
+                                qList += `*${i + 1}.* ${qlty}p - ${size}\n`;
+                            });
+                            qList += `\n> *ඔබට අවශ්‍ය Quality එකට අදාළ අංකය Reply කරන්න.*`;
+
+                            // තෝරාගත් Movie එකේ Cover එකත් එක්ක Quality List එක යැවීම
+                            const coverUrl = selectedMovie.cover?.url;
+                            if (coverUrl) {
+                                await socket.sendMessage(msg.key.remoteJid, { image: { url: coverUrl }, caption: qList }, { quoted: msg });
+                            } else {
+                                await socket.sendMessage(msg.key.remoteJid, { text: qList }, { quoted: msg });
+                            }
+                            
+                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+                            delete global.movieBoxSearch[sender]; // Memory Clear
+                        } catch (e) {
+                            console.error("MovieBox DL Fetch Error:", e.message);
+                            await socket.sendMessage(msg.key.remoteJid, { text: "❌ *Download තොරතුරු ලබාගැනීමට නොහැකි විය!*" }, { quoted: msg });
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // ── MOVIEBOX QUALITY REPLY CATCHER (DOWNLOAD & SEND) ──
+            if (quotedText.includes("*🎬 SADEW-MINI MOVIE QUALITY*") && /^[0-9]+$/.test(replyText)) {
+                if (global.movieBoxQualities && global.movieBoxQualities[sender] && global.movieBoxMovie && global.movieBoxMovie[sender]) {
+                    const num = parseInt(replyText);
+                    const downloads = global.movieBoxQualities[sender];
+                    const movie = global.movieBoxMovie[sender];
+
+                    if (num >= 1 && num <= downloads.length) {
+                        const selectedQuality = downloads[num - 1];
+                        const dlLink = selectedQuality.url || selectedQuality.link;
+
+                        if (!dlLink) {
+                            return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *Download Link එක දෝෂ සහිතයි!*" }, { quoted: msg });
+                        }
+
+                        try {
+                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '📥', key: msg.key } });
+                            await socket.sendMessage(msg.key.remoteJid, { text: `📥 *${movie.title}* (${selectedQuality.resolution || 'HD'}p) බාගත වෙමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳` }, { quoted: msg });
+
+                            const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝗕𝗼𝘅 🎀] ¡! ❞*\n\n` +
+                                            `🎬 *Title:* ${movie.title}\n` +
+                                            `✨ *Quality:* ${selectedQuality.resolution || 'HD'}p\n\n` +
+                                            `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                            // Document විදිහට Movie එක WhatsApp එකට යැවීම
+                            await socket.sendMessage(msg.key.remoteJid, {
+                                document: { url: dlLink },
+                                mimetype: "video/mp4",
+                                fileName: `SadewMini_${movie.title.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedQuality.resolution}p.mp4`,
+                                caption: caption
+                            }, { quoted: msg });
+
+                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
+                            
+                            // Memory Clear කිරීම
+                            delete global.movieBoxQualities[sender];
+                            delete global.movieBoxMovie[sender];
+                        } catch (e) {
+                            console.error("MovieBox Upload Error:", e.message);
+                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
+                            await socket.sendMessage(msg.key.remoteJid, { text: `❌ *Download Error:* ෆයිල් එක විශාල වැඩි විය හැක හෝ සේවාදායකයේ ගැටලුවකි.` }, { quoted: msg });
+                        }
+                        return;
+                    }
+                }
+            }
             // 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
