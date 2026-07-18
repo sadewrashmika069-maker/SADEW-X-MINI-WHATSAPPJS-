@@ -1350,15 +1350,8 @@ async function setupCommandHandlers(socket, number) {
                 delete global.sadewSettingsTracker[sender];
                 return await socket.sendMessage(msg.key.remoteJid, { text: `✅ *Bot mode successfully updated to ${newMode.toUpperCase()} mode.*` }, { quoted: msg });
             }
-// ── FIX QUOTED TEXT (පින්තූර වල කැප්ෂන් අල්ලගැනීම) ──
-            let quotedText = quotedMsg.conversation || 
-                             quotedMsg.extendedTextMessage?.text || 
-                             quotedMsg.imageMessage?.caption || 
-                             quotedMsg.videoMessage?.caption || 
-                             "";
-
-            // ── MOVIEBOX SEARCH REPLY CATCHER (CHOOSE MOVIE) ──
-            if (quotedText.includes("SADEW-MINI MOVIEBOX SEARCH") && /^[0-9]+$/.test(replyText)) {
+// ── MOVIEBOX SEARCH REPLY CATCHER (CHOOSE MOVIE) ──
+            if (quotedText.includes("*🔍 SADEW-MINI MOVIEBOX SEARCH*") && /^[0-9]+$/.test(replyText)) {
                 if (global.movieBoxSearch && global.movieBoxSearch[sender]) {
                     const num = parseInt(replyText);
                     const items = global.movieBoxSearch[sender];
@@ -1383,7 +1376,7 @@ async function setupCommandHandlers(socket, number) {
 
                             if (!downloads || downloads.length === 0) {
                                 await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-                                return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.* (API එකෙන් ලින්ක් ලබා දී නොමැත)" }, { quoted: msg });
+                                return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.* (API අවහිරතාවක් විය හැක)" }, { quoted: msg });
                             }
 
                             // Global Tracker එකට Quality එකයි Movie එකයි සේව් කිරීම
@@ -1396,7 +1389,7 @@ async function setupCommandHandlers(socket, number) {
                             let qList = `*🎬 SADEW-MINI MOVIE QUALITY*\n\n📽️ *${selectedMovie.title}*\n\n`;
                             downloads.forEach((dl, i) => {
                                 const qlty = dl.resolution || dl.quality || 'HD';
-                                const size = dl.size || 'Unknown';
+                                const size = dl.size || 'Unknown Size';
                                 qList += `*${i + 1}.* ${qlty}p - ${size}\n`;
                             });
                             qList += `\n> *ඔබට අවශ්‍ය Quality එකට අදාළ අංකය Reply කරන්න.*`;
@@ -1421,7 +1414,7 @@ async function setupCommandHandlers(socket, number) {
             }
 
             // ── MOVIEBOX QUALITY REPLY CATCHER (DOWNLOAD & SEND) ──
-            if (quotedText.includes("SADEW-MINI MOVIE QUALITY") && /^[0-9]+$/.test(replyText)) {
+            if (quotedText.includes("*🎬 SADEW-MINI MOVIE QUALITY*") && /^[0-9]+$/.test(replyText)) {
                 if (global.movieBoxQualities && global.movieBoxQualities[sender] && global.movieBoxMovie && global.movieBoxMovie[sender]) {
                     const num = parseInt(replyText);
                     const downloads = global.movieBoxQualities[sender];
