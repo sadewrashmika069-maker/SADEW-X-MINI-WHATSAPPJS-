@@ -1,5 +1,4 @@
-name: Run WhatsApp Bot
-
+name: Run WhatsApp Bot Test
 on:
   push:
     branches: [ "main" ]
@@ -8,7 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
@@ -21,8 +19,11 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
-    - name: Start Bot and Web Server
+    - name: Start Bot and Expose Port
       run: |
+        # බොට් එක Background එකේ රන් කරනවා
         node index.js &
-        sleep 15
-        npx localtunnel --port 8000 --local-host 127.0.0.1
+        sleep 10
+        
+        # Pinggy හරහා Port 8000 එළියට දෙනවා
+        ssh -p 443 -R0:localhost:8000 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 a.pinggy.io
