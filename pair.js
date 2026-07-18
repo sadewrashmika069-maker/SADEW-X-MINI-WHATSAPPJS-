@@ -126,7 +126,7 @@ const Session = mongoose.model('SessionNew', SessionSchema);
 
 async function connectMongoDB() {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sadewrashmika069_db_user:sadew13767@cluster0.yqmgml7.mongodb.net/?appName=Cluster0';
+        const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://sadewr803_db_user:MizI5eWSUT7vWu2t@sadew.5la972a.mongodb.net/?appName=sadew';
         await mongoose.connect(mongoUri, {
             bufferCommands: false,
             serverSelectionTimeoutMS: 5000 
