@@ -1,0 +1,28 @@
+name: Run WhatsApp Bot
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Start Bot and Web Server
+      run: |
+        node index.js &
+        sleep 15
+        npx localtunnel --port 8000 --local-host 127.0.0.1
