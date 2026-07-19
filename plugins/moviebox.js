@@ -116,10 +116,11 @@ module.exports = {
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // 🔥 Security එක Bypass කරන්න Proxy/Download URL එකටම Priority දෙනවා!
-                        url: dl.downloadUrl || dl.url || dl.directUrl,
+                        // Vercel proxy එක අයින් කරලා Direct URL එකම ගන්නවා (403 මඟ හරින්න)
+                        url: dl.directUrl || dl.url || dl.downloadUrl,
                         title: movieTitle,
-                        quality: qlty
+                        quality: qlty,
+                        size: sizeMB // Size එකත් සේව් කරනවා Fallback එකට පාවිච්චි කරන්න
                     };
 
                     setTimeout(() => {
@@ -154,7 +155,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (චිත්‍රපටය WhatsApp වෙත එවීම - Local File System)
+        // 3. DOWNLOAD MOVIE (චිත්‍රපටය WhatsApp වෙත එවීම)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -168,22 +169,24 @@ module.exports = {
 
             try {
                 await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } });
-                await reply(`📥 *${movieData.title}* (${movieData.quality}p) බාගත වෙමින් පවතී... මෙය තරමක් විශාල ෆයිල් එකක් නිසා සුළු වේලාවක් ගතවිය හැක. කරුණාකර රැඳී සිටින්න. ⏳`);
+                await reply(`📥 *${movieData.title}* (${movieData.quality}p) බාගත වෙමින් පවතී... මෙය තරමක් විශාල ෆයිල් එකක් නිසා සුළු වේලාවක් ගතවිය හැක. ⏳`);
 
                 const cleanFileName = movieData.title.replace(/[^a-zA-Z0-9]/g, '_');
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 ෆයිල් එක බොට්ගේ සර්වර් එකට බාගැනීම (Headers සහ Timeout එක්ක)
+                // 🔥 Advanced Headers (Real Browser එකක් වගේ පෙන්වීමට)
                 const response = await axios({
                     method: 'GET',
                     url: movieData.url,
                     responseType: 'stream',
-                    timeout: 0, // ලොකු ෆයිල් නිසා Timeout වෙන්න දෙන්නේ නෑ
+                    timeout: 0, 
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-                        'Referer': 'https://h5.aoneroom.com/', // මේක නැත්නම් සමහර වෙලාවට Block කරනවා
-                        'Origin': 'https://h5.aoneroom.com'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                        'Referer': 'https://h5.aoneroom.com/',
+                        'Origin': 'https://h5.aoneroom.com',
+                        'Accept': '*/*',
+                        'Connection': 'keep-alive'
                     }
                 });
 
@@ -195,7 +198,6 @@ module.exports = {
                     writer.on('error', reject);
                 });
 
-                // WhatsApp එකට යැවීම
                 const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝗕𝗼𝘅 🎀] ¡! ❞*\n\n` +
                                 `🎬 *Title:* ${movieData.title}\n` +
                                 `✨ *Quality:* ${movieData.quality}p\n\n` +
@@ -210,16 +212,23 @@ module.exports = {
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                 
-                // යැව්වට පස්සේ Memory සහ Storage එකෙන් අයින් කරනවා
                 if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
                 delete global.mbStore[shortId];
 
             } catch (e) {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                reply(`❌ *Download Error:* සේවාදායකයේ ගැටලුවකි. (Error: ${e.response?.status || e.message})`);
                 
-                // Error ආවත් Temp ෆයිල් එක මකලා දාන්න
+                // 🔥 THE ULTIMATE FALLBACK: 403 ආවොත් කෙලින්ම ලින්ක් එක යවනවා!
+                const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
+                                        `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
+                                        `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
+                                        `🎬 *${movieData.title} (${movieData.quality}p - ${movieData.size})*\n\n` +
+                                        `🔗 *Link:* ${movieData.url}\n\n` +
+                                        `_(මෙම ලින්ක් එක පැය කිහිපයක් සඳහා පමණක් වලංගු වේ)_`;
+
+                await socket.sendMessage(sender, { text: fallbackCaption }, { quoted: msg });
+                
                 if (tempFilePath && fs.existsSync(tempFilePath)) {
                     fs.unlinkSync(tempFilePath);
                 }
