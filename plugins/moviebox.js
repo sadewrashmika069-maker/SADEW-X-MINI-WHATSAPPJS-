@@ -3,58 +3,64 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
+// Memory Leak නොවී ඩේටා තියාගන්න Global Store එකක්
 if (!global.mbStore) global.mbStore = {};
 
 module.exports = {
-    name: "moviebox",
+    name: "movie",
     category: 1,
-    description: "Search and download movies from MovieBox Pro",
-    commands: ["moviepro", "mbmovie", "mbdl"],
+    description: "Search and download movies with Sinhala Subtitles (Via SinhalaSub)",
+    // කමාන්ඩ්ස් ටික පරණ විදිහටම තිබ්බා ඔයාට ලේසි වෙන්න
+    commands: ["moviepro", "mbmovie", "mbdl", "movie"],
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const apikey = "frontoffice9876@gmail.com:vajira-88173";
+        const API_BASE = "https://vajiraofc-apis.vercel.app";
 
         // ==============================================================
-        // 1. CHOOSE MOVIE (Search)
+        // 1. CHOOSE MOVIE (SinhalaSub Search)
         // ==============================================================
-        if (command === "moviepro" || command === "moviebox") {
+        if (command === "moviepro" || command === "movie" || command === "moviebox") {
             const query = args.join(' ').trim();
             if (!query) {
-                return reply("🎥 *කරුණාකර චිත්‍රපටයක නමක් ලබා දෙන්න!*\n💡 උදා: `.moviepro Inception`");
+                return reply("🎥 *කරුණාකර චිත්‍රපටයක නමක් ලබා දෙන්න!*\n💡 උදා: `.movie Inception`");
             }
 
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                const searchUrl = `https://vajiraofc-apis.vercel.app/api/movieboxs?apikey=${apikey}&query=${encodeURIComponent(query)}&page=1&perPage=5`;
+                const searchUrl = `${API_BASE}/api/sinhalasub/search?apikey=${apikey}&q=${encodeURIComponent(query)}`;
                 const res = await axios.get(searchUrl, { timeout: 15000 });
-                const items = res.data?.data?.items || [];
+                
+                // SinhalaSub API එකෙන් එන Results
+                const items = res.data?.result || res.data?.data || [];
 
                 if (!items || items.length === 0) {
                     try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                     return reply("❌ *සමාවෙන්න, චිත්‍රපටයක් සොයාගත නොහැකි විය!*");
                 }
 
-                let listText = `*🔍 SADEW-MINI MOVIEBOX SEARCH*\n\n`;
+                let listText = `*🔍 SADEW-MINI MOVIE SEARCH (SINHALASUB)*\n\n`;
                 let buttons = [];
 
+                // උපරිම Results 5ක් ගමු
                 items.slice(0, 5).forEach((m, i) => {
-                    const year = m.releaseDate ? m.releaseDate.split('-')[0] : 'N/A';
-                    const typeIcon = m.subjectType === 2 ? '📺 Series' : '🎬 Movie'; 
-                    
-                    listText += `*${i + 1}.* ${m.title} (${year}) [${typeIcon}]\n`;
-                    listText += `⭐ IMDb: ${m.imdbRatingValue || 'N/A'} | 🎭 ${m.genre || 'N/A'}\n\n`;
+                    const title = m.title || m.name || 'Unknown Title';
+                    listText += `*${i + 1}.* ${title}\n`;
+                    listText += `🔗 ${m.link || m.url}\n\n`;
 
+                    // Button ID එකට ෆිල්ම් එකේ URL එක යවනවා
                     buttons.push({
-                        buttonId: `.mbmovie ${m.subjectType}|${m.subjectId}|${m.detailPath}`,
-                        buttonText: { displayText: `${typeIcon}: ${m.title}` },
+                        buttonId: `.mbmovie ${m.link || m.url}`,
+                        buttonText: { displayText: `🎬 ${title.substring(0, 18)}...` },
                         type: 1
                     });
                 });
 
                 listText += `> *ඔබට අවශ්‍ය නිර්මාණයට අදාළ අංකය පහතින් තෝරන්න.*`;
 
-                const firstCover = items[0]?.cover?.url;
+                // පලවෙනි ෆිල්ම් එකේ පින්තූරය තියෙනවා නම් දානවා
+                const firstCover = items[0]?.image || items[0]?.thumbnail;
                 const msgOpts = {
                     caption: listText,
                     footer: "👑 SADEW-MINI 👑",
@@ -68,75 +74,64 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
 
             } catch (e) {
-                console.error("MovieBox Search Error:", e.message);
+                console.error("SinhalaSub Search Error:", e.message);
                 try { await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } }); } catch (_) {}
                 reply("❌ *API දෝෂයකි! පසුව නැවත උත්සාහ කරන්න.*");
             }
         }
 
         // ==============================================================
-        // 2. CHOOSE QUALITY 
+        // 2. CHOOSE QUALITY (SinhalaSub Details)
         // ==============================================================
         else if (command === "mbmovie") {
-            const data = args.join(' ').split('|');
-            if (data.length !== 3) return; 
-
-            const subjectType = data[0]; 
-            const subjectId = data[1];
-            const detailPath = data[2];
-
-            let season = subjectType === '2' ? 1 : 0;
-            let episode = subjectType === '2' ? 1 : 0;
+            const movieUrl = args[0];
+            if (!movieUrl || !movieUrl.includes('http')) return;
 
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${subjectId}&detailPath=${detailPath}&season=${season}&episode=${episode}`;
-                const res = await axios.get(dlUrl, { timeout: 20000 });
+                const detailUrl = `${API_BASE}/api/sinhalasub/details?apikey=${apikey}&url=${encodeURIComponent(movieUrl)}`;
+                const res = await axios.get(detailUrl, { timeout: 20000 });
 
-                let downloads = res.data?.data?.downloads?.data?.downloads || [];
+                const downloads = res.data?.downloads || res.data?.data?.downloads || [];
 
                 if (!downloads || downloads.length === 0) {
                     await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                    return reply("❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.*\n\n_මෙය VIP/Premium චිත්‍රපටයක් වීම හෝ මෙය TV Series එකක් වීම මීට හේතුව විය හැක._");
+                    return reply("❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.*");
                 }
 
-                const movieTitle = res.data?.data?.details?.subject?.title || "Movie";
-                const coverUrl = res.data?.data?.details?.subject?.cover?.url;
+                const movieTitle = res.data?.title || res.data?.data?.title || "Movie";
+                const coverUrl = res.data?.image || res.data?.data?.image;
 
                 let qList = `*🎬 SADEW-MINI MOVIE QUALITY*\n\n📽️ *${movieTitle}*\n\n`;
                 let buttons = [];
 
                 downloads.slice(0, 10).forEach((dl, i) => {
-                    const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
-                    const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
-                    
-                    let finalUrl = dl.downloadUrl || `https://vajiraofc-apis.vercel.app/api/proxy-download?url=${encodeURIComponent(dl.url || dl.directUrl)}`;
-                    
-                    if (!finalUrl.includes('direct=true')) {
-                        finalUrl += '&direct=true';
+                    const qlty = dl.quality || 'HD';
+                    const size = dl.size || 'N/A';
+                    const dlLink = dl.link || dl.url;
+
+                    if (dlLink) {
+                        qList += `*${i + 1}.* ${qlty} - ${size}\n`;
+
+                        const shortId = crypto.randomBytes(4).toString('hex');
+                        global.mbStore[shortId] = {
+                            url: dlLink,
+                            title: movieTitle,
+                            quality: qlty,
+                            size: size
+                        };
+
+                        setTimeout(() => {
+                            if (global.mbStore[shortId]) delete global.mbStore[shortId];
+                        }, 30 * 60 * 1000);
+
+                        buttons.push({
+                            buttonId: `.mbdl ${shortId}`,
+                            buttonText: { displayText: `🎥 ${qlty} (${size})` },
+                            type: 1
+                        });
                     }
-                    finalUrl = finalUrl.replace(/^http:\/\//i, 'https://');
-
-                    qList += `*${i + 1}.* ${qlty}p - ${sizeMB}\n`;
-
-                    const shortId = crypto.randomBytes(4).toString('hex');
-                    global.mbStore[shortId] = {
-                        url: finalUrl,
-                        title: movieTitle,
-                        quality: qlty,
-                        size: sizeMB
-                    };
-
-                    setTimeout(() => {
-                        if (global.mbStore[shortId]) delete global.mbStore[shortId];
-                    }, 30 * 60 * 1000);
-
-                    buttons.push({
-                        buttonId: `.mbdl ${shortId}`,
-                        buttonText: { displayText: `🎥 ${qlty}p (${sizeMB})` },
-                        type: 1
-                    });
                 });
 
                 qList += `\n> *ඔබට අවශ්‍ය Quality එකට අදාළ අංකය තෝරන්න.*`;
@@ -154,100 +149,43 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
 
             } catch (e) {
-                console.error("MovieBox Quality Error:", e.message);
+                console.error("SinhalaSub Quality Error:", e.message);
                 reply("❌ *Download තොරතුරු ලබාගැනීමට නොහැකි විය!*");
             }
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (Fixing the 3KB JSON issue)
+        // 3. DOWNLOAD MOVIE (Direct Link to User)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
             const movieData = global.mbStore[shortId];
 
             if (!movieData || !movieData.url) {
-                return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .moviepro ලෙස Search කරන්න.*");
+                return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .movie ලෙස Search කරන්න.*");
             }
 
-            let tempFilePath;
-            let actualDownloadUrl = movieData.url;
-
             try {
-                await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } });
-                await reply(`📥 *${movieData.title}* (${movieData.quality}p) බාගත වෙමින් පවතී... මෙය තරමක් විශාල ෆයිල් එකක් නිසා සුළු වේලාවක් ගතවිය හැක. ⏳`);
+                await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
 
-                const cleanFileName = movieData.title.replace(/[^a-zA-Z0-9]/g, '_');
-                const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
-                tempFilePath = path.join(__dirname, tempFileName);
-
-                // 🔥 STEP 1: JSON එක අරගෙන ඒකෙන් streamUrl එක එළියට ගන්නවා
-                try {
-                    const apiCheck = await axios.get(movieData.url);
-                    if (apiCheck.data && apiCheck.data.streamUrl) {
-                        actualDownloadUrl = apiCheck.data.streamUrl;
-                        console.log("\n✅ EXTRACTED REAL STREAM URL:", actualDownloadUrl, "\n");
-                    }
-                } catch (err) {
-                    console.log("JSON check failed, proceeding with original URL");
-                }
-
-                // 🔥 STEP 2: නියම Video Stream එක Download කිරීම
-                const response = await axios({
-                    method: 'GET',
-                    url: actualDownloadUrl,
-                    responseType: 'stream',
-                    timeout: 0,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-                        'Accept': '*/*',
-                        'Referer': 'https://movieboxpro.app/', // API එකේ ඉල්ලපු Header එක
-                        'Origin': 'https://movieboxpro.app'
-                    }
-                });
-
-                const writer = fs.createWriteStream(tempFilePath);
-                response.data.pipe(writer);
-
-                await new Promise((resolve, reject) => {
-                    writer.on('finish', resolve);
-                    writer.on('error', reject);
-                });
-
-                const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝗕𝗼𝘅 🎀] ¡! ❞*\n\n` +
+                // මේ ලින්ක් සිංහල සබ් සයිට් වලින් එන නිසා ලොකු අවහිර කිරීම් නෑ.
+                // ලොකු ෆයිල් නිසා කෙලින්ම Direct Link එක යූසර්ට දෙන එක තමයි ගොඩක්ම සාර්ථක.
+                const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 (Sinhala Sub) 🎀] ¡! ❞*\n\n` +
                                 `🎬 *Title:* ${movieData.title}\n` +
-                                `✨ *Quality:* ${movieData.quality}p\n\n` +
+                                `✨ *Quality:* ${movieData.quality}\n` +
+                                `📦 *Size:* ${movieData.size}\n\n` +
+                                `✅ *කරුණාකර පහත ලින්ක් එක Click කර, එය ඔබගේ Browser එක හරහා Download කරගන්න.*\n\n` +
+                                `🔗 *Download Link:*\n${movieData.url}\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                await socket.sendMessage(sender, {
-                    document: { stream: fs.createReadStream(tempFilePath) }, 
-                    mimetype: "video/mp4",
-                    fileName: tempFileName,
-                    caption: caption
-                }, { quoted: msg });
-
-                await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
+                await socket.sendMessage(sender, { text: caption }, { quoted: msg });
                 
-                if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
                 delete global.mbStore[shortId];
 
             } catch (e) {
-                console.error("MovieBox DL Error:", e.message);
+                console.error("Movie DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                
-                // Fallback Link එක
-                const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
-                                        `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
-                                        `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
-                                        `🎬 *${movieData.title} (${movieData.quality}p - ${movieData.size})*\n\n` +
-                                        `🔗 *Link:* ${actualDownloadUrl}\n\n` +
-                                        `_(මෙම ලින්ක් එක පැය කිහිපයක් සඳහා පමණක් වලංගු වේ)_`;
-
-                await socket.sendMessage(sender, { text: fallbackCaption }, { quoted: msg });
-                
-                if (tempFilePath && fs.existsSync(tempFilePath)) {
-                    fs.unlinkSync(tempFilePath);
-                }
+                reply(`❌ *Link එක ලබා ගැනීමේදී දෝෂයක් මතු විය.*`);
             }
         }
     }
