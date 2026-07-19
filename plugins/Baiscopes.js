@@ -20,7 +20,7 @@ function extractFileId(url) {
 module.exports = {
     name: "baiscopes",
     category: 1,
-    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto Stream)",
+    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto Stream & Link Filter)",
     commands: ["baiscopes", "baiscope", "bsget", "bslink"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
@@ -173,7 +173,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. AUTO DOWNLOAD (GDRIVE OR DIRECT WORKERS LINK)
+        // 3. AUTO DOWNLOAD (GDRIVE, DIRECT) OR SEND LINK (TELEGRAM/PIXELDRAIN)
         // ==============================================================
         else if (command === "bslink") {
             const shortId = args[0];
@@ -186,7 +186,7 @@ module.exports = {
             const url = movieData.url;
             const fileId = extractFileId(url);
 
-            // 🔥 අදාළ ලින්ක් එක Google Drive ලින්ක් එකක් නම්...
+            // 🟢 CATEGORY 1: Google Drive Links
             if (fileId) {
                 try {
                     await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
@@ -274,13 +274,12 @@ module.exports = {
                     reply(`❌ *සේවාදායකයෙන් චිත්‍රපටය බාගත කිරීම අසාර්ථක විය.*\n\n*ඔබට පහත ලින්ක් එකෙන් එය කෙලින්ම Download කරගත හැක:*\n🔗 ${url}`);
                 }
             } 
-            // 🔥 Google Drive නෙමෙයි නම් (Cloudflare Workers Direct Link වගේ ඒවා Stream කිරීම)
-            else {
+            // 🟢 CATEGORY 2: Direct Links (workers.dev OR contains media extensions, BUT NOT Telegram/Pixeldrain)
+            else if ( (url.includes('.workers.dev') || url.match(/\.(mp4|mkv|avi|zip|rar)$/i)) && !url.includes('t.me') && !url.includes('pixeldrain.com') ) {
                 try {
                     await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
                     await reply(`🔍 *Processing Direct Link...*\n🎬 ${movieData.title}\n\n_Please wait, downloading to server..._`);
 
-                    // ලින්ක් එකෙන් නම සහ Extension එක හොයාගන්නවා (.mkv ද .mp4 ද කියලා)
                     let decodedUrl = decodeURIComponent(url);
                     let fileNameExt = decodedUrl.split('/').pop().split('?')[0];
                     if (!fileNameExt || !fileNameExt.includes('.')) fileNameExt = `${movieData.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
@@ -299,7 +298,6 @@ module.exports = {
                     const tempFilePath = path.join(__dirname, finalFileName);
                     const writer = fs.createWriteStream(tempFilePath);
 
-                    // අර Direct ලින්ක් එක කෙලින්ම Axios වලින් Download (Stream) කරනවා 
                     const fileRes = await axios({
                         method: 'GET',
                         url: url,
@@ -347,10 +345,39 @@ module.exports = {
                     console.error("Direct Link Stream Error:", e.message);
                     await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
                     
-                    // ඒකත් Fail වුනොත් ලින්ක් එක මැසේජ් කරනවා (Fallback)
                     const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n🎬 *Title:* ${movieData.title}\n📦 *Size:* ${movieData.size}\n\n✅ *කරුණාකර පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*\n\n🔗 *Download Link:*\n${url}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
                     await socket.sendMessage(sender, { text: caption }, { quoted: msg });
                     delete global.mbStore[shortId];
+                }
+            }
+            // 🟢 CATEGORY 3: Telegram, Pixeldrain, or other HTML Web Links
+            else {
+                try {
+                    await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
+
+                    let specialNote = "";
+                    if (url.includes('t.me')) {
+                        specialNote = "✅ *මෙය Telegram Link එකක් බැවින්, පහත ලින්ක් එක Click කර Telegram හරහා බාගන්න.*";
+                    } else if (url.includes('pixeldrain.com')) {
+                        specialNote = "✅ *මෙය Pixeldrain Link එකක් බැවින්, පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*";
+                    } else {
+                        specialNote = "✅ *මෙම ලින්ක් එක සෘජුවම බාගත නොහැකි බැවින්, කරුණාකර එය Browser එක හරහා ලබාගන්න.*";
+                    }
+
+                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n` +
+                                    `🎬 *Title:* ${movieData.title}\n` +
+                                    `📦 *Size:* ${movieData.size}\n\n` +
+                                    `${specialNote}\n\n` +
+                                    `🔗 *Download Link:*\n${url}\n\n` +
+                                    `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                    await socket.sendMessage(sender, { text: caption }, { quoted: msg });
+                    
+                    delete global.mbStore[shortId];
+
+                } catch (e) {
+                    console.error("Movie Link Send Error:", e.message);
+                    reply(`❌ *Link එක ලබා ගැනීමේදී දෝෂයක් මතු විය.*`);
                 }
             }
         }
