@@ -17,10 +17,21 @@ function extractFileId(url) {
     return null;
 }
 
+// 🔥 අලුත් ෆන්ක්ෂන් එක: ලින්ක් එකේ වර්ගය අඳුරගන්නවා
+function getLinkType(url) {
+    if (!url) return "Unknown";
+    url = url.toLowerCase();
+    if (url.includes('drive.google.com') || url.includes('drive.usercontent.google.com')) return "GDrive";
+    if (url.includes('t.me')) return "Telegram";
+    if (url.includes('pixeldrain.com')) return "Pixeldrain";
+    if (url.includes('.workers.dev') || url.match(/\.(mp4|mkv|avi|zip|rar)$/i)) return "Direct";
+    return "Web Link";
+}
+
 module.exports = {
     name: "baiscopes",
     category: 1,
-    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto Stream & Link Filter)",
+    description: "Search and download movies with Sinhala Subtitles from Baiscopes",
     commands: ["baiscopes", "baiscope", "bsget", "bslink"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
@@ -62,6 +73,7 @@ module.exports = {
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = { movieUrl: m.url };
 
+                    // විනාඩි 30න් මැකෙනවා
                     setTimeout(() => {
                         if (global.mbStore[shortId]) delete global.mbStore[shortId];
                     }, 30 * 60 * 1000);
@@ -132,7 +144,10 @@ module.exports = {
 
                     if (!fileUrl) return;
 
-                    qList += `*${i + 1}.* ${fileQuality} - ${fileSize}\n`;
+                    // 🔥 ලින්ක් එකේ වර්ගය අඳුරගන්නවා
+                    const linkType = getLinkType(fileUrl);
+
+                    qList += `*${i + 1}.* ${fileQuality} - ${fileSize} [${linkType}]\n`;
 
                     const linkId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[linkId] = {
@@ -141,13 +156,15 @@ module.exports = {
                         size: fileSize
                     };
 
+                    // විනාඩි 30ක් යනකන් අනිත් ලින්ක් ඔබන්න පුළුවන් වෙන විදිහට තියාගන්නවා
                     setTimeout(() => {
                         if (global.mbStore[linkId]) delete global.mbStore[linkId];
                     }, 30 * 60 * 1000);
 
+                    // 🔥 බටන් එකට ලින්ක් එකේ නම දානවා (උදා: "📥 1. GDrive")
                     buttons.push({
                         buttonId: `.bslink ${linkId}`,
-                        buttonText: { displayText: `📥 Get ${fileQuality}` },
+                        buttonText: { displayText: `📥 ${i + 1}. ${linkType}` },
                         type: 1
                     });
                 });
@@ -266,7 +283,7 @@ module.exports = {
                     await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                     
                     if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-                    delete global.mbStore[shortId];
+                    // 🔥 මෙතනින් global.mbStore මකන කෑල්ල අයින් කළා! Menu එක 계속 වැඩ කරනවා.
 
                 } catch (error) {
                     console.error("GDrive Download Error:", error);
@@ -339,7 +356,7 @@ module.exports = {
                     await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                     
                     if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-                    delete global.mbStore[shortId];
+                    // 🔥 මෙතනින් global.mbStore මකන කෑල්ල අයින් කළා! Menu එක 계속 වැඩ කරනවා.
 
                 } catch (e) {
                     console.error("Direct Link Stream Error:", e.message);
@@ -347,7 +364,6 @@ module.exports = {
                     
                     const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n🎬 *Title:* ${movieData.title}\n📦 *Size:* ${movieData.size}\n\n✅ *කරුණාකර පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*\n\n🔗 *Download Link:*\n${url}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
                     await socket.sendMessage(sender, { text: caption }, { quoted: msg });
-                    delete global.mbStore[shortId];
                 }
             }
             // 🟢 CATEGORY 3: Telegram, Pixeldrain, or other HTML Web Links
@@ -372,8 +388,6 @@ module.exports = {
                                     `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
                     await socket.sendMessage(sender, { text: caption }, { quoted: msg });
-                    
-                    delete global.mbStore[shortId];
 
                 } catch (e) {
                     console.error("Movie Link Send Error:", e.message);
