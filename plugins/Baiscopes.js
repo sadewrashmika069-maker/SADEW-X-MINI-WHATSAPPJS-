@@ -20,7 +20,7 @@ function extractFileId(url) {
 module.exports = {
     name: "baiscopes",
     category: 1,
-    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto GDrive)",
+    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto Stream)",
     commands: ["baiscopes", "baiscope", "bsget", "bslink"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
@@ -173,7 +173,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. AUTO DOWNLOAD GDRIVE OR SEND LINK
+        // 3. AUTO DOWNLOAD (GDRIVE OR DIRECT WORKERS LINK)
         // ==============================================================
         else if (command === "bslink") {
             const shortId = args[0];
@@ -190,7 +190,7 @@ module.exports = {
             if (fileId) {
                 try {
                     await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
-                    await reply(`🔍 *Processing Movie...*\n🎬 ${movieData.title}\n📎 File ID: ${fileId}\n\n_Please wait, downloading to server..._`);
+                    await reply(`🔍 *Processing Movie (GDrive)...*\n🎬 ${movieData.title}\n\n_Please wait, downloading to server..._`);
 
                     const API_TOKEN = "VK4fry";
                     const API_BASE_WS = "https://whiteshadow-x-api.onrender.com/api/download/gdrive";
@@ -211,7 +211,6 @@ module.exports = {
 
                     await reply(`📥 *Downloading to Server...*\n📄 File: ${fileName}\n📦 Size: ${movieData.size}\n⏳ This may take a few minutes for large files (1GB+)...`);
 
-                    // File Type තීරණය කිරීම (ගොඩක් වෙලාවට ෆිල්ම්ස් .mp4 හෝ .mkv)
                     let ext = 'mp4';
                     let mimetype = 'video/mp4';
                     const nameParts = fileName.split('.');
@@ -219,6 +218,7 @@ module.exports = {
                         ext = nameParts.pop().toLowerCase();
                         if (ext === 'mkv') mimetype = 'video/x-matroska';
                         else if (ext === 'avi') mimetype = 'video/x-msvideo';
+                        else if (ext === 'zip') mimetype = 'application/zip';
                     }
 
                     const finalFileName = `SadewMini_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -247,7 +247,6 @@ module.exports = {
                     const stats = fs.statSync(tempFilePath);
                     const actualSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
-                    // 2GB සීමාව පරීක්ෂා කිරීම
                     if (stats.size > 2000 * 1024 * 1024) {
                         if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
                         return reply(`❌ *File is too large!*\n📦 Size: ${actualSizeMB} MB\n⚠️ WhatsApp document limit is 2GB.`);
@@ -272,30 +271,86 @@ module.exports = {
                 } catch (error) {
                     console.error("GDrive Download Error:", error);
                     await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                    
-                    // Fail වුනොත් ලින්ක් එක යවනවා (Fallback)
                     reply(`❌ *සේවාදායකයෙන් චිත්‍රපටය බාගත කිරීම අසාර්ථක විය.*\n\n*ඔබට පහත ලින්ක් එකෙන් එය කෙලින්ම Download කරගත හැක:*\n🔗 ${url}`);
                 }
             } 
-            // 🔥 Google Drive ලින්ක් එකක් නෙමෙයි නම් (Telegram, Direct Web Link)
+            // 🔥 Google Drive නෙමෙයි නම් (Cloudflare Workers Direct Link වගේ ඒවා Stream කිරීම)
             else {
                 try {
-                    await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
+                    await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
+                    await reply(`🔍 *Processing Direct Link...*\n🎬 ${movieData.title}\n\n_Please wait, downloading to server..._`);
 
-                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n` +
-                                    `🎬 *Title:* ${movieData.title}\n` +
-                                    `📦 *Size:* ${movieData.size}\n\n` +
-                                    `✅ *මෙය සෘජු Google Drive ගොනුවක් නොවන බැවින්, පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*\n\n` +
-                                    `🔗 *Download Link:*\n${url}\n\n` +
-                                    `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                    // ලින්ක් එකෙන් නම සහ Extension එක හොයාගන්නවා (.mkv ද .mp4 ද කියලා)
+                    let decodedUrl = decodeURIComponent(url);
+                    let fileNameExt = decodedUrl.split('/').pop().split('?')[0];
+                    if (!fileNameExt || !fileNameExt.includes('.')) fileNameExt = `${movieData.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
 
-                    await socket.sendMessage(sender, { text: caption }, { quoted: msg });
+                    let ext = 'mp4';
+                    let mimetype = 'video/mp4';
+                    const nameParts = fileNameExt.split('.');
+                    if (nameParts.length > 1) {
+                        ext = nameParts.pop().toLowerCase();
+                        if (ext === 'mkv') mimetype = 'video/x-matroska';
+                        else if (ext === 'avi') mimetype = 'video/x-msvideo';
+                        else if (ext === 'zip') mimetype = 'application/zip';
+                    }
+
+                    const finalFileName = `SadewMini_${fileNameExt.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                    const tempFilePath = path.join(__dirname, finalFileName);
+                    const writer = fs.createWriteStream(tempFilePath);
+
+                    // අර Direct ලින්ක් එක කෙලින්ම Axios වලින් Download (Stream) කරනවා 
+                    const fileRes = await axios({
+                        method: 'GET',
+                        url: url,
+                        responseType: 'stream',
+                        timeout: 0, 
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': '*/*'
+                        },
+                        maxRedirects: 10
+                    });
+
+                    fileRes.data.pipe(writer);
+
+                    await new Promise((resolve, reject) => {
+                        writer.on('finish', resolve);
+                        writer.on('error', reject);
+                    });
+
+                    const stats = fs.statSync(tempFilePath);
+                    const actualSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+                    if (stats.size > 2000 * 1024 * 1024) {
+                        if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+                        return reply(`❌ *File is too large!*\n📦 Size: ${actualSizeMB} MB\n⚠️ WhatsApp document limit is 2GB.`);
+                    }
+
+                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n🎬 *Title:* ${movieData.title}\n📦 *Size:* ${actualSizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                    await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } });
+
+                    await socket.sendMessage(sender, {
+                        document: { stream: fs.createReadStream(tempFilePath) },
+                        mimetype: mimetype,
+                        fileName: finalFileName,
+                        caption: caption
+                    }, { quoted: msg });
+
+                    await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                     
+                    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
                     delete global.mbStore[shortId];
 
                 } catch (e) {
-                    console.error("Movie Link Send Error:", e.message);
-                    reply(`❌ *Link එක ලබා ගැනීමේදී දෝෂයක් මතු විය.*`);
+                    console.error("Direct Link Stream Error:", e.message);
+                    await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
+                    
+                    // ඒකත් Fail වුනොත් ලින්ක් එක මැසේජ් කරනවා (Fallback)
+                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n🎬 *Title:* ${movieData.title}\n📦 *Size:* ${movieData.size}\n\n✅ *කරුණාකර පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*\n\n🔗 *Download Link:*\n${url}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+                    await socket.sendMessage(sender, { text: caption }, { quoted: msg });
+                    delete global.mbStore[shortId];
                 }
             }
         }
