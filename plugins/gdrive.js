@@ -17,7 +17,7 @@ function extractFileId(url) {
 
 module.exports = {
     name: "gdrive",
-    category: 1, // 1 = Download commands
+    category: 1, 
     description: "📁 Google Drive file එකක් ඩවුන්ලෝඩ් කරන්න (up to 2GB)",
     commands: ["gdrive", "gd", "googledrive"],
 
@@ -28,7 +28,8 @@ module.exports = {
             return reply(`📁 *Google Drive Downloader*\n\n*Usage:* .gdrive <google_drive_link>\n*Example:* .gdrive https://drive.google.com/file/d/xxxxx/view\n\n*Supports files up to 2GB*`);
         }
 
-        if (!url.includes("drive.google.com")) {
+        // 🔥 FIX: drive.usercontent.google.com කියන එකත් අල්ලගන්නවා!
+        if (!url.includes("drive.google.com") && !url.includes("drive.usercontent.google.com")) {
             return reply(`❌ *Invalid URL*\n\nPlease provide a valid Google Drive link.`);
         }
 
@@ -43,12 +44,13 @@ module.exports = {
         let tempFilePath;
 
         try {
-            // Call the WhiteShadow API
-            const apiUrl = `${API_BASE}?url=${encodeURIComponent(url)}&apitoken=${API_TOKEN}`;
+            // 🔥 FIX: API එකට යවන්න කලින් ලින්ක් එක Standard විදිහට හදාගන්නවා
+            const standardUrl = `https://drive.google.com/file/d/${fileId}/view`;
+            const apiUrl = `${API_BASE}?url=${encodeURIComponent(standardUrl)}&apitoken=${API_TOKEN}`;
+            
             const response = await axios.get(apiUrl, { timeout: 20000 });
             const data = response.data;
 
-            // Check if API returned an error
             if (!data || data.success !== true) {
                 const errorMsg = data?.error || data?.message || "Unknown API error";
                 throw new Error(errorMsg);
@@ -62,7 +64,6 @@ module.exports = {
             if (!downloadUrl) throw new Error("No download URL received from API");
             if (!downloadUrl.startsWith("http")) throw new Error("Invalid download URL format");
 
-            // Parse file size
             let sizeMB = 0;
             if (fileSize) {
                 if (typeof fileSize === 'string' && fileSize.includes('MB')) {
@@ -76,7 +77,6 @@ module.exports = {
                 }
             }
 
-            // WhatsApp document limit check (2GB)
             if (sizeMB > 2000) {
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 return reply(`❌ *File is too large!*\n📦 Size: ${sizeMB.toFixed(2)} MB\n⚠️ WhatsApp document limit is 2GB.`);
@@ -84,7 +84,6 @@ module.exports = {
 
             await reply(`📥 *Downloading file...*\n📄 File: ${fileName}${fileSize ? `\n📦 Size: ${fileSize}` : ''}\n⏳ Please wait, this may take a few minutes for large files...`);
 
-            // Determine file extension and mime type
             let ext = 'file';
             let mimetype = 'application/octet-stream';
             const nameParts = fileName.split('.');
@@ -106,7 +105,6 @@ module.exports = {
             mimetype = extMimeMap[ext] || 'application/octet-stream';
             const finalFileName = `${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-            // 🔥 Setup Stream to Disk (Prevents Memory Leaks)
             tempFilePath = path.join(__dirname, finalFileName);
             const writer = fs.createWriteStream(tempFilePath);
 
@@ -140,7 +138,6 @@ module.exports = {
 
             const caption = `📁 *Google Drive Download Complete*\n\n📄 *File:* ${finalFileName}\n📦 *Size:* ${actualSizeMB} MB\n🔗 *File ID:* ${fileId}\n\n> *Powered by WhiteShadow API*`;
 
-            // Send file to WhatsApp using Stream
             await socket.sendMessage(sender, {
                 document: { stream: fs.createReadStream(tempFilePath) },
                 mimetype: mimetype,
