@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 
+// Memory Leak නොවී ඩේටා තියාගන්න Global Store එකක්
 if (!global.mbStore) global.mbStore = {};
 
 module.exports = {
@@ -13,10 +14,13 @@ module.exports = {
         const apikey = "frontoffice9876@gmail.com:vajira-88173";
         const API_BASE = "https://vajiraofc-apis.vercel.app";
 
+        // ==============================================================
+        // 1. CHOOSE MOVIE (Baiscopes Search)
+        // ==============================================================
         if (command === "baiscopes" || command === "baiscope") {
             const query = args.join(' ').trim();
             if (!query) {
-                return reply("🎥 *කරුණාකර චිත්‍රපටයක නමක් ලබා දෙන්න!*\n💡 උදා: `.baiscopes Inception`");
+                return reply("🎥 *කරුණාකර චිත්‍රපටයක නමක් ලබා දෙන්න!*\n💡 උදා: `.baiscopes 2026`");
             }
 
             try {
@@ -42,8 +46,17 @@ module.exports = {
                     listText += `*${i + 1}.* ${title}\n`;
                     listText += `📅 Year: ${year} | ⭐ IMDb: ${m.imdbRate || 'N/A'}\n\n`;
 
+                    // 🔥 Button Limit එක පනින්නේ නැති වෙන්න ලින්ක් එක Store කරනවා
+                    const shortId = crypto.randomBytes(4).toString('hex');
+                    global.mbStore[shortId] = { movieUrl: m.url };
+
+                    setTimeout(() => {
+                        if (global.mbStore[shortId]) delete global.mbStore[shortId];
+                    }, 30 * 60 * 1000);
+
+                    // Button ID එකට යවන්නේ පොඩි Short ID එකක් විතරයි
                     buttons.push({
-                        buttonId: `.bsget ${m.url}`,
+                        buttonId: `.bsget ${shortId}`,
                         buttonText: { displayText: `🎬 ${title.substring(0, 18)}...` },
                         type: 1
                     });
@@ -71,17 +84,25 @@ module.exports = {
             }
         }
 
+        // ==============================================================
+        // 2. CHOOSE QUALITY / GET LINKS (Baiscopes Details)
+        // ==============================================================
         else if (command === "bsget") {
-            const movieUrl = args[0];
-            if (!movieUrl || !movieUrl.includes('http')) return;
+            const shortId = args[0];
+            const storedData = global.mbStore[shortId];
+
+            if (!storedData || !storedData.movieUrl) {
+                return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට Search කරන්න.*");
+            }
 
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                const detailUrl = `${API_BASE}/api/baiscopes/details?apikey=${apikey}&url=${encodeURIComponent(movieUrl)}`;
+                const detailUrl = `${API_BASE}/api/baiscopes/details?apikey=${apikey}&url=${encodeURIComponent(storedData.movieUrl)}`;
                 const res = await axios.get(detailUrl, { timeout: 20000 });
 
-                const downloadLinks = res.data?.data?.download_links || res.data?.download_links || [];
+                // 🔥 JSON එකේ තිබ්බ විදිහට downloads අල්ලගන්නවා
+                const downloadLinks = res.data?.data?.downloads || res.data?.downloads || [];
 
                 if (!downloadLinks || downloadLinks.length === 0) {
                     await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
@@ -94,22 +115,30 @@ module.exports = {
                 let qList = `*🎬 SADEW-MINI MOVIE LINKS*\n\n📽️ *${movieTitle}*\n\n`;
                 let buttons = [];
 
-                downloadLinks.forEach((link, i) => {
-                    qList += `*${i + 1}.* Download Link ${i + 1}\n`;
+                downloadLinks.forEach((dl, i) => {
+                    // JSON එකේ තියෙන Size එක සහ Quality එක
+                    const fileSize = dl.size && dl.size !== 'N/A' ? dl.size : 'Unknown Size';
+                    const fileQuality = dl.quality && dl.quality !== 'N/A' ? dl.quality : `Link ${i + 1}`;
+                    const fileUrl = dl.url || dl.original_link;
 
-                    const shortId = crypto.randomBytes(4).toString('hex');
-                    global.mbStore[shortId] = {
-                        url: link,
-                        title: movieTitle
+                    if (!fileUrl) return;
+
+                    qList += `*${i + 1}.* ${fileQuality} - ${fileSize}\n`;
+
+                    const linkId = crypto.randomBytes(4).toString('hex');
+                    global.mbStore[linkId] = {
+                        url: fileUrl,
+                        title: movieTitle,
+                        size: fileSize
                     };
 
                     setTimeout(() => {
-                        if (global.mbStore[shortId]) delete global.mbStore[shortId];
+                        if (global.mbStore[linkId]) delete global.mbStore[linkId];
                     }, 30 * 60 * 1000);
 
                     buttons.push({
-                        buttonId: `.bslink ${shortId}`,
-                        buttonText: { displayText: `📥 Get Link ${i + 1}` },
+                        buttonId: `.bslink ${linkId}`,
+                        buttonText: { displayText: `📥 Get ${fileQuality}` },
                         type: 1
                     });
                 });
@@ -134,6 +163,9 @@ module.exports = {
             }
         }
 
+        // ==============================================================
+        // 3. SEND DIRECT LINK (Baiscopes Download Link)
+        // ==============================================================
         else if (command === "bslink") {
             const shortId = args[0];
             const movieData = global.mbStore[shortId];
@@ -146,7 +178,8 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
 
                 const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 (Baiscopes) 🎀] ¡! ❞*\n\n` +
-                                `🎬 *Title:* ${movieData.title}\n\n` +
+                                `🎬 *Title:* ${movieData.title}\n` +
+                                `📦 *Size:* ${movieData.size}\n\n` +
                                 `✅ *කරුණාකර පහත ලින්ක් එක Click කර, එය ඔබගේ Browser එක හරහා Download කරගන්න.*\n\n` +
                                 `🔗 *Download Link:*\n${movieData.url}\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
