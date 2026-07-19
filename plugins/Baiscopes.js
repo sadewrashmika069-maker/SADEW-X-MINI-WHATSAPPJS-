@@ -1,13 +1,26 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // Memory Leak නොවී ඩේටා තියාගන්න Global Store එකක්
 if (!global.mbStore) global.mbStore = {};
 
+// GDrive File ID එක හොයන ෆන්ක්ෂන් එක
+function extractFileId(url) {
+    let match = url.match(/\/file\/d\/([^\/]+)/);
+    if (match) return match[1];
+    match = url.match(/[?&]id=([^&]+)/);
+    if (match) return match[1];
+    match = url.match(/\/d\/([^\/]+)/);
+    if (match) return match[1];
+    return null;
+}
+
 module.exports = {
     name: "baiscopes",
     category: 1,
-    description: "Search and download movies with Sinhala Subtitles from Baiscopes",
+    description: "Search and download movies with Sinhala Subtitles from Baiscopes (Auto GDrive)",
     commands: ["baiscopes", "baiscope", "bsget", "bslink"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
@@ -36,7 +49,7 @@ module.exports = {
                     return reply("❌ *සමාවෙන්න, චිත්‍රපටයක් සොයාගත නොහැකි විය!*");
                 }
 
-                let listText = `*🔍 SADEW-MINI MOVIE SEARCH (BAISCOPES)*\n\n`;
+                let listText = `*🔍 SADEW-MINI MOVIE SEARCH*\n\n`;
                 let buttons = [];
 
                 items.slice(0, 5).forEach((m, i) => {
@@ -46,7 +59,6 @@ module.exports = {
                     listText += `*${i + 1}.* ${title}\n`;
                     listText += `📅 Year: ${year} | ⭐ IMDb: ${m.imdbRate || 'N/A'}\n\n`;
 
-                    // 🔥 Button Limit එක පනින්නේ නැති වෙන්න ලින්ක් එක Store කරනවා
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = { movieUrl: m.url };
 
@@ -54,7 +66,6 @@ module.exports = {
                         if (global.mbStore[shortId]) delete global.mbStore[shortId];
                     }, 30 * 60 * 1000);
 
-                    // Button ID එකට යවන්නේ පොඩි Short ID එකක් විතරයි
                     buttons.push({
                         buttonId: `.bsget ${shortId}`,
                         buttonText: { displayText: `🎬 ${title.substring(0, 18)}...` },
@@ -85,7 +96,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. CHOOSE QUALITY / GET LINKS (Baiscopes Details)
+        // 2. CHOOSE QUALITY / GET LINKS
         // ==============================================================
         else if (command === "bsget") {
             const shortId = args[0];
@@ -101,7 +112,6 @@ module.exports = {
                 const detailUrl = `${API_BASE}/api/baiscopes/details?apikey=${apikey}&url=${encodeURIComponent(storedData.movieUrl)}`;
                 const res = await axios.get(detailUrl, { timeout: 20000 });
 
-                // 🔥 JSON එකේ තිබ්බ විදිහට downloads අල්ලගන්නවා
                 const downloadLinks = res.data?.data?.downloads || res.data?.downloads || [];
 
                 if (!downloadLinks || downloadLinks.length === 0) {
@@ -116,7 +126,6 @@ module.exports = {
                 let buttons = [];
 
                 downloadLinks.forEach((dl, i) => {
-                    // JSON එකේ තියෙන Size එක සහ Quality එක
                     const fileSize = dl.size && dl.size !== 'N/A' ? dl.size : 'Unknown Size';
                     const fileQuality = dl.quality && dl.quality !== 'N/A' ? dl.quality : `Link ${i + 1}`;
                     const fileUrl = dl.url || dl.original_link;
@@ -164,34 +173,130 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. SEND DIRECT LINK (Baiscopes Download Link)
+        // 3. AUTO DOWNLOAD GDRIVE OR SEND LINK
         // ==============================================================
         else if (command === "bslink") {
             const shortId = args[0];
             const movieData = global.mbStore[shortId];
 
             if (!movieData || !movieData.url) {
-                return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .baiscopes ලෙස Search කරන්න.*");
+                return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට Search කරන්න.*");
             }
 
-            try {
-                await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
+            const url = movieData.url;
+            const fileId = extractFileId(url);
 
-                const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 (Baiscopes) 🎀] ¡! ❞*\n\n` +
-                                `🎬 *Title:* ${movieData.title}\n` +
-                                `📦 *Size:* ${movieData.size}\n\n` +
-                                `✅ *කරුණාකර පහත ලින්ක් එක Click කර, එය ඔබගේ Browser එක හරහා Download කරගන්න.*\n\n` +
-                                `🔗 *Download Link:*\n${movieData.url}\n\n` +
-                                `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+            // 🔥 අදාළ ලින්ක් එක Google Drive ලින්ක් එකක් නම්...
+            if (fileId) {
+                try {
+                    await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
+                    await reply(`🔍 *Processing Movie...*\n🎬 ${movieData.title}\n📎 File ID: ${fileId}\n\n_Please wait, downloading to server..._`);
 
-                await socket.sendMessage(sender, { text: caption }, { quoted: msg });
-                
-                delete global.mbStore[shortId];
+                    const API_TOKEN = "VK4fry";
+                    const API_BASE_WS = "https://whiteshadow-x-api.onrender.com/api/download/gdrive";
+                    const standardUrl = `https://drive.google.com/file/d/${fileId}/view`;
+                    const apiUrl = `${API_BASE_WS}?url=${encodeURIComponent(standardUrl)}&apitoken=${API_TOKEN}`;
 
-            } catch (e) {
-                console.error("Movie DL Error:", e.message);
-                await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                reply(`❌ *Link එක ලබා ගැනීමේදී දෝෂයක් මතු විය.*`);
+                    const response = await axios.get(apiUrl, { timeout: 20000 });
+                    const data = response.data;
+
+                    if (!data || data.success !== true) {
+                        throw new Error(data?.error || data?.message || "Unknown API error");
+                    }
+
+                    let downloadUrl = data.downloadUrl || data.download_url || data.url || data.result?.downloadUrl || data.result?.download_url || data.result?.url;
+                    const fileName = data.fileName || data.file_name || data.filename || data.result?.fileName || data.result?.file_name || `Movie_${fileId}.mp4`;
+                    
+                    if (!downloadUrl) throw new Error("No download URL received from API");
+
+                    await reply(`📥 *Downloading to Server...*\n📄 File: ${fileName}\n📦 Size: ${movieData.size}\n⏳ This may take a few minutes for large files (1GB+)...`);
+
+                    // File Type තීරණය කිරීම (ගොඩක් වෙලාවට ෆිල්ම්ස් .mp4 හෝ .mkv)
+                    let ext = 'mp4';
+                    let mimetype = 'video/mp4';
+                    const nameParts = fileName.split('.');
+                    if (nameParts.length > 1) {
+                        ext = nameParts.pop().toLowerCase();
+                        if (ext === 'mkv') mimetype = 'video/x-matroska';
+                        else if (ext === 'avi') mimetype = 'video/x-msvideo';
+                    }
+
+                    const finalFileName = `SadewMini_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                    const tempFilePath = path.join(__dirname, finalFileName);
+                    const writer = fs.createWriteStream(tempFilePath);
+
+                    const fileRes = await axios({
+                        method: 'GET',
+                        url: downloadUrl,
+                        responseType: 'stream',
+                        timeout: 0, 
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': '*/*'
+                        },
+                        maxRedirects: 5
+                    });
+
+                    fileRes.data.pipe(writer);
+
+                    await new Promise((resolve, reject) => {
+                        writer.on('finish', resolve);
+                        writer.on('error', reject);
+                    });
+
+                    const stats = fs.statSync(tempFilePath);
+                    const actualSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+
+                    // 2GB සීමාව පරීක්ෂා කිරීම
+                    if (stats.size > 2000 * 1024 * 1024) {
+                        if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+                        return reply(`❌ *File is too large!*\n📦 Size: ${actualSizeMB} MB\n⚠️ WhatsApp document limit is 2GB.`);
+                    }
+
+                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n🎬 *Title:* ${movieData.title}\n📦 *Size:* ${actualSizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                    await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } });
+
+                    await socket.sendMessage(sender, {
+                        document: { stream: fs.createReadStream(tempFilePath) },
+                        mimetype: mimetype,
+                        fileName: finalFileName,
+                        caption: caption
+                    }, { quoted: msg });
+
+                    await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
+                    
+                    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+                    delete global.mbStore[shortId];
+
+                } catch (error) {
+                    console.error("GDrive Download Error:", error);
+                    await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
+                    
+                    // Fail වුනොත් ලින්ක් එක යවනවා (Fallback)
+                    reply(`❌ *සේවාදායකයෙන් චිත්‍රපටය බාගත කිරීම අසාර්ථක විය.*\n\n*ඔබට පහත ලින්ක් එකෙන් එය කෙලින්ම Download කරගත හැක:*\n🔗 ${url}`);
+                }
+            } 
+            // 🔥 Google Drive ලින්ක් එකක් නෙමෙයි නම් (Telegram, Direct Web Link)
+            else {
+                try {
+                    await socket.sendMessage(sender, { react: { text: '🔗', key: msg.key } });
+
+                    const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝘀 🎀] ¡! ❞*\n\n` +
+                                    `🎬 *Title:* ${movieData.title}\n` +
+                                    `📦 *Size:* ${movieData.size}\n\n` +
+                                    `✅ *මෙය සෘජු Google Drive ගොනුවක් නොවන බැවින්, පහත ලින්ක් එක Click කර Browser එකෙන් බාගන්න.*\n\n` +
+                                    `🔗 *Download Link:*\n${url}\n\n` +
+                                    `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
+
+                    await socket.sendMessage(sender, { text: caption }, { quoted: msg });
+                    
+                    delete global.mbStore[shortId];
+
+                } catch (e) {
+                    console.error("Movie Link Send Error:", e.message);
+                    reply(`❌ *Link එක ලබා ගැනීමේදී දෝෂයක් මතු විය.*`);
+                }
             }
         }
     }
