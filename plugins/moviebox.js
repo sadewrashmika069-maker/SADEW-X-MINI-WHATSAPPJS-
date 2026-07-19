@@ -109,7 +109,6 @@ module.exports = {
                 let buttons = [];
 
                 downloads.slice(0, 10).forEach((dl, i) => {
-                    // ඔයා කිව්ව Quality Fix එක
                     const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
                     const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
                     
@@ -117,8 +116,8 @@ module.exports = {
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // Direct CDN ලින්ක් එක ගන්නවා ටෙස්ට් කරන්න
-                        url: dl.url || dl.directUrl, 
+                        // 🔥 ඔයා කිව්ව විදිහටම අනිවාර්යයෙන් Proxy (downloadUrl) එකම ගන්නවා
+                        url: dl.downloadUrl || dl.url,
                         title: movieTitle,
                         quality: qlty,
                         size: sizeMB
@@ -156,7 +155,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (File Download - Testing Advanced Headers)
+        // 3. DOWNLOAD MOVIE (File Download - Proxy URL)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -166,9 +165,8 @@ module.exports = {
                 return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .moviepro ලෙස Search කරන්න.*");
             }
 
-            // ඔයා ඉල්ලපු Console Log එක 🔥
             console.log("\n\n-----------------------------------------");
-            console.log("TRY DOWNLOAD URL:", movieData.url);
+            console.log("TRY DOWNLOAD URL:", movieData.url); // දැන් මෙතන proxy-download ලින්ක් එක එන්න ඕනේ!
             console.log("-----------------------------------------\n\n");
 
             let tempFilePath;
@@ -181,18 +179,17 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 ඔයා දීපු Range Headers ඇතුළු Advanced Request එක
+                // 🔥 ඔයා දුන්න අලුත් Headers සෙට් එක
                 const response = await axios({
                     method: 'GET',
                     url: movieData.url,
                     responseType: 'stream',
                     timeout: 0,
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0',
                         'Accept': '*/*',
-                        'Accept-Encoding': 'identity',
-                        'Range': 'bytes=0-',
-                        'Referer': 'https://movieboxpro.app/'
+                        'Referer': 'https://movieboxpro.app/',
+                        'Origin': 'https://movieboxpro.app'
                     }
                 });
 
@@ -225,7 +222,7 @@ module.exports = {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 
-                // Fallback: 403 ආවොත්, කෙලින්ම Direct Link එක යවනවා යූසර්ට Browser එකෙන් බාගන්න.
+                // Fallback Link එක (Block වුණොත්)
                 const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
                                         `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
