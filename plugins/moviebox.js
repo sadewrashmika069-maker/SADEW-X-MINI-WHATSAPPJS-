@@ -6,9 +6,8 @@ if (!global.mbStore) global.mbStore = {};
 
 module.exports = {
     name: "moviebox",
-    category: 1, // Download Menu
+    category: 1,
     description: "Search and download movies from MovieBox Pro",
-    // මෙතන තියෙන mbmovie සහ mbdl කියන්නේ බටන් ක්ලික් කරාම ඇතුලෙන් රන් වෙන හැංගිච්ච කමාන්ඩ්ස්
     commands: ["moviepro", "mbmovie", "mbdl"],
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
@@ -38,21 +37,22 @@ module.exports = {
                 let listText = `*🔍 SADEW-MINI MOVIEBOX SEARCH*\n\n`;
                 let buttons = [];
 
-                // උපරිම Movies 5ක් විතරක් ගමු (බටන් ලිමිට් එක පනින්නේ නැති වෙන්න)
                 items.slice(0, 5).forEach((m, i) => {
                     const year = m.releaseDate ? m.releaseDate.split('-')[0] : 'N/A';
-                    listText += `*${i + 1}.* ${m.title} (${year})\n`;
+                    const typeIcon = m.subjectType === 2 ? '📺 Series' : '🎬 Movie'; 
+                    
+                    listText += `*${i + 1}.* ${m.title} (${year}) [${typeIcon}]\n`;
                     listText += `⭐ IMDb: ${m.imdbRatingValue || 'N/A'} | 🎭 ${m.genre || 'N/A'}\n\n`;
 
-                    // බටන් එක ඇතුලට .mbmovie කමාන්ඩ් එක යවනවා
+                    // Button ID එකට Type එකත් යවනවා (Movie ද Series ද අඳුරගන්න)
                     buttons.push({
-                        buttonId: `.mbmovie ${m.subjectId}|${m.detailPath}`,
-                        buttonText: { displayText: `🎬 ${m.title}` },
+                        buttonId: `.mbmovie ${m.subjectType}|${m.subjectId}|${m.detailPath}`,
+                        buttonText: { displayText: `${typeIcon}: ${m.title}` },
                         type: 1
                     });
                 });
 
-                listText += `> *ඔබට අවශ්‍ය චිත්‍රපටයට අදාළ අංකය පහතින් තෝරන්න.*`;
+                listText += `> *ඔබට අවශ්‍ය නිර්මාණයට අදාළ අංකය පහතින් තෝරන්න.*`;
 
                 const firstCover = items[0]?.cover?.url;
                 const msgOpts = {
@@ -79,24 +79,24 @@ module.exports = {
         // ==============================================================
         else if (command === "mbmovie") {
             const data = args.join(' ').split('|');
-            if (data.length !== 2) return; // වැරදි කමාන්ඩ් වලින් බේරෙන්න
+            if (data.length !== 3) return; // Data 3ක් නැත්නම් return
 
-            const subjectId = data[0];
-            const detailPath = data[1];
+            const subjectType = data[0]; // 1 = Movie, 2 = Series
+            const subjectId = data[1];
+            const detailPath = data[2];
+
+            // Movie එකක් නම් Season 0, Ep 0. Series එකක් නම් Season 1, Ep 1
+            let season = subjectType === '2' ? 1 : 0;
+            let episode = subjectType === '2' ? 1 : 0;
 
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                // 🔥 FIX: episode=1 (Movies වල Download Links තියෙන්නේ Episode 1 විදිහටයි)
-                const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${subjectId}&detailPath=${detailPath}&season=0&episode=1`;
+                const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${subjectId}&detailPath=${detailPath}&season=${season}&episode=${episode}`;
                 const res = await axios.get(dlUrl, { timeout: 20000 });
 
-                let downloads = [];
-                if (res.data?.data?.downloads?.data?.downloads) {
-                    downloads = res.data.data.downloads.data.downloads;
-                } else if (Array.isArray(res.data?.data?.downloads)) {
-                    downloads = res.data.data.downloads;
-                }
+                // JSON එකේ හරියටම තියෙන තැනින් ඩේටා ගන්නවා
+                let downloads = res.data?.data?.downloads?.data?.downloads || [];
 
                 if (!downloads || downloads.length === 0) {
                     await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
@@ -109,27 +109,28 @@ module.exports = {
                 let qList = `*🎬 SADEW-MINI MOVIE QUALITY*\n\n📽️ *${movieTitle}*\n\n`;
                 let buttons = [];
 
-                downloads.slice(0, 4).forEach((dl, i) => {
-                    const qlty = dl.resolution || dl.quality || 'HD';
-                    const size = dl.size || 'Unknown Size';
-                    qList += `*${i + 1}.* ${qlty}p - ${size}\n`;
+                downloads.slice(0, 10).forEach((dl, i) => {
+                    const qlty = dl.quality || dl.resolution || 'HD';
+                    // Size එක Bytes වලින් තියෙන්නේ, ඒක MB කරනවා
+                    const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
+                    
+                    qList += `*${i + 1}.* ${qlty}p - ${sizeMB}\n`;
 
-                    // URL එක කෙලින්ම යැව්වොත් Button ID Limit පනින නිසා Temporary ID එකක් හදනවා
                     const shortId = crypto.randomBytes(4).toString('hex');
+                    // Direct Url එක ගන්නවා
                     global.mbStore[shortId] = {
-                        url: dl.url || dl.link,
+                        url: dl.directUrl || dl.downloadUrl || dl.url,
                         title: movieTitle,
                         quality: qlty
                     };
 
-                    // විනාඩි 30කින් මේ ලින්ක් එක Auto මකලා දානවා (RAM එක පිරෙන එක නවත්තන්න)
                     setTimeout(() => {
                         if (global.mbStore[shortId]) delete global.mbStore[shortId];
                     }, 30 * 60 * 1000);
 
                     buttons.push({
                         buttonId: `.mbdl ${shortId}`,
-                        buttonText: { displayText: `🎥 ${qlty}p (${size})` },
+                        buttonText: { displayText: `🎥 ${qlty}p (${sizeMB})` },
                         type: 1
                     });
                 });
@@ -185,7 +186,6 @@ module.exports = {
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                 
-                // යැව්වට පස්සේ Memory එකෙන් අයින් කරනවා
                 delete global.mbStore[shortId];
 
             } catch (e) {
