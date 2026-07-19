@@ -116,11 +116,11 @@ module.exports = {
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // Vercel proxy එක අයින් කරලා Direct URL එකම ගන්නවා (403 මඟ හරින්න)
-                        url: dl.directUrl || dl.url || dl.downloadUrl,
+                        // 🔥 403 Error එක එන නිසා අනිවාර්යයෙන්ම Proxy URL එක (downloadUrl) පාවිච්චි කරනවා
+                        url: dl.downloadUrl || dl.url,
                         title: movieTitle,
                         quality: qlty,
-                        size: sizeMB // Size එකත් සේව් කරනවා Fallback එකට පාවිච්චි කරන්න
+                        size: sizeMB
                     };
 
                     setTimeout(() => {
@@ -155,7 +155,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (චිත්‍රපටය WhatsApp වෙත එවීම)
+        // 3. DOWNLOAD MOVIE (Proxy හරහා Download කිරීම)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -175,19 +175,12 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 Advanced Headers (Real Browser එකක් වගේ පෙන්වීමට)
+                // 🔥 Proxy එක හරහා ෆයිල් එක Download කරනවා 
                 const response = await axios({
                     method: 'GET',
-                    url: movieData.url,
+                    url: movieData.url, // මේක දැන් vajiraofc-apis.vercel.app ලින්ක් එකක්!
                     responseType: 'stream',
-                    timeout: 0, 
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                        'Referer': 'https://h5.aoneroom.com/',
-                        'Origin': 'https://h5.aoneroom.com',
-                        'Accept': '*/*',
-                        'Connection': 'keep-alive'
-                    }
+                    timeout: 0 
                 });
 
                 const writer = fs.createWriteStream(tempFilePath);
@@ -219,12 +212,12 @@ module.exports = {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 
-                // 🔥 THE ULTIMATE FALLBACK: 403 ආවොත් කෙලින්ම ලින්ක් එක යවනවා!
-                const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
-                                        `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
+                // ෆයිල් එක ලොකු වැඩිවෙලා Vercel එකෙන් Block කරොත් එන Fallback එක
+                const fallbackCaption = `❌ *Download Error (File too large for proxy)*\n\n` +
+                                        `ෆයිල් එක විශාල වැඩි නිසා එය කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
                                         `🎬 *${movieData.title} (${movieData.quality}p - ${movieData.size})*\n\n` +
-                                        `🔗 *Link:* ${movieData.url}\n\n` +
+                                        `🔗 *Download Link:* ${movieData.url}\n\n` +
                                         `_(මෙම ලින්ක් එක පැය කිහිපයක් සඳහා පමණක් වලංගු වේ)_`;
 
                 await socket.sendMessage(sender, { text: fallbackCaption }, { quoted: msg });
