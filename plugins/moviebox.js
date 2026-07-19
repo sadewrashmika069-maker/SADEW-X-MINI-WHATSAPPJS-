@@ -112,12 +112,21 @@ module.exports = {
                     const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
                     const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
                     
+                    // 🔥 THE MAGIC FIX: &direct=true එක අනිවාර්යයෙන්ම එකතු කිරීම
+                    let finalUrl = dl.downloadUrl || `https://vajiraofc-apis.vercel.app/api/proxy-download?url=${encodeURIComponent(dl.url || dl.directUrl)}`;
+                    
+                    if (!finalUrl.includes('direct=true')) {
+                        finalUrl += '&direct=true';
+                    }
+                    
+                    // HTTP ආවොත් HTTPS කරනවා Security වලට (API Error එකේ http තිබ්බ නිසා)
+                    finalUrl = finalUrl.replace(/^http:\/\//i, 'https://');
+
                     qList += `*${i + 1}.* ${qlty}p - ${sizeMB}\n`;
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // 🔥 ඔයා කිව්ව විදිහටම අනිවාර්යයෙන් Proxy (downloadUrl) එකම ගන්නවා
-                        url: dl.downloadUrl || dl.url,
+                        url: finalUrl,
                         title: movieTitle,
                         quality: qlty,
                         size: sizeMB
@@ -155,7 +164,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (File Download - Proxy URL)
+        // 3. DOWNLOAD MOVIE (File Download)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -166,7 +175,7 @@ module.exports = {
             }
 
             console.log("\n\n-----------------------------------------");
-            console.log("TRY DOWNLOAD URL:", movieData.url); // දැන් මෙතන proxy-download ලින්ක් එක එන්න ඕනේ!
+            console.log("🔥 FINAL DIRECT DOWNLOAD URL 🔥 :", movieData.url); 
             console.log("-----------------------------------------\n\n");
 
             let tempFilePath;
@@ -179,17 +188,15 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 ඔයා දුන්න අලුත් Headers සෙට් එක
+                // 🔥 සරල Headers සහ axios redirect follow කිරීම
                 const response = await axios({
                     method: 'GET',
                     url: movieData.url,
                     responseType: 'stream',
                     timeout: 0,
                     headers: {
-                        'User-Agent': 'Mozilla/5.0',
-                        'Accept': '*/*',
-                        'Referer': 'https://movieboxpro.app/',
-                        'Origin': 'https://movieboxpro.app'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                        'Accept': '*/*'
                     }
                 });
 
@@ -222,7 +229,7 @@ module.exports = {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 
-                // Fallback Link එක (Block වුණොත්)
+                // Fallback Link එක
                 const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
                                         `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
