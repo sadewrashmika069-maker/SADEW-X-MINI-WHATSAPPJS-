@@ -3,7 +3,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Memory Leak නොවී ඩේටා තියාගන්න Global Store එකක්
 if (!global.mbStore) global.mbStore = {};
 
 module.exports = {
@@ -112,14 +111,11 @@ module.exports = {
                     const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
                     const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
                     
-                    // 🔥 THE MAGIC FIX: &direct=true එක අනිවාර්යයෙන්ම එකතු කිරීම
                     let finalUrl = dl.downloadUrl || `https://vajiraofc-apis.vercel.app/api/proxy-download?url=${encodeURIComponent(dl.url || dl.directUrl)}`;
                     
                     if (!finalUrl.includes('direct=true')) {
                         finalUrl += '&direct=true';
                     }
-                    
-                    // HTTP ආවොත් HTTPS කරනවා Security වලට (API Error එකේ http තිබ්බ නිසා)
                     finalUrl = finalUrl.replace(/^http:\/\//i, 'https://');
 
                     qList += `*${i + 1}.* ${qlty}p - ${sizeMB}\n`;
@@ -164,7 +160,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (File Download)
+        // 3. DOWNLOAD MOVIE (Fixing the 3KB JSON issue)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -174,11 +170,8 @@ module.exports = {
                 return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .moviepro ලෙස Search කරන්න.*");
             }
 
-            console.log("\n\n-----------------------------------------");
-            console.log("🔥 FINAL DIRECT DOWNLOAD URL 🔥 :", movieData.url); 
-            console.log("-----------------------------------------\n\n");
-
             let tempFilePath;
+            let actualDownloadUrl = movieData.url;
 
             try {
                 await socket.sendMessage(sender, { react: { text: '📥', key: msg.key } });
@@ -188,15 +181,28 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 සරල Headers සහ axios redirect follow කිරීම
+                // 🔥 STEP 1: JSON එක අරගෙන ඒකෙන් streamUrl එක එළියට ගන්නවා
+                try {
+                    const apiCheck = await axios.get(movieData.url);
+                    if (apiCheck.data && apiCheck.data.streamUrl) {
+                        actualDownloadUrl = apiCheck.data.streamUrl;
+                        console.log("\n✅ EXTRACTED REAL STREAM URL:", actualDownloadUrl, "\n");
+                    }
+                } catch (err) {
+                    console.log("JSON check failed, proceeding with original URL");
+                }
+
+                // 🔥 STEP 2: නියම Video Stream එක Download කිරීම
                 const response = await axios({
                     method: 'GET',
-                    url: movieData.url,
+                    url: actualDownloadUrl,
                     responseType: 'stream',
                     timeout: 0,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-                        'Accept': '*/*'
+                        'Accept': '*/*',
+                        'Referer': 'https://movieboxpro.app/', // API එකේ ඉල්ලපු Header එක
+                        'Origin': 'https://movieboxpro.app'
                     }
                 });
 
@@ -234,7 +240,7 @@ module.exports = {
                                         `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
                                         `🎬 *${movieData.title} (${movieData.quality}p - ${movieData.size})*\n\n` +
-                                        `🔗 *Link:* ${movieData.url}\n\n` +
+                                        `🔗 *Link:* ${actualDownloadUrl}\n\n` +
                                         `_(මෙම ලින්ක් එක පැය කිහිපයක් සඳහා පමණක් වලංගු වේ)_`;
 
                 await socket.sendMessage(sender, { text: fallbackCaption }, { quoted: msg });
