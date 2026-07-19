@@ -16,7 +16,7 @@ module.exports = {
         const apikey = "frontoffice9876@gmail.com:vajira-88173";
 
         // ==============================================================
-        // 1. CHOOSE MOVIE (චිත්‍රපටය Search කිරීම)
+        // 1. CHOOSE MOVIE (Search)
         // ==============================================================
         if (command === "moviepro" || command === "moviebox") {
             const query = args.join(' ').trim();
@@ -76,7 +76,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. CHOOSE QUALITY (Quality තේරීම + CONSOLE LOG)
+        // 2. CHOOSE QUALITY 
         // ==============================================================
         else if (command === "mbmovie") {
             const data = args.join(' ').split('|');
@@ -102,11 +102,6 @@ module.exports = {
                     return reply("❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.*\n\n_මෙය VIP/Premium චිත්‍රපටයක් වීම හෝ මෙය TV Series එකක් වීම මීට හේතුව විය හැක._");
                 }
 
-                // 🔥 මෙන්න Console Log එක! මේ Output එක අනිවාර්යයෙන් එවන්න 🔥
-                console.log("\n\n====== MOVIEBOX API DOWNLOADS OBJECT ======");
-                console.log(JSON.stringify(downloads[0], null, 2));
-                console.log("===========================================\n\n");
-
                 const movieTitle = res.data?.data?.details?.subject?.title || "Movie";
                 const coverUrl = res.data?.data?.details?.subject?.cover?.url;
 
@@ -114,7 +109,7 @@ module.exports = {
                 let buttons = [];
 
                 downloads.slice(0, 10).forEach((dl, i) => {
-                    // ඔයා කිව්ව Quality Fix එක දැම්මා
+                    // ඔයා කිව්ව Quality Fix එක
                     const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
                     const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
                     
@@ -122,8 +117,8 @@ module.exports = {
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // දැනට dl.url එකටම Priority දුන්නා Test කරන්න
-                        url: dl.url || dl.directUrl || dl.downloadUrl,
+                        // Direct CDN ලින්ක් එක ගන්නවා ටෙස්ට් කරන්න
+                        url: dl.url || dl.directUrl, 
                         title: movieTitle,
                         quality: qlty,
                         size: sizeMB
@@ -161,7 +156,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (File Download - Testing Headers)
+        // 3. DOWNLOAD MOVIE (File Download - Testing Advanced Headers)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -170,6 +165,11 @@ module.exports = {
             if (!movieData || !movieData.url) {
                 return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර මුල සිට .moviepro ලෙස Search කරන්න.*");
             }
+
+            // ඔයා ඉල්ලපු Console Log එක 🔥
+            console.log("\n\n-----------------------------------------");
+            console.log("TRY DOWNLOAD URL:", movieData.url);
+            console.log("-----------------------------------------\n\n");
 
             let tempFilePath;
 
@@ -181,15 +181,17 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 ඔයා දීපු අලුත් Headers ටික දැම්මා
+                // 🔥 ඔයා දීපු Range Headers ඇතුළු Advanced Request එක
                 const response = await axios({
                     method: 'GET',
                     url: movieData.url,
                     responseType: 'stream',
                     timeout: 0,
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                        'Accept': 'video/mp4,*/*',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                        'Accept': '*/*',
+                        'Accept-Encoding': 'identity',
+                        'Range': 'bytes=0-',
                         'Referer': 'https://movieboxpro.app/'
                     }
                 });
@@ -207,7 +209,6 @@ module.exports = {
                                 `✨ *Quality:* ${movieData.quality}p\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
-                // 🔥 Baileys වලට Stream එකක් විදිහට දෙනවා Memory Issue එන්නේ නැති වෙන්න
                 await socket.sendMessage(sender, {
                     document: { stream: fs.createReadStream(tempFilePath) }, 
                     mimetype: "video/mp4",
@@ -224,7 +225,7 @@ module.exports = {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 
-                // Fallback: ලින්ක් එක යවනවා
+                // Fallback: 403 ආවොත්, කෙලින්ම Direct Link එක යවනවා යූසර්ට Browser එකෙන් බාගන්න.
                 const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
                                         `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
