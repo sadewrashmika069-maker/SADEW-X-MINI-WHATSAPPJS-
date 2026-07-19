@@ -76,7 +76,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. CHOOSE QUALITY (චිත්‍රපටයේ Quality තේරීම)
+        // 2. CHOOSE QUALITY (Quality තේරීම + CONSOLE LOG)
         // ==============================================================
         else if (command === "mbmovie") {
             const data = args.join(' ').split('|');
@@ -102,6 +102,11 @@ module.exports = {
                     return reply("❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.*\n\n_මෙය VIP/Premium චිත්‍රපටයක් වීම හෝ මෙය TV Series එකක් වීම මීට හේතුව විය හැක._");
                 }
 
+                // 🔥 මෙන්න Console Log එක! මේ Output එක අනිවාර්යයෙන් එවන්න 🔥
+                console.log("\n\n====== MOVIEBOX API DOWNLOADS OBJECT ======");
+                console.log(JSON.stringify(downloads[0], null, 2));
+                console.log("===========================================\n\n");
+
                 const movieTitle = res.data?.data?.details?.subject?.title || "Movie";
                 const coverUrl = res.data?.data?.details?.subject?.cover?.url;
 
@@ -109,15 +114,16 @@ module.exports = {
                 let buttons = [];
 
                 downloads.slice(0, 10).forEach((dl, i) => {
-                    const qlty = dl.quality || dl.resolution || 'HD';
+                    // ඔයා කිව්ව Quality Fix එක දැම්මා
+                    const qlty = dl.quality || dl.resolution || dl.name || dl.label || 'HD';
                     const sizeMB = dl.size ? (parseInt(dl.size) / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown Size';
                     
                     qList += `*${i + 1}.* ${qlty}p - ${sizeMB}\n`;
 
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = {
-                        // 🔥 403 Error එක එන නිසා අනිවාර්යයෙන්ම Proxy URL එක (downloadUrl) පාවිච්චි කරනවා
-                        url: dl.downloadUrl || dl.url,
+                        // දැනට dl.url එකටම Priority දුන්නා Test කරන්න
+                        url: dl.url || dl.directUrl || dl.downloadUrl,
                         title: movieTitle,
                         quality: qlty,
                         size: sizeMB
@@ -155,7 +161,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DOWNLOAD MOVIE (Proxy හරහා Download කිරීම)
+        // 3. DOWNLOAD MOVIE (File Download - Testing Headers)
         // ==============================================================
         else if (command === "mbdl") {
             const shortId = args[0];
@@ -175,12 +181,17 @@ module.exports = {
                 const tempFileName = `SadewMini_${cleanFileName}_${movieData.quality}p.mp4`;
                 tempFilePath = path.join(__dirname, tempFileName);
 
-                // 🔥 Proxy එක හරහා ෆයිල් එක Download කරනවා 
+                // 🔥 ඔයා දීපු අලුත් Headers ටික දැම්මා
                 const response = await axios({
                     method: 'GET',
-                    url: movieData.url, // මේක දැන් vajiraofc-apis.vercel.app ලින්ක් එකක්!
+                    url: movieData.url,
                     responseType: 'stream',
-                    timeout: 0 
+                    timeout: 0,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                        'Accept': 'video/mp4,*/*',
+                        'Referer': 'https://movieboxpro.app/'
+                    }
                 });
 
                 const writer = fs.createWriteStream(tempFilePath);
@@ -196,8 +207,9 @@ module.exports = {
                                 `✨ *Quality:* ${movieData.quality}p\n\n` +
                                 `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
 
+                // 🔥 Baileys වලට Stream එකක් විදිහට දෙනවා Memory Issue එන්නේ නැති වෙන්න
                 await socket.sendMessage(sender, {
-                    document: { url: tempFilePath },
+                    document: { stream: fs.createReadStream(tempFilePath) }, 
                     mimetype: "video/mp4",
                     fileName: tempFileName,
                     caption: caption
@@ -212,12 +224,12 @@ module.exports = {
                 console.error("MovieBox DL Error:", e.message);
                 await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                 
-                // ෆයිල් එක ලොකු වැඩිවෙලා Vercel එකෙන් Block කරොත් එන Fallback එක
-                const fallbackCaption = `❌ *Download Error (File too large for proxy)*\n\n` +
-                                        `ෆයිල් එක විශාල වැඩි නිසා එය කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
+                // Fallback: ලින්ක් එක යවනවා
+                const fallbackCaption = `❌ *Download Error (Server Blocked)*\n\n` +
+                                        `සේවාදායකයේ (MovieBox) අවහිර කිරීමක් නිසා ෆයිල් එක කෙලින්ම WhatsApp වෙත එවිය නොහැක.\n\n` +
                                         `✅ *නමුත් ඔබට පහත ලින්ක් එකෙන් එය ඔබගේ Browser එක හරහා Download කරගත හැක:*\n\n` +
                                         `🎬 *${movieData.title} (${movieData.quality}p - ${movieData.size})*\n\n` +
-                                        `🔗 *Download Link:* ${movieData.url}\n\n` +
+                                        `🔗 *Link:* ${movieData.url}\n\n` +
                                         `_(මෙම ලින්ක් එක පැය කිහිපයක් සඳහා පමණක් වලංගු වේ)_`;
 
                 await socket.sendMessage(sender, { text: fallbackCaption }, { quoted: msg });
