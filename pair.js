@@ -1350,224 +1350,32 @@ async function setupCommandHandlers(socket, number) {
                 delete global.sadewSettingsTracker[sender];
                 return await socket.sendMessage(msg.key.remoteJid, { text: `✅ *Bot mode successfully updated to ${newMode.toUpperCase()} mode.*` }, { quoted: msg });
             }
-// ── MOVIEBOX SEARCH REPLY CATCHER (CHOOSE MOVIE) ──
-            if (quotedText.includes("*🔍 SADEW-MINI MOVIEBOX SEARCH*") && /^[0-9]+$/.test(replyText)) {
-                if (global.movieBoxSearch && global.movieBoxSearch[sender]) {
-                    const num = parseInt(replyText);
-                    const items = global.movieBoxSearch[sender];
-                    
-                    if (num >= 1 && num <= items.length) {
-                        const selectedMovie = items[num - 1];
-                        try {
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } });
-                            
-                            const apikey = "frontoffice9876@gmail.com:vajira-88173";
-                            const dlUrl = `https://vajiraofc-apis.vercel.app/api/movieboxdl?apikey=${apikey}&subjectId=${selectedMovie.subjectId}&detailPath=${selectedMovie.detailPath}&season=0&episode=0`;
+// ════ PREFIX-LESS NUMBER REPLY HANDLER ════
+// Cartoon / Episode number replies handle karanava (prefix nathuwa)
+socket.ev.on('messages.upsert', async ({ messages }) => {
+    for (const msg of messages) {
+        if (!msg.message || msg.key.fromMe) continue;
 
-                            const res = await axios.get(dlUrl, { timeout: 20000 });
-                            
-                            // Download links ටික API එකෙන් වෙන්කර ගැනීම
-                            let downloads = [];
-                            if (res.data?.data?.downloads?.data?.downloads) {
-                                downloads = res.data.data.downloads.data.downloads;
-                            } else if (Array.isArray(res.data?.data?.downloads)) {
-                                downloads = res.data.data.downloads;
-                            }
+        const sender = msg.key.remoteJid;
+        const bodyText = (
+            msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            ''
+        ).trim();
 
-                            if (!downloads || downloads.length === 0) {
-                                await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-                                return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *මෙම චිත්‍රපටය සඳහා Download Links දැනට නොමැත.* (API අවහිරතාවක් විය හැක)" }, { quoted: msg });
-                            }
+        // Pure number ekak da? (prefix nathuwa)
+        const isNumberReply = /^\d{1,2}$/.test(bodyText);
+        const isReply = !!(
+            msg.message?.extendedTextMessage?.contextInfo?.stanzaId ||
+            msg.message?.imageMessage?.contextInfo?.stanzaId
+        );
 
-                            // Global Tracker එකට Quality එකයි Movie එකයි සේව් කිරීම
-                            if (!global.movieBoxQualities) global.movieBoxQualities = {};
-                            if (!global.movieBoxMovie) global.movieBoxMovie = {};
-
-                            global.movieBoxQualities[sender] = downloads;
-                            global.movieBoxMovie[sender] = selectedMovie;
-
-                            let qList = `*🎬 SADEW-MINI MOVIE QUALITY*\n\n📽️ *${selectedMovie.title}*\n\n`;
-                            downloads.forEach((dl, i) => {
-                                const qlty = dl.resolution || dl.quality || 'HD';
-                                const size = dl.size || 'Unknown Size';
-                                qList += `*${i + 1}.* ${qlty}p - ${size}\n`;
-                            });
-                            qList += `\n> *ඔබට අවශ්‍ය Quality එකට අදාළ අංකය Reply කරන්න.*`;
-
-                            // තෝරාගත් Movie එකේ Cover එකත් එක්ක Quality List එක යැවීම
-                            const coverUrl = selectedMovie.cover?.url;
-                            if (coverUrl) {
-                                await socket.sendMessage(msg.key.remoteJid, { image: { url: coverUrl }, caption: qList }, { quoted: msg });
-                            } else {
-                                await socket.sendMessage(msg.key.remoteJid, { text: qList }, { quoted: msg });
-                            }
-                            
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
-                            delete global.movieBoxSearch[sender]; // Memory Clear
-                        } catch (e) {
-                            console.error("MovieBox DL Fetch Error:", e.message);
-                            await socket.sendMessage(msg.key.remoteJid, { text: "❌ *Download තොරතුරු ලබාගැනීමට නොහැකි විය!*" }, { quoted: msg });
-                        }
-                        return;
-                    }
-                }
-            }
-
-            // ── MOVIEBOX QUALITY REPLY CATCHER (DOWNLOAD & SEND) ──
-            if (quotedText.includes("*🎬 SADEW-MINI MOVIE QUALITY*") && /^[0-9]+$/.test(replyText)) {
-                if (global.movieBoxQualities && global.movieBoxQualities[sender] && global.movieBoxMovie && global.movieBoxMovie[sender]) {
-                    const num = parseInt(replyText);
-                    const downloads = global.movieBoxQualities[sender];
-                    const movie = global.movieBoxMovie[sender];
-
-                    if (num >= 1 && num <= downloads.length) {
-                        const selectedQuality = downloads[num - 1];
-                        const dlLink = selectedQuality.url || selectedQuality.link;
-
-                        if (!dlLink) {
-                            return await socket.sendMessage(msg.key.remoteJid, { text: "❌ *Download Link එක දෝෂ සහිතයි!*" }, { quoted: msg });
-                        }
-
-                        try {
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '📥', key: msg.key } });
-                            await socket.sendMessage(msg.key.remoteJid, { text: `📥 *${movie.title}* (${selectedQuality.resolution || 'HD'}p) බාගත වෙමින් පවතී... කරුණාකර රැඳී සිටින්න. ⏳` }, { quoted: msg });
-
-                            const caption = `*↳ ❝ [🎀 𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗠𝗼𝘃𝗶𝗲𝗕𝗼𝘅 🎀] ¡! ❞*\n\n` +
-                                            `🎬 *Title:* ${movie.title}\n` +
-                                            `✨ *Quality:* ${selectedQuality.resolution || 'HD'}p\n\n` +
-                                            `> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
-
-                            // Document විදිහට Movie එක WhatsApp එකට යැවීම
-                            await socket.sendMessage(msg.key.remoteJid, {
-                                document: { url: dlLink },
-                                mimetype: "video/mp4",
-                                fileName: `SadewMini_${movie.title.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedQuality.resolution}p.mp4`,
-                                caption: caption
-                            }, { quoted: msg });
-
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
-                            
-                            // Memory Clear කිරීම
-                            delete global.movieBoxQualities[sender];
-                            delete global.movieBoxMovie[sender];
-                        } catch (e) {
-                            console.error("MovieBox Upload Error:", e.message);
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '❌', key: msg.key } });
-                            await socket.sendMessage(msg.key.remoteJid, { text: `❌ *Download Error:* ෆයිල් එක විශාල වැඩි විය හැක හෝ සේවාදායකයේ ගැටලුවකි.` }, { quoted: msg });
-                        }
-                        return;
-                    }
-                }
-            }
-			// 🔥🔥🔥 SADEW-MINI CARTOON SEARCH CATCHER 🔥🔥🔥
-            if (quotedText.includes("*🔍 SADEW-MINI CARTOON SEARCH*") && /^[0-9]+$/.test(replyText)) {
-                if (global.cartoonSearch && global.cartoonSearch[sender]) {
-                    const num = parseInt(replyText);
-                    const items = global.cartoonSearch[sender];
-                    
-                    if (num >= 1 && num <= items.length) {
-                        const selectedItem = items[num - 1];
-                        try {
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '⏳', key: msg.key } });
-                            
-                            const dlRes = await axios.get(`https://api.zanta-mini.store/api/slcartoons/dl?apiKey=zan_FIAO7Ayh_eo1vllkep6&text=${encodeURIComponent(selectedItem.url)}`);
-                            if (!dlRes.data.results) throw new Error("No info");
-                            
-                            const details = dlRes.data.results;
-                            let capText = `*🎬 SADEW-MINI CARTOON EPISODES*\n\n📌 *Title:* ${selectedItem.title}\n\n`;
-                            
-                            const epItems = [];
-                            let epCounter = 1;
-
-                            if (details.episodes && details.episodes.length > 0) {
-                                details.episodes.forEach(ep => {
-                                    if (ep.stream_url) {
-                                        capText += `*${epCounter}.* ${ep.title}\n`;
-                                        epItems.push({ url: ep.stream_url, title: `${selectedItem.title} - ${ep.title}` });
-                                        epCounter++;
-                                    }
-                                });
-                            } else if (details.download_links && details.download_links.length > 0) {
-                                details.download_links.forEach(dl => {
-                                    if (dl.final_link && !dl.final_link.includes('t.me')) {
-                                        capText += `*${epCounter}.* Download (${dl.info || "Direct"})\n`;
-                                        epItems.push({ url: dl.final_link, title: selectedItem.title });
-                                        epCounter++;
-                                    }
-                                });
-                            }
-                            
-                            capText += `\n> *ඔබට අවශ්‍ය Episode එකෙහි අංකය මෙම පණිවිඩයට Reply කරන්න.* 🔢`;
-
-                            // Global Tracker එකට Episodes ටික සේව් කිරීම
-                            if (!global.cartoonEps) global.cartoonEps = {};
-                            global.cartoonEps[sender] = epItems;
-
-                            await socket.sendMessage(msg.key.remoteJid, { image: { url: selectedItem.thumbnail || akira }, caption: capText }, { quoted: msg });
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
-                            
-                            delete global.cartoonSearch[sender]; // Search memory clear
-                        } catch (e) {
-                            console.error("Cartoon Details Fetch Error:", e.message);
-                            await socket.sendMessage(msg.key.remoteJid, { text: "❌ *තොරතුරු ලබාගැනීමට නොහැකි විය!*" }, { quoted: msg });
-                        }
-                        return;
-                    }
-                }
-            }
-
-            // 🔥🔥🔥 SADEW-MINI CARTOON EPISODE DL CATCHER 🔥🔥🔥
-            if (quotedText.includes("*🎬 SADEW-MINI CARTOON EPISODES*") && /^[0-9]+$/.test(replyText)) {
-                if (global.cartoonEps && global.cartoonEps[sender]) {
-                    const num = parseInt(replyText);
-                    const eps = global.cartoonEps[sender];
-                    
-                    if (num >= 1 && num <= eps.length) {
-                        const ep = eps[num - 1];
-                        try {
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '📥', key: msg.key } });
-                            await socket.sendMessage(msg.key.remoteJid, { text: `📥 *${ep.title}* බාගත වෙමින් පවතී... ⏳` }, { quoted: msg });
-
-                            const fs = require('fs');
-                            const path = require('path');
-                            
-                            const safeTitle = ep.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
-                            const finalFileName = `SadewMini_${safeTitle}.mp4`;
-                            const tempFilePath = path.join(__dirname, finalFileName);
-                            const writer = fs.createWriteStream(tempFilePath);
-                            
-                            const fileRes = await axios({ method: 'GET', url: ep.url, responseType: 'stream', timeout: 0, headers: { 'User-Agent': 'Mozilla/5.0' }, maxRedirects: 10 });
-                            fileRes.data.pipe(writer);
-                            
-                            await new Promise((resolve, reject) => { writer.on('finish', resolve); writer.on('error', reject); });
-                            
-                            const stats = fs.statSync(tempFilePath);
-                            const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-                            
-                            if (stats.size > 2000 * 1024 * 1024) {
-                                fs.unlinkSync(tempFilePath);
-                                return socket.sendMessage(msg.key.remoteJid, { text: `❌ *File is too large!*` });
-                            }
-
-                            const caption = `*🎬 Title:* ${ep.title}\n📦 *Size:* ${sizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`;
-                            
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '⬆️', key: msg.key } });
-                            await socket.sendMessage(msg.key.remoteJid, { document: { url: tempFilePath }, mimetype: 'video/mp4', fileName: finalFileName, caption: caption }, { quoted: msg });
-                            await socket.sendMessage(msg.key.remoteJid, { react: { text: '✅', key: msg.key } });
-                            
-                            fs.unlinkSync(tempFilePath);
-                            
-                            // 🔥 මෙතනදී Memory එක Clear කරන්නේ නෑ! 
-                            // ඒ නිසා යූසර්ට ආයෙත් "2", "3" කියලා Reply කරලා දිගටම Episodes බාන්න පුළුවන්.
-                        } catch (e) {
-                            console.error("Cartoon DL Error:", e.message);
-                            await socket.sendMessage(msg.key.remoteJid, { text: `❌ *බාගත කිරීම දෝෂ සහිතයි!*` });
-                        }
-                        return;
-                    }
-                }
-            }
-            // 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
+        if (isNumberReply && isReply && global.handleCartoonReply) {
+            const reply = (text) => socket.sendMessage(sender, { text }, { quoted: msg });
+            await global.handleCartoonReply({ socket, msg, sender, reply, numStr: bodyText });
+        }
+    }
+});            // 🔥🔥🔥 XNXX REPLY CATCHER 🔥🔥🔥
             if (quotedText.includes("SADEW-MD SEARCH") && /^[0-9]+$/.test(replyText)) {
                 if (global.xnxxContexts && global.xnxxContexts[sender]) {
                     try {
