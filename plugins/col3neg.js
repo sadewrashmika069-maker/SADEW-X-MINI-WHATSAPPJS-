@@ -46,15 +46,15 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
+                cconst searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
                 
-                // 🔥 අලුත් Proxy එක 1: codetabs (මේක වැඩ කළේ නැත්නම් 'https://corsproxy.io/?' + encodeURIComponent(searchUrl) දාන්න)
-                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
+                // 🔥 Plan B: සුපිරිම වේගයක් තියෙන corsproxy.io එක පාවිච්චි කරමු!
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
                 
                 const response = await axios.get(proxyUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 15000 // තත්පර 15න් ආවේ නැත්නම් error එකක් දෙන්න
-                });
+                    timeout: 25000 // තත්පර 25ක් දෙනවා ලෝඩ් 
+            });
 
                 // මේ Proxy එකෙන් කෙලින්ම HTML එක දෙනවා
                 const htmlCode = response.data; 
