@@ -37,7 +37,7 @@ module.exports = {
         const BASE_URL = "https://col3neg.com"; 
 
         // ==============================================================
-        // 1. SEARCH MOVIE (New Proxy Bypass)
+        // 1. SEARCH MOVIE (corsproxy.io)
         // ==============================================================
         if (command === "col3neg" || command === "col3") {
             const query = args.join(' ').trim();
@@ -46,17 +46,14 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                cconst searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
-                
-                // 🔥 Plan B: සුපිරිම වේගයක් තියෙන corsproxy.io එක පාවිච්චි කරමු!
+                const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
                 
                 const response = await axios.get(proxyUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 25000 // තත්පර 25ක් දෙනවා ලෝඩ් 
-            });
+                    timeout: 25000
+                });
 
-                // මේ Proxy එකෙන් කෙලින්ම HTML එක දෙනවා
                 const htmlCode = response.data; 
                 if (!htmlCode || typeof htmlCode !== 'string') throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
 
@@ -119,7 +116,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. SCRAPE DOWNLOAD LINKS (New Proxy Bypass)
+        // 2. SCRAPE DOWNLOAD LINKS (corsproxy.io)
         // ==============================================================
         else if (command === "c3get") {
             const shortId = args[0];
@@ -130,11 +127,10 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-               // 🔥 අලුත් Proxy එක (corsproxy.io)
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(storedData.movieUrl)}`;
                 const response = await axios.get(proxyUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 25000 // තත්පර 25ක් දෙනවා ලෝඩ් වෙන්න
+                    timeout: 25000
                 });
 
                 const htmlCode = response.data;
