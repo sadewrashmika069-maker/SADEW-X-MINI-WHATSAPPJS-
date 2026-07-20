@@ -35,8 +35,8 @@ module.exports = {
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const BASE_URL = "https://col3neg.com"; 
 
-        // ==============================================================
-        // 1. SEARCH MOVIE (Web Scraping - Updated with exact HTML structure!)
+       // ==============================================================
+        // 1. SEARCH MOVIE (Web Scraping - Cloudflare Bypass Update!)
         // ==============================================================
         if (command === "col3neg" || command === "col3") {
             const query = args.join(' ').trim();
@@ -45,26 +45,36 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                // සයිට් එකේ Search URL එක (ඔයාගේ HTML එකෙන් හොයාගත්ත විදිහට)
                 const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
+                
+                // 🔥 බොට් නෙමෙයි, ඇත්තම Browser එකක් වගේ පේන්න Headers යවනවා (Cloudflare Bypass)
                 const { data } = await axios.get(searchUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                    headers: { 
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9,si;q=0.8',
+                        'Referer': 'https://google.com/',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'cross-site',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
                 });
 
                 const $ = cheerio.load(data);
                 const results = [];
 
-                // හරියටම .item class එකෙන් ඩේටා ගන්නවා
-                $('.item').each((i, el) => {
+                // 🔥 .item සහ .video කියන Class ජාති දෙකම හොයනවා
+                $('.item, .video').each((i, el) => {
                     if (i >= 5) return; 
                     
-                    const title = $(el).find('.item-content b a').text().trim();
-                    const link = $(el).find('.item-content b a').attr('href');
-                    let image = $(el).find('.item-header img').attr('src');
+                    const title = $(el).find('.item-content b a, .video-content b a').text().trim();
+                    const link = $(el).find('.item-content b a, .video-content b a').attr('href');
+                    let image = $(el).find('.item-header img, .video-header img').attr('src');
 
-                    // සමහර පින්තූර background-image විදිහට තියෙන නිසා ඒකත් අල්ලගන්නවා
+                    // සමහර පින්තූර හැංගිලා තියෙනවා නම් ඒකත් ගන්නවා
                     if (image && image.includes('video-thumb.png')) {
-                        const styleStr = $(el).find('.item-header img').attr('style');
+                        const styleStr = $(el).find('.item-header img, .video-header img').attr('style');
                         if (styleStr) {
                             const match = styleStr.match(/url\(['"]?(.*?)['"]?\)/);
                             if (match) image = match[1];
@@ -115,10 +125,9 @@ module.exports = {
 
             } catch (e) {
                 console.error("Col3neg Search Error:", e.message);
-                reply("❌ *සෙවුම් දෝෂයකි! සයිට් එකේ ගැටළුවක් විය හැක.*");
+                reply(`❌ *සෙවුම් දෝෂයකි! (Error: ${e.message})*`); // Error එක මොකක්ද කියලා යූසර්ට පේන්නත් හැදුවා
             }
         }
-
         // ==============================================================
         // 2. SCRAPE DOWNLOAD LINKS 
         // ==============================================================
