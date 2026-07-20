@@ -3,30 +3,31 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-// Memory Session Store for Cartoon Links
-if (!global.ctStore) global.ctStore = {};
+// Memory Session Store for Cartoons
+if (!global.slcStore) global.slcStore = {};
 
 module.exports = {
-    name: "cartoon",
+    name: "slcartoon",
     category: 1,
-    description: "Search and download cartoons from cartoons.lk via API",
-    commands: ["cartoon", "ctget", "ctdl"],
+    description: "Search and download Sinhala cartoons from sinhalacartoons.com via Zanta API",
+    commands: ["cartoon"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
-        const API_KEY = "frontoffice9876@gmail.com:vajira-88173";
-        const BASE_API = "https://vajiraofc-apis.vercel.app/api/cartoonlk";
+        const API_KEY = "zan_FIAO7Ayh_eo1vllkep6";
+        const BASE_API = "https://api.zanta-mini.store/api/slcartoons";
 
         // ==============================================================
-        // 1. SEARCH CARTOON (.cartoon name)
+        // 1. SEARCH CARTOON (.slc name)
         // ==============================================================
-        if (command === "cartoon") {
+        if (command === "slcartoon" || command === "slc") {
             const query = args.join(' ').trim();
-            if (!query) return reply("🎥 *කරුණාකර කාටූන් එකක නමක් ලබා දෙන්න!*\n💡 උදා: `.cartoon spy kids`");
+            if (!query) return reply("🎥 *කරුණාකර කාටූන් එකක නමක් ලබා දෙන්න!*\n💡 උදා: `.slc ben 10`");
 
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                const searchUrl = `${BASE_API}/search?apikey=${API_KEY}&q=${encodeURIComponent(query)}`;
+                // Search API එකට කෝල් කිරීම
+                const searchUrl = `${BASE_API}/search?apiKey=${API_KEY}&text=${encodeURIComponent(query)}`;
                 const { data } = await axios.get(searchUrl);
 
                 if (!data.success || !data.results || data.results.length === 0) {
@@ -34,33 +35,28 @@ module.exports = {
                     return reply("❌ *සමාවෙන්න, ඔබ සෙවූ කාටූනය සොයාගත නොහැකි විය!*");
                 }
 
-                const results = data.results.slice(0, 5);
-                let firstImage = "";
-
-                try {
-                    const firstUrlParam = encodeURIComponent(results[0].url);
-                    const firstDetail = await axios.get(`${BASE_API}/details?apikey=${API_KEY}&url=${firstUrlParam}`);
-                    if (firstDetail.data.success && firstDetail.data.data.image) {
-                        firstImage = firstDetail.data.data.image;
-                    }
-                } catch (imgErr) {
-                    console.log("Image fetch error: ", imgErr.message);
-                }
+                // රිසල්ට්ස් 10ක් විතරක් ගමු
+                const results = data.results.slice(0, 10);
+                
+                // පළවෙනි රිසල්ට් එකේ ෆොටෝ එක
+                const firstImage = results[0].thumbnail;
 
                 let listText = `*🔍 SADEW-MINI CARTOON SEARCH*\n\n`;
                 let buttons = [];
 
                 results.forEach((m, i) => {
-                    listText += `*${i + 1}.* ${m.title}\n\n`;
+                    listText += `*${i + 1}.* ${m.title}\n`;
+                    listText += `🌟 *Rating:* ${m.rating} | 🎬 *Quality:* ${m.quality}\n\n`;
 
-                    const shortId = crypto.randomBytes(4).toString('hex');
-                    global.ctStore[shortId] = { movieUrl: m.url, title: m.title };
+                    const shortId = crypto.randomBytes(3).toString('hex');
+                    // Details වලදී පෙන්වන්න ෆොටෝ එකත් සේව් කරගන්නවා
+                    global.slcStore[shortId] = { movieUrl: m.url, title: m.title, image: m.thumbnail };
 
-                    setTimeout(() => { if (global.ctStore[shortId]) delete global.ctStore[shortId]; }, 30 * 60 * 1000);
+                    setTimeout(() => { if (global.slcStore[shortId]) delete global.slcStore[shortId]; }, 30 * 60 * 1000);
 
                     buttons.push({
-                        buttonId: `.ctget ${shortId}`,
-                        buttonText: { displayText: `🎬 ${m.title.substring(0, 18)}...` },
+                        buttonId: `.slget ${shortId}`,
+                        buttonText: { displayText: `🎬 ${i + 1}. ${m.title.substring(0, 15)}...` },
                         type: 1
                     });
                 });
@@ -74,6 +70,7 @@ module.exports = {
                     headerType: 4
                 };
                 
+                // පළවෙනි පින්තූරය ඇඩ් කිරීම
                 if (firstImage) msgOpts.image = { url: firstImage };
 
                 await socket.sendMessage(sender, msgOpts, { quoted: msg });
@@ -86,11 +83,11 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. GET DETAILS & QUALITY SELECTOR (.ctget)
+        // 2. GET DETAILS & EPISODES (.slget)
         // ==============================================================
-        else if (command === "ctget") {
+        else if (command === "slget") {
             const shortId = args[0];
-            const storedData = global.ctStore[shortId];
+            const storedData = global.slcStore[shortId];
 
             if (!storedData || !storedData.movieUrl) return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත. කරුණාකර නැවත Search කරන්න.*");
 
@@ -99,45 +96,73 @@ module.exports = {
 
                 const urlParam = encodeURIComponent(storedData.movieUrl);
                 
-                const detailRes = await axios.get(`${BASE_API}/details?apikey=${API_KEY}&url=${urlParam}`);
-                if (!detailRes.data.success) throw new Error("Details ලබාගත නොහැක.");
-                const details = detailRes.data.data;
-
-                const dlRes = await axios.get(`${BASE_API}/download?apikey=${API_KEY}&url=${urlParam}`);
-                if (!dlRes.data.success) throw new Error("Download Link ලබාගත නොහැක.");
-                const downloadUrl = dlRes.data.data.download_url;
-
-                const linkId = crypto.randomBytes(4).toString('hex');
-                global.ctStore[linkId] = { 
-                    url: downloadUrl, 
-                    title: details.title,
-                    size: details.size,
-                    quality: details.quality
-                };
-
-                setTimeout(() => { if (global.ctStore[linkId]) delete global.ctStore[linkId]; }, 30 * 60 * 1000);
-
+                // Download API එකට කෝල් කිරීම (මේකෙන් තමයි Episodes / Links එන්නේ)
+                const dlRes = await axios.get(`${BASE_API}/dl?apiKey=${API_KEY}&text=${urlParam}`);
+                if (!dlRes.data.results) throw new Error("තොරතුරු ලබාගත නොහැක.");
+                
+                const details = dlRes.data.results;
+                
                 let capText = `*🎬 SADEW-MINI CARTOON DETAILS*\n\n`;
-                capText += `📌 *Title:* ${details.title}\n`;
-                capText += `🌟 *Quality:* ${details.quality}\n`;
-                capText += `📦 *Size:* ${details.size}\n`;
-                capText += `👁️ *Views:* ${details.views}\n\n`;
-                capText += `> *පහතින් ඇති Button එක Click කර Download කරගන්න.*`;
+                capText += `📌 *Title:* ${storedData.title}\n`;
+                capText += `🏷️ *Type:* ${details.type}\n`;
+                if (details.total_episodes) capText += `📺 *Total Episodes:* ${details.total_episodes}\n`;
+                capText += `\n*📥 DOWNLOAD LINKS:*\n\n`;
 
-                const buttons = [{
-                    buttonId: `.ctdl ${linkId}`,
-                    buttonText: { displayText: `📥 Download (${details.quality})` },
-                    type: 1
-                }];
+                let buttons = [];
+
+                // 1. මේක TV Series එකක් නම් Episodes ටික ලිස්ට් කරනවා
+                if (details.episodes && details.episodes.length > 0) {
+                    details.episodes.forEach((ep) => {
+                        if (ep.stream_url) {
+                            const linkId = crypto.randomBytes(3).toString('hex');
+                            global.slcStore[linkId] = { 
+                                url: ep.stream_url, 
+                                title: `${storedData.title} - ${ep.title}`,
+                                quality: "HD"
+                            };
+                            setTimeout(() => { if (global.slcStore[linkId]) delete global.slcStore[linkId]; }, 30 * 60 * 1000);
+
+                            capText += `*${ep.title}* ➔ .sldl ${linkId}\n`;
+                            
+                            // Buttons වලට දාන්න පුළුවන් උපරිම 3යි, ඒත් අපි List එකට දාමු
+                            if (buttons.length < 3) {
+                                buttons.push({ buttonId: `.sldl ${linkId}`, buttonText: { displayText: `📥 ${ep.title}` }, type: 1 });
+                            }
+                        }
+                    });
+                } 
+                // 2. නැත්නම් Direct Links ටික ගන්නවා
+                else if (details.download_links && details.download_links.length > 0) {
+                    details.download_links.forEach((dl, i) => {
+                        if (dl.final_link && !dl.final_link.includes('t.me')) { // Telegram ලින්ක් අයින් කරනවා
+                            const linkId = crypto.randomBytes(3).toString('hex');
+                            global.slcStore[linkId] = { 
+                                url: dl.final_link, 
+                                title: storedData.title,
+                                quality: dl.info || "Direct"
+                            };
+                            setTimeout(() => { if (global.slcStore[linkId]) delete global.slcStore[linkId]; }, 30 * 60 * 1000);
+
+                            capText += `*Link ${i + 1} (${dl.info})* ➔ .sldl ${linkId}\n`;
+                            
+                            if (buttons.length < 3) {
+                                buttons.push({ buttonId: `.sldl ${linkId}`, buttonText: { displayText: `📥 Download ${i+1}` }, type: 1 });
+                            }
+                        }
+                    });
+                }
+
+                capText += `\n> *ඔබට අවශ්‍ය Episode එකෙහි Command එක (උදා: .sldl abc) Copy කර Reply කරන්න හෝ Button එක Click කරන්න.*`;
 
                 const msgOpts = {
                     caption: capText,
                     footer: "👑 SADEW-MINI 👑",
-                    buttons: buttons,
                     headerType: 4
                 };
 
-                if (details.image) msgOpts.image = { url: details.image };
+                // අදාල කාටූන් එකේ පින්තූරය ඇඩ් කිරීම
+                if (storedData.image) msgOpts.image = { url: storedData.image };
+                if (buttons.length > 0) msgOpts.buttons = buttons;
 
                 await socket.sendMessage(sender, msgOpts, { quoted: msg });
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
@@ -149,34 +174,29 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DIRECT DOWNLOAD & UPLOAD (Bypass Hotlink + RAM Saver) (.ctdl)
+        // 3. DIRECT DOWNLOAD & UPLOAD (RAM SAVER) (.sldl)
         // ==============================================================
-        else if (command === "ctdl") {
+        else if (command === "sldl") {
             const linkId = args[0];
-            const dlData = global.ctStore[linkId];
+            const dlData = global.slcStore[linkId];
 
             if (!dlData || !dlData.url) return reply("❌ *මෙම ලින්ක් එක කල් ඉකුත් වී ඇත.*");
 
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
-                await reply(`🔍 *Processing Download...*\n🎬 ${dlData.title}\n📦 ${dlData.size}\n\n_Please wait, downloading to server..._`);
+                await reply(`🔍 *Processing Download...*\n🎬 ${dlData.title}\n\n_Please wait, downloading to server..._`);
 
                 const safeTitle = dlData.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
                 const finalFileName = `SadewMini_${safeTitle}.mp4`;
                 const tempFilePath = path.join(__dirname, finalFileName);
                 const writer = fs.createWriteStream(tempFilePath);
 
-                // 🔥 මෙන්න මේ Headers ටික දැම්මම තමයි 403 Forbidden එක එන්නේ නැතුව ෆයිල් එක දෙන්නේ!
                 const fileRes = await axios({
                     method: 'GET', 
                     url: dlData.url, 
                     responseType: 'stream', 
                     timeout: 0, 
-                    headers: { 
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Referer': 'https://cartoons.lk/', // අනිවාර්යයි!
-                        'Accept': '*/*'
-                    }, 
+                    headers: { 'User-Agent': 'Mozilla/5.0' }, 
                     maxRedirects: 10
                 });
 
@@ -188,20 +208,21 @@ module.exports = {
                 });
 
                 const stats = fs.statSync(tempFilePath);
+                const actualSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
                 
                 if (stats.size > 2000 * 1024 * 1024) {
                     fs.unlinkSync(tempFilePath);
-                    return reply(`❌ *File is too large for WhatsApp!*`);
+                    return reply(`❌ *File is too large for WhatsApp!* (${actualSizeMB} MB)`);
                 }
 
                 await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } });
 
-                // සර්වර් එකේ තියෙන ෆයිල් එක RAM එක පුරවන්නේ නැතුව WhatsApp එකට යවනවා
+                // RAM Saver ක්‍රමයෙන් WhatsApp එකට අප්ලෝඩ් කරනවා
                 await socket.sendMessage(sender, {
                     document: { url: tempFilePath },
                     mimetype: 'video/mp4',
                     fileName: finalFileName,
-                    caption: `*🎬 Title:* ${dlData.title}\n📦 *Size:* ${dlData.size}\n🌟 *Quality:* ${dlData.quality}\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+                    caption: `*🎬 Title:* ${dlData.title}\n📦 *Size:* ${actualSizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
                 }, { quoted: msg });
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
