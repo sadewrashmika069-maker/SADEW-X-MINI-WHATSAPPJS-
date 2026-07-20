@@ -2,43 +2,43 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// Memory Session Store for Number Replies
 if (!global.slcSession) global.slcSession = {};
+// Listener add karala thiyenavada kiyala track karanava (duplocate avoid)
+if (!global._cartoonListenerAdded) global._cartoonListenerAdded = false;
 
 // ════════════════════════════════════════════════════════
-// SHARED NUMBER REPLY HANDLER (prefix nathuwa call karanna puluwan)
-// Main bot file eke "`global.handleCartoonReply(msg, sender, socket, reply)`" call karanna.
+// CORE NUMBER REPLY HANDLER
 // ════════════════════════════════════════════════════════
-global.handleCartoonReply = async ({ socket, msg, sender, reply, numStr }) => {
+async function handleNumberReply({ socket, msg, sender, numStr }) {
+    const reply = (text) => socket.sendMessage(sender, { text }, { quoted: msg });
 
-    // Reply ekak da kiyala check karanava
-    const contextInfo = msg.message?.extendedTextMessage?.contextInfo
-                      || msg.message?.imageMessage?.contextInfo
-                      || msg.message?.videoMessage?.contextInfo;
+    // Reply ekak da?
+    const contextInfo =
+        msg.message?.extendedTextMessage?.contextInfo ||
+        msg.message?.imageMessage?.contextInfo ||
+        msg.message?.videoMessage?.contextInfo;
 
-    if (!contextInfo || !contextInfo.stanzaId) return false; // reply ekak neme — ignore
+    if (!contextInfo?.stanzaId) return false;
 
     const repliedMsgId = contextInfo.stanzaId;
     const session = global.slcSession[repliedMsgId];
+    if (!session) return false; // apege bot eke msg ekak neme
 
-    if (!session) return false; // apege bot eke message ekak neme — ignore
-
-    // Kaalaya pawichchi unad kiyala balananwa
     if (Date.now() > session.expiresAt) {
         delete global.slcSession[repliedMsgId];
-        await reply("❌ *මෙම පණිවිඩයේ කාලය (විනාඩි 5) අවසන් වී ඇත. කරුණාකර නැවත .cartoon භාවිතයෙන් Search කරන්න.*");
+        await reply("❌ *මෙම පණිවිඩයේ කාලය (විනාඩි 5) අවසන් වී ඇත. නැවත .cartoon search කරන්න.*");
         return true;
     }
 
     const index = parseInt(numStr) - 1;
     if (isNaN(index) || index < 0 || index >= session.items.length) {
-        await reply("❌ *කරුණාකර ලිස්ට් එකේ ඇති නිවැරදි අංකයක් ලබා දෙන්න.*");
+        await reply(`❌ *1 ඉඳන් ${session.items.length} දක්වා අංකයක් දෙන්න.*`);
         return true;
     }
 
     const selectedItem = session.items[index];
 
-    // ── SEARCH LIST → DETAILS ──
+    // ── SEARCH → EPISODE LIST ──
     if (session.type === 'search') {
         try {
             const API_KEY = "zan_FIAO7Ayh_eo1vllkep6";
@@ -46,79 +46,86 @@ global.handleCartoonReply = async ({ socket, msg, sender, reply, numStr }) => {
 
             await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-            const urlParam = encodeURIComponent(selectedItem.url);
-            const dlRes = await axios.get(`${BASE_API}/dl?apiKey=${API_KEY}&text=${urlParam}`);
-
-            if (!dlRes.data.results) throw new Error("තොරතුරු ලබාගත නොහැක.");
+            const dlRes = await axios.get(`${BASE_API}/dl?apiKey=${API_KEY}&text=${encodeURIComponent(selectedItem.url)}`);
+            if (!dlRes.data.results) throw new Error("Details naha");
 
             const details = dlRes.data.results;
 
             let capText = `*🎬 SADEW-MINI CARTOON DETAILS*\n\n`;
             capText += `📌 *Title:* ${selectedItem.title}\n`;
-            capText += `🏷️ *Type:* ${details.type}\n`;
+            capText += `🏷️ *Type:* ${details.type || 'N/A'}\n`;
             if (details.total_episodes) capText += `📺 *Total Episodes:* ${details.total_episodes}\n`;
             capText += `\n*📥 DOWNLOAD LINKS:*\n\n`;
 
             const epItems = [];
-            let epCounter = 1;
+            let n = 1;
 
-            if (details.episodes && details.episodes.length > 0) {
+            if (details.episodes?.length > 0) {
                 details.episodes.forEach((ep) => {
                     if (ep.stream_url) {
-                        capText += `*${epCounter}.* ${ep.title}\n`;
-                        epItems.push({ url: ep.stream_url, title: `${selectedItem.title} - ${ep.title}`, quality: "HD" });
-                        epCounter++;
+                        capText += `*${n}.* ${ep.title}\n`;
+                        epItems.push({ url: ep.stream_url, title: `${selectedItem.title} - ${ep.title}` });
+                        n++;
                     }
                 });
-            } else if (details.download_links && details.download_links.length > 0) {
+            } else if (details.download_links?.length > 0) {
                 details.download_links.forEach((dl) => {
                     if (dl.final_link && !dl.final_link.includes('t.me')) {
-                        capText += `*${epCounter}.* Download (${dl.info || "Direct"})\n`;
-                        epItems.push({ url: dl.final_link, title: selectedItem.title, quality: dl.info || "Direct" });
-                        epCounter++;
+                        capText += `*${n}.* ${dl.info || 'Direct'}\n`;
+                        epItems.push({ url: dl.final_link, title: selectedItem.title });
+                        n++;
                     }
                 });
             }
 
-            capText += `\n> *ඔබට අවශ්ය Episode එකෙහි අංකය මෙම පණිවිඩයට Reply කරන්න.* 🔢\n> ⏳ _විනාඩි 5ක් ඇතුළත Reply කරන්න._`;
+            if (epItems.length === 0) {
+                await reply("❌ *Download links නැහැ.*");
+                return true;
+            }
+
+            capText += `\n> *Episode අංකය prefix නැතිව Reply කරන්න* 🔢\n> ⏳ _(විනාඩි 5)_`;
 
             const msgOpts = { caption: capText, footer: "👑 SADEW-MINI 👑" };
             if (selectedItem.image) msgOpts.image = { url: selectedItem.image };
 
-            const sentEpMsg = await socket.sendMessage(sender, msgOpts, { quoted: msg });
+            const sentMsg = await socket.sendMessage(sender, msgOpts, { quoted: msg });
             await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
 
-            global.slcSession[sentEpMsg.key.id] = {
-                type: 'episodes',
-                items: epItems,
-                expiresAt: Date.now() + 5 * 60 * 1000
-            };
-            setTimeout(() => { delete global.slcSession[sentEpMsg.key.id]; }, 5 * 60 * 1000);
+            // Session save — sentMsg eke ID ekath, possible alternative IDs ekath
+            const msgId = sentMsg?.key?.id;
+            if (msgId) {
+                global.slcSession[msgId] = {
+                    type: 'episodes',
+                    items: epItems,
+                    expiresAt: Date.now() + 5 * 60 * 1000
+                };
+                setTimeout(() => { delete global.slcSession[msgId]; }, 5 * 60 * 1000);
+            }
 
         } catch (e) {
-            console.error("Details Error:", e.message);
-            await reply(`❌ *තොරතුරු ලබාගැනීමට නොහැකි විය!*`);
+            console.error("[cartoon] Details Error:", e.message);
+            await reply(`❌ *Details load error: ${e.message}*`);
         }
         return true;
     }
 
-    // ── EPISODE LIST → DOWNLOAD ──
-    else if (session.type === 'episodes') {
+    // ── EPISODE → DOWNLOAD ──
+    if (session.type === 'episodes') {
         try {
             await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
-            await reply(`🔍 *Processing Download...*\n🎬 ${selectedItem.title}\n\n_Server eka download karala hitinava, kisi vela..._`);
+            await reply(`⬇️ *Downloading...*\n🎬 *${selectedItem.title}*\n\n_Server eke download wadinawa..._`);
 
-            const safeTitle = selectedItem.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+            const safeTitle = selectedItem.title.replace(/[^a-zA-Z0-9\s]/g, '').trim().substring(0, 40).replace(/\s+/g, '_');
             const finalFileName = `SadewMini_${safeTitle}.mp4`;
-            const tempFilePath = path.join('/tmp', finalFileName); // /tmp use karanava — safer
-            const writer = fs.createWriteStream(tempFilePath);
+            const tempFilePath = path.join('/tmp', `cartoon_${Date.now()}_${finalFileName}`);
 
+            const writer = fs.createWriteStream(tempFilePath);
             const fileRes = await axios({
                 method: 'GET',
                 url: selectedItem.url,
                 responseType: 'stream',
                 timeout: 0,
-                headers: { 'User-Agent': 'Mozilla/5.0' },
+                headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0' },
                 maxRedirects: 10
             });
 
@@ -129,97 +136,152 @@ global.handleCartoonReply = async ({ socket, msg, sender, reply, numStr }) => {
             });
 
             const stats = fs.statSync(tempFilePath);
-            const actualSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
 
             if (stats.size > 2000 * 1024 * 1024) {
                 fs.unlinkSync(tempFilePath);
-                return await reply(`❌ *File is too large for WhatsApp!* (${actualSizeMB} MB)`);
+                return await reply(`❌ *File too large!* (${sizeMB} MB)`);
             }
 
             await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } });
 
             await socket.sendMessage(sender, {
-                document: { url: `file://${tempFilePath}` },
+                document: fs.readFileSync(tempFilePath),
                 mimetype: 'video/mp4',
                 fileName: finalFileName,
-                caption: `*🎬 Title:* ${selectedItem.title}\n📦 *Size:* ${actualSizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
+                caption: `*🎬 Title:* ${selectedItem.title}\n📦 *Size:* ${sizeMB} MB\n\n> *𝗦𝗮𝗱𝗲𝘄-𝗠𝗶𝗻𝗶 𝗕𝘆 𝗦𝗮𝗱𝗲𝘄 𝗥𝗮𝘀𝗵𝗺𝗶𝗸𝗮 𝜗𝜚⋆*`
             }, { quoted: msg });
 
             await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
-            if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
         } catch (e) {
-            console.error("Download Error:", e.message);
+            console.error("[cartoon] Download Error:", e.message);
             await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-            await reply(`❌ *බාගත කිරීම අසාර්ථක විය!*`);
+            await reply(`❌ *Download error: ${e.message}*`);
+        } finally {
+            try { fs.unlinkSync(tempFilePath); } catch (_) {}
         }
         return true;
     }
 
     return false;
-};
+}
 
 // ════════════════════════════════════════════════════════
-// MODULE EXPORT — prefix ekak athi commands
+// SOCKET LISTENER SETUP — module eke eken call karanava
+// Prefix-less number replies handle karanava
+// ════════════════════════════════════════════════════════
+function setupCartoonListener(socket) {
+    if (global._cartoonListenerAdded) return;
+    global._cartoonListenerAdded = true;
+
+    console.log("[cartoon] Prefix-less number reply listener active.");
+
+    socket.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify') return;
+
+        for (const msg of messages) {
+            if (!msg.message || msg.key.fromMe) continue;
+
+            const sender = msg.key.remoteJid;
+
+            // Message text eka gannava
+            const rawText = (
+                msg.message?.conversation ||
+                msg.message?.extendedTextMessage?.text ||
+                msg.message?.imageMessage?.caption ||
+                ''
+            ).trim();
+
+            // Pure number ekak da (1-50)?
+            if (!/^\d{1,2}$/.test(rawText)) continue;
+            const num = parseInt(rawText);
+            if (num < 1 || num > 50) continue;
+
+            // Reply ekak da?
+            const contextInfo =
+                msg.message?.extendedTextMessage?.contextInfo ||
+                msg.message?.imageMessage?.contextInfo;
+
+            if (!contextInfo?.stanzaId) continue;
+
+            // Session thiyanavada?
+            if (!global.slcSession[contextInfo.stanzaId]) continue;
+
+            // Handle karanava!
+            try {
+                await handleNumberReply({ socket, msg, sender, numStr: rawText });
+            } catch (e) {
+                console.error("[cartoon] listener error:", e.message);
+            }
+        }
+    });
+}
+
+// ════════════════════════════════════════════════════════
+// MODULE EXPORT
 // ════════════════════════════════════════════════════════
 module.exports = {
     name: "cartoon",
     category: 1,
-    description: "Search and download Sinhala cartoons via Number Reply",
-    commands: ["cartoon"], // 🔥 Prefix commands — number ewa main handler eke handle karanava
+    description: "Search and download Sinhala cartoons",
+    commands: ["cartoon"],
 
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const API_KEY = "zan_FIAO7Ayh_eo1vllkep6";
         const BASE_API = "https://api.zanta-mini.store/api/slcartoons";
 
-        // ==============================================================
-        // MAIN COMMAND (.cartoon name) — SEARCH
-        // ==============================================================
+        // First time handler call eke listener setup karanava
+        setupCartoonListener(socket);
+
         if (command === "cartoon") {
             const query = args.join(' ').trim();
-            if (!query) return reply("🎥 *කරුණාකර කාටූන් එකක නමක් ලබා දෙන්න!*\n💡 උදා: `.cartoon ben 10`");
+            if (!query) return reply("🎥 *කරුණාකර කාටූන් නමක් ලබා දෙන්න!*\n💡 `.cartoon ben 10`");
 
             try {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
-                const searchUrl = `${BASE_API}/search?apiKey=${API_KEY}&text=${encodeURIComponent(query)}`;
-                const { data } = await axios.get(searchUrl);
+                const { data } = await axios.get(
+                    `${BASE_API}/search?apiKey=${API_KEY}&text=${encodeURIComponent(query)}`
+                );
 
-                if (!data.success || !data.results || data.results.length === 0) {
+                if (!data.success || !data.results?.length) {
                     await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
-                    return reply("❌ *සමාවෙන්න, ඔබ සෙවූ කාටූනය සොයාගත නොහැකි විය!*");
+                    return reply("❌ *සෙවූ කාටූනය හමු වුනේ නැහැ.*");
                 }
 
                 const results = data.results.slice(0, 15);
-                const firstImage = results[0].thumbnail;
-
                 let listText = `*🔍 SADEW-MINI CARTOON SEARCH*\n\n`;
                 const searchItems = [];
 
                 results.forEach((m, i) => {
                     listText += `*${i + 1}.* ${m.title}\n`;
-                    listText += `🌟 *Rating:* ${m.rating} | 🎬 *Quality:* ${m.quality}\n\n`;
+                    listText += `🌟 *Rating:* ${m.rating || 'N/A'} | 🎬 *Quality:* ${m.quality || 'N/A'}\n\n`;
                     searchItems.push({ url: m.url, title: m.title, image: m.thumbnail });
                 });
 
-                listText += `> *ඔබට අවශ්ය කාටූනයෙහි අංකය (1, 2, 3...) prefix නැතිව Reply කරන්න.* 🔢\n> ⏳ _(මෙය විනාඩි 5කින් කල් ඉකුත් වේ)_`;
+                listText += `> *අංකය prefix නැතිව Reply කරන්න* (1, 2, 3...) 🔢\n> ⏳ _(විනාඩි 5)_`;
 
                 const msgOpts = { caption: listText, footer: "👑 SADEW-MINI 👑" };
-                if (firstImage) msgOpts.image = { url: firstImage };
+                if (results[0]?.thumbnail) msgOpts.image = { url: results[0].thumbnail };
 
-                const sentSearchMsg = await socket.sendMessage(sender, msgOpts, { quoted: msg });
+                const sentMsg = await socket.sendMessage(sender, msgOpts, { quoted: msg });
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
 
-                global.slcSession[sentSearchMsg.key.id] = {
-                    type: 'search',
-                    items: searchItems,
-                    expiresAt: Date.now() + 5 * 60 * 1000
-                };
-                setTimeout(() => { delete global.slcSession[sentSearchMsg.key.id]; }, 5 * 60 * 1000);
+                // Session save
+                const msgId = sentMsg?.key?.id;
+                if (msgId) {
+                    global.slcSession[msgId] = {
+                        type: 'search',
+                        items: searchItems,
+                        expiresAt: Date.now() + 5 * 60 * 1000
+                    };
+                    setTimeout(() => { delete global.slcSession[msgId]; }, 5 * 60 * 1000);
+                }
 
             } catch (e) {
-                console.error("Search Error:", e.message);
-                reply(`❌ *සෙවුම් දෝෂයකි! (Error: ${e.message})*`);
+                console.error("[cartoon] Search Error:", e.message);
+                reply(`❌ *Search error: ${e.message}*`);
             }
         }
     }
