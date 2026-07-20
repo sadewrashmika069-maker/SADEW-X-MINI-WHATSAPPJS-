@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cloudscraper = require('cloudscraper'); // 🔥 අලුත් Cloudflare බ්‍රේකර් එක!
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -30,14 +31,14 @@ function getLinkType(url) {
 module.exports = {
     name: "col3neg",
     category: 1,
-    description: "Search and download movies from Col3neg without API",
+    description: "Search and download movies from Col3neg (Cloudflare Bypass)",
     commands: ["col3neg", "col3", "c3get", "c3link"],
     
     handler: async ({ socket, msg, sender, command, args, reply }) => {
         const BASE_URL = "https://col3neg.com"; 
 
         // ==============================================================
-        // 1. SEARCH MOVIE (corsproxy.io)
+        // 1. SEARCH MOVIE (Using Cloudscraper)
         // ==============================================================
         if (command === "col3neg" || command === "col3") {
             const query = args.join(' ').trim();
@@ -47,15 +48,11 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: '🔍', key: msg.key } });
 
                 const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
                 
-                const response = await axios.get(proxyUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 25000
-                });
+                // 🔥 Proxy නැතුව කෙලින්ම Cloudscraper එකෙන් ගේම ගහනවා
+                const htmlCode = await cloudscraper.get(searchUrl);
 
-                const htmlCode = response.data; 
-                if (!htmlCode || typeof htmlCode !== 'string') throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
+                if (!htmlCode) throw new Error("HTML ලබාගැනීමට නොහැකි විය.");
 
                 const $ = cheerio.load(htmlCode);
                 const results = [];
@@ -116,7 +113,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. SCRAPE DOWNLOAD LINKS (corsproxy.io)
+        // 2. SCRAPE DOWNLOAD LINKS (Using Cloudscraper)
         // ==============================================================
         else if (command === "c3get") {
             const shortId = args[0];
@@ -127,14 +124,10 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(storedData.movieUrl)}`;
-                const response = await axios.get(proxyUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 25000
-                });
-
-                const htmlCode = response.data;
-                if (!htmlCode || typeof htmlCode !== 'string') throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
+                // 🔥 ෆිල්ම් පිටුවට යන්නෙත් Cloudscraper එකෙන්
+                const htmlCode = await cloudscraper.get(storedData.movieUrl);
+                
+                if (!htmlCode) throw new Error("HTML ලබාගැනීමට නොහැකි විය.");
 
                 const $ = cheerio.load(htmlCode);
                 const downloadLinks = [];
