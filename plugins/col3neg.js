@@ -37,7 +37,7 @@ module.exports = {
         const BASE_URL = "https://col3neg.com"; 
 
         // ==============================================================
-        // 1. SEARCH MOVIE (Cloudflare Bypass Proxy එක හරහා)
+        // 1. SEARCH MOVIE (New Proxy Bypass)
         // ==============================================================
         if (command === "col3neg" || command === "col3") {
             const query = args.join(' ').trim();
@@ -48,20 +48,23 @@ module.exports = {
 
                 const searchUrl = `${BASE_URL}/search?q=${encodeURIComponent(query)}`;
                 
-                // 🔥 AllOrigins Free Proxy එක හරහා Request එක යවනවා (403 Error එක මගහරින්න)
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
+                // 🔥 අලුත් Proxy එක 1: codetabs (මේක වැඩ කළේ නැත්නම් 'https://corsproxy.io/?' + encodeURIComponent(searchUrl) දාන්න)
+                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
+                
                 const response = await axios.get(proxyUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                    timeout: 15000 // තත්පර 15න් ආවේ නැත්නම් error එකක් දෙන්න
                 });
 
-                const htmlCode = response.data.contents; 
-                if (!htmlCode) throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
+                // මේ Proxy එකෙන් කෙලින්ම HTML එක දෙනවා
+                const htmlCode = response.data; 
+                if (!htmlCode || typeof htmlCode !== 'string') throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
 
                 const $ = cheerio.load(htmlCode);
                 const results = [];
 
                 $('.item, .video').each((i, el) => {
-                    if (i >= 5) return; // ෆිල්ම්ස් 5ක් විතරක් ගමු
+                    if (i >= 5) return; 
                     
                     const title = $(el).find('.item-content b a, .video-content b a').text().trim();
                     const link = $(el).find('.item-content b a, .video-content b a').attr('href');
@@ -90,10 +93,8 @@ module.exports = {
 
                 results.forEach((m, i) => {
                     listText += `*${i + 1}.* ${m.title}\n\n`;
-
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.mbStore[shortId] = { movieUrl: m.link, title: m.title, image: m.image };
-
                     setTimeout(() => { if (global.mbStore[shortId]) delete global.mbStore[shortId]; }, 30 * 60 * 1000);
 
                     buttons.push({
@@ -105,13 +106,7 @@ module.exports = {
 
                 listText += `> *ඔබට අවශ්‍ය නිර්මාණයට අදාළ අංකය පහතින් තෝරන්න.*`;
 
-                const msgOpts = {
-                    caption: listText,
-                    footer: "👑 SADEW-MINI 👑",
-                    buttons: buttons,
-                    headerType: 4
-                };
-                
+                const msgOpts = { caption: listText, footer: "👑 SADEW-MINI 👑", buttons: buttons, headerType: 4 };
                 if (results[0].image && results[0].image.startsWith('http')) msgOpts.image = { url: results[0].image };
 
                 await socket.sendMessage(sender, msgOpts, { quoted: msg });
@@ -124,7 +119,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 2. SCRAPE DOWNLOAD LINKS (Cloudflare Bypass Proxy එක හරහා)
+        // 2. SCRAPE DOWNLOAD LINKS (New Proxy Bypass)
         // ==============================================================
         else if (command === "c3get") {
             const shortId = args[0];
@@ -135,14 +130,15 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                // 🔥 ෆිල්ම් එකේ පිටුවට යන්නෙත් Proxy එක හරහාමයි!
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(storedData.movieUrl)}`;
+                // 🔥 අලුත් Proxy එක 1: codetabs
+                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(storedData.movieUrl)}`;
                 const response = await axios.get(proxyUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                    timeout: 15000
                 });
 
-                const htmlCode = response.data.contents;
-                if (!htmlCode) throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
+                const htmlCode = response.data;
+                if (!htmlCode || typeof htmlCode !== 'string') throw new Error("Proxy එකෙන් HTML ලබාගැනීමට නොහැකි විය.");
 
                 const $ = cheerio.load(htmlCode);
                 const downloadLinks = [];
@@ -153,10 +149,7 @@ module.exports = {
                     
                     if (href && (text.includes('download') || text.includes('720p') || text.includes('1080p') || href.includes('drive.google'))) {
                         if (!downloadLinks.some(dl => dl.url === href)) {
-                            downloadLinks.push({
-                                quality: text !== '' ? text : `Link ${downloadLinks.length + 1}`,
-                                url: href
-                            });
+                            downloadLinks.push({ quality: text !== '' ? text : `Link ${downloadLinks.length + 1}`, url: href });
                         }
                     }
                 });
@@ -183,32 +176,16 @@ module.exports = {
                     const fileQuality = dl.quality.substring(0, 20); 
 
                     qList += `*${i + 1}.* ${fileQuality} [${linkType}]\n`;
-
                     const linkId = crypto.randomBytes(4).toString('hex');
-                    global.mbStore[linkId] = {
-                        url: dl.url,
-                        title: storedData.title,
-                        size: "Unknown Size"
-                    };
-
+                    global.mbStore[linkId] = { url: dl.url, title: storedData.title, size: "Unknown Size" };
                     setTimeout(() => { if (global.mbStore[linkId]) delete global.mbStore[linkId]; }, 30 * 60 * 1000);
 
-                    buttons.push({
-                        buttonId: `.c3link ${linkId}`,
-                        buttonText: { displayText: `📥 ${i + 1}. ${linkType}` },
-                        type: 1
-                    });
+                    buttons.push({ buttonId: `.c3link ${linkId}`, buttonText: { displayText: `📥 ${i + 1}. ${linkType}` }, type: 1 });
                 });
 
                 qList += `\n> *ඔබට අවශ්‍ය Link එකට අදාළ අංකය තෝරන්න.*`;
 
-                const msgOpts = {
-                    caption: qList,
-                    footer: "👑 SADEW-MINI 👑",
-                    buttons: buttons,
-                    headerType: 4
-                };
-
+                const msgOpts = { caption: qList, footer: "👑 SADEW-MINI 👑", buttons: buttons, headerType: 4 };
                 if (storedData.image && storedData.image.startsWith('http')) msgOpts.image = { url: storedData.image };
 
                 await socket.sendMessage(sender, msgOpts, { quoted: msg });
