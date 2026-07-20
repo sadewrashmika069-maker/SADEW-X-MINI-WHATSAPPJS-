@@ -18,14 +18,17 @@ async function handleNumberReply({ socket, msg, sender, numStr }) {
         msg.message?.imageMessage?.contextInfo ||
         msg.message?.videoMessage?.contextInfo;
 
-    if (!contextInfo?.stanzaId) return false;
+    if (!contextInfo?.stanzaId) return false; // reply ekak neme — ignore
 
     const repliedMsgId = contextInfo.stanzaId;
-    const session = global.slcSession[repliedMsgId];
+    // Session key = sender JID + message ID (per-user isolation)
+    const sessionKey = `${sender}__${repliedMsgId}`;
+    const session = global.slcSession[sessionKey];
     if (!session) return false; // apege bot eke msg ekak neme
 
+    // Kaalaya pawichchi unad kiyala balananwa
     if (Date.now() > session.expiresAt) {
-        delete global.slcSession[repliedMsgId];
+        delete global.slcSession[sessionKey];
         await reply("❌ *මෙම පණිවිඩයේ කාලය (විනාඩි 5) අවසන් වී ඇත. නැවත .cartoon search කරන්න.*");
         return true;
     }
@@ -94,12 +97,14 @@ async function handleNumberReply({ socket, msg, sender, numStr }) {
             // Session save — sentMsg eke ID ekath, possible alternative IDs ekath
             const msgId = sentMsg?.key?.id;
             if (msgId) {
-                global.slcSession[msgId] = {
+                // Key = original requester's JID + new message ID
+                const epKey = `${sender}__${msgId}`;
+                global.slcSession[epKey] = {
                     type: 'episodes',
                     items: epItems,
                     expiresAt: Date.now() + 5 * 60 * 1000
                 };
-                setTimeout(() => { delete global.slcSession[msgId]; }, 5 * 60 * 1000);
+                setTimeout(() => { delete global.slcSession[epKey]; }, 5 * 60 * 1000);
             }
 
         } catch (e) {
@@ -221,16 +226,18 @@ function setupCartoonListener(socket) {
             }
 
             const stanzaId = contextInfo.stanzaId;
-            console.log(`[cartoon-debug] 🔍 stanzaId="${stanzaId}"`);
+            // Per-user session key
+            const sKey = `${sender}__${stanzaId}`;
+            console.log(`[cartoon-debug] 🔍 stanzaId="${stanzaId}" sKey="${sKey}"`);
             console.log(`[cartoon-debug] 📦 Sessions in memory: ${JSON.stringify(Object.keys(global.slcSession))}`);
 
             // Session thiyanavada?
-            if (!global.slcSession[stanzaId]) {
-                console.log(`[cartoon-debug] ❌ No session found for stanzaId="${stanzaId}"`);
+            if (!global.slcSession[sKey]) {
+                console.log(`[cartoon-debug] ❌ No session found for key="${sKey}"`);
                 continue;
             }
 
-            console.log(`[cartoon-debug] ✅ Session found! type="${global.slcSession[stanzaId].type}" items=${global.slcSession[stanzaId].items.length}`);
+            console.log(`[cartoon-debug] ✅ Session found! type="${global.slcSession[sKey].type}" items=${global.slcSession[sKey].items.length}`);
 
             // Handle karanava!
             try {
@@ -295,12 +302,14 @@ module.exports = {
                 // Session save
                 const msgId = sentMsg?.key?.id;
                 if (msgId) {
-                    global.slcSession[msgId] = {
+                    // Key = sender JID + message ID — different users get separate sessions
+                    const sKey = `${sender}__${msgId}`;
+                    global.slcSession[sKey] = {
                         type: 'search',
                         items: searchItems,
                         expiresAt: Date.now() + 5 * 60 * 1000
                     };
-                    setTimeout(() => { delete global.slcSession[msgId]; }, 5 * 60 * 1000);
+                    setTimeout(() => { delete global.slcSession[sKey]; }, 5 * 60 * 1000);
                 }
 
             } catch (e) {
