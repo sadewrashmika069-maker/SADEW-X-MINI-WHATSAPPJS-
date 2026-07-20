@@ -22,7 +22,7 @@
     "mongoose": "8.16.0",
     "path": "^0.12.7",
     "niyox": "^0.0.3",
-    "cheerio": "latest"
+    "cheerio": "latest",
     "moment-timezone": "^0.6.0",
     "axios": "^1.7.9",
     "yt-search": "^2.12.1",
