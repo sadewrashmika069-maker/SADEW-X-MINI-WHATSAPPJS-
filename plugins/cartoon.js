@@ -175,62 +175,38 @@ function setupCartoonListener(socket) {
     if (global._cartoonListenerAdded) return;
     global._cartoonListenerAdded = true;
 
-    console.log("[cartoon] ✅ Prefix-less number reply listener active.");
+    console.log("[cartoon] Prefix-less number reply listener active.");
 
     socket.ev.on('messages.upsert', async ({ messages, type }) => {
-        // DEBUG: type eka check karanava
-        // if (type !== 'notify') return; // <-- temporarily remove this filter
+        if (type !== 'notify') return;
 
         for (const msg of messages) {
-            if (!msg.message) continue;
-            if (msg.key.fromMe) continue;
+            if (!msg.message || msg.key.fromMe) continue;
 
             const sender = msg.key.remoteJid;
 
-            // ALL possible places where text can be
+            // Message text eka gannava
             const rawText = (
                 msg.message?.conversation ||
                 msg.message?.extendedTextMessage?.text ||
                 msg.message?.imageMessage?.caption ||
-                msg.message?.buttonsResponseMessage?.selectedDisplayText ||
-                msg.message?.listResponseMessage?.title ||
                 ''
             ).trim();
-
-            // DEBUG: every incoming message log karanava
-            console.log(`[cartoon-debug] MSG type="${type}" from="${sender}" text="${rawText}"`);
 
             // Pure number ekak da (1-50)?
             if (!/^\d{1,2}$/.test(rawText)) continue;
             const num = parseInt(rawText);
             if (num < 1 || num > 50) continue;
 
-            console.log(`[cartoon-debug] ✅ Number detected: ${rawText}`);
-
-            // Reply contextInfo check — ALL possible message types
+            // Reply ekak da?
             const contextInfo =
                 msg.message?.extendedTextMessage?.contextInfo ||
-                msg.message?.imageMessage?.contextInfo ||
-                msg.message?.videoMessage?.contextInfo ||
-                msg.message?.documentMessage?.contextInfo ||
-                msg.message?.stickerMessage?.contextInfo;
+                msg.message?.imageMessage?.contextInfo;
 
-            if (!contextInfo?.stanzaId) {
-                console.log(`[cartoon-debug] ❌ No contextInfo/stanzaId — user did not reply to a message`);
-                continue;
-            }
-
-            const stanzaId = contextInfo.stanzaId;
-            console.log(`[cartoon-debug] 🔍 stanzaId="${stanzaId}"`);
-            console.log(`[cartoon-debug] 📦 Sessions in memory: ${JSON.stringify(Object.keys(global.slcSession))}`);
+            if (!contextInfo?.stanzaId) continue;
 
             // Session thiyanavada?
-            if (!global.slcSession[stanzaId]) {
-                console.log(`[cartoon-debug] ❌ No session found for stanzaId="${stanzaId}"`);
-                continue;
-            }
-
-            console.log(`[cartoon-debug] ✅ Session found! type="${global.slcSession[stanzaId].type}" items=${global.slcSession[stanzaId].items.length}`);
+            if (!global.slcSession[contextInfo.stanzaId]) continue;
 
             // Handle karanava!
             try {
