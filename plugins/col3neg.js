@@ -130,11 +130,11 @@ module.exports = {
             try {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
 
-                // 🔥 අලුත් Proxy එක 1: codetabs
-                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(storedData.movieUrl)}`;
+               // 🔥 අලුත් Proxy එක (corsproxy.io)
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(storedData.movieUrl)}`;
                 const response = await axios.get(proxyUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-                    timeout: 15000
+                    timeout: 25000 // තත්පර 25ක් දෙනවා ලෝඩ් වෙන්න
                 });
 
                 const htmlCode = response.data;
