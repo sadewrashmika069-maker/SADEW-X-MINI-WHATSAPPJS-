@@ -13,7 +13,8 @@ async function handleNumberReply({ socket, msg, sender, numStr }) {
     const contextInfo =
         msg.message?.extendedTextMessage?.contextInfo ||
         msg.message?.imageMessage?.contextInfo ||
-        msg.message?.videoMessage?.contextInfo;
+        msg.message?.videoMessage?.contextInfo ||
+        msg.message?.documentMessage?.contextInfo;
 
     if (!contextInfo?.stanzaId) return false;
 
@@ -168,7 +169,7 @@ async function handleNumberReply({ socket, msg, sender, numStr }) {
 // Usage: if (global.cartoonNumHandler) await global.cartoonNumHandler(msg);
 // ════════════════════════════════════════════════════════
 global.cartoonNumHandler = async (msg, socketRef) => {
-    if (!msg?.message || msg?.key?.fromMe) return;
+    if (!msg?.message) return;
 
     const socket = socketRef || global._cartoonSocket;
     if (!socket) return;
@@ -200,7 +201,7 @@ function setupCartoonListener(socket) {
 
     socket.ev.on('messages.upsert', async ({ messages }) => {
         for (const msg of messages) {
-            if (!msg.message || msg.key.fromMe) continue;
+            if (!msg.message) continue;
             const sender = msg.key.remoteJid;
             const rawText = (
                 msg.message?.conversation ||
