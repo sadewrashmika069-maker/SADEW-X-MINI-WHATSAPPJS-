@@ -34,10 +34,9 @@ module.exports = {
                     return reply("❌ *සමාවෙන්න, ඔබ සෙවූ කාටූනය සොයාගත නොහැකි විය!*");
                 }
 
-                const results = data.results.slice(0, 5); // උපරිම රිසල්ට්ස් 5ක් ගමු
+                const results = data.results.slice(0, 5);
                 let firstImage = "";
 
-                // පළවෙනි රිසල්ට් එකේ ෆොටෝ එක ගන්න Details API එකට කෝල් එකක් යවනවා
                 try {
                     const firstUrlParam = encodeURIComponent(results[0].url);
                     const firstDetail = await axios.get(`${BASE_API}/details?apikey=${API_KEY}&url=${firstUrlParam}`);
@@ -57,7 +56,6 @@ module.exports = {
                     const shortId = crypto.randomBytes(4).toString('hex');
                     global.ctStore[shortId] = { movieUrl: m.url, title: m.title };
 
-                    // විනාඩි 30කින් මතකය මකනවා (Memory Save)
                     setTimeout(() => { if (global.ctStore[shortId]) delete global.ctStore[shortId]; }, 30 * 60 * 1000);
 
                     buttons.push({
@@ -101,12 +99,10 @@ module.exports = {
 
                 const urlParam = encodeURIComponent(storedData.movieUrl);
                 
-                // 1. Details ගන්නවා
                 const detailRes = await axios.get(`${BASE_API}/details?apikey=${API_KEY}&url=${urlParam}`);
                 if (!detailRes.data.success) throw new Error("Details ලබාගත නොහැක.");
                 const details = detailRes.data.data;
 
-                // 2. Download Link එක ගන්නවා
                 const dlRes = await axios.get(`${BASE_API}/download?apikey=${API_KEY}&url=${urlParam}`);
                 if (!dlRes.data.success) throw new Error("Download Link ලබාගත නොහැක.");
                 const downloadUrl = dlRes.data.data.download_url;
@@ -153,7 +149,7 @@ module.exports = {
         }
 
         // ==============================================================
-        // 3. DIRECT DOWNLOAD & UPLOAD (RAM SAVER) (.ctdl)
+        // 3. DIRECT DOWNLOAD & UPLOAD (Bypass Hotlink + RAM Saver) (.ctdl)
         // ==============================================================
         else if (command === "ctdl") {
             const linkId = args[0];
@@ -165,19 +161,22 @@ module.exports = {
                 await socket.sendMessage(sender, { react: { text: '⏳', key: msg.key } });
                 await reply(`🔍 *Processing Download...*\n🎬 ${dlData.title}\n📦 ${dlData.size}\n\n_Please wait, downloading to server..._`);
 
-                // ෆයිල් නම හදාගන්නවා
                 const safeTitle = dlData.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
                 const finalFileName = `SadewMini_${safeTitle}.mp4`;
                 const tempFilePath = path.join(__dirname, finalFileName);
                 const writer = fs.createWriteStream(tempFilePath);
 
-                // ෆයිල් එක Download කරනවා
+                // 🔥 මෙන්න මේ Headers ටික දැම්මම තමයි 403 Forbidden එක එන්නේ නැතුව ෆයිල් එක දෙන්නේ!
                 const fileRes = await axios({
                     method: 'GET', 
                     url: dlData.url, 
                     responseType: 'stream', 
                     timeout: 0, 
-                    headers: { 'User-Agent': 'Mozilla/5.0' }, 
+                    headers: { 
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer': 'https://cartoons.lk/', // අනිවාර්යයි!
+                        'Accept': '*/*'
+                    }, 
                     maxRedirects: 10
                 });
 
@@ -190,7 +189,6 @@ module.exports = {
 
                 const stats = fs.statSync(tempFilePath);
                 
-                // ෆයිල් සයිස් එක WhatsApp ලිමිට් එක පනිනවද බලනවා (2GB)
                 if (stats.size > 2000 * 1024 * 1024) {
                     fs.unlinkSync(tempFilePath);
                     return reply(`❌ *File is too large for WhatsApp!*`);
@@ -198,7 +196,7 @@ module.exports = {
 
                 await socket.sendMessage(sender, { react: { text: '⬆️', key: msg.key } });
 
-                // 🔥 ඔයාගේ RAM Saver ට්‍රික් එකෙන් Upload කරනවා
+                // සර්වර් එකේ තියෙන ෆයිල් එක RAM එක පුරවන්නේ නැතුව WhatsApp එකට යවනවා
                 await socket.sendMessage(sender, {
                     document: { url: tempFilePath },
                     mimetype: 'video/mp4',
@@ -208,7 +206,6 @@ module.exports = {
 
                 await socket.sendMessage(sender, { react: { text: '✅', key: msg.key } });
                 
-                // සර්වර් එකෙන් Temp ෆයිල් එක මකනවා
                 if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
             } catch (e) {
