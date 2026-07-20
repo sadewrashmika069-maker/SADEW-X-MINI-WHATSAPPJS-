@@ -5,33 +5,45 @@ const path = require('path');
 // Memory Session Store for Number Replies
 if (!global.slcSession) global.slcSession = {};
 
+// 1 ඉඳන් 50 වෙනකන් ඉලක්කම් ටික හදාගන්නවා (කමාන්ඩ්ස් විදිහට අල්ලන්න)
+const numberCommands = Array.from({ length: 50 }, (_, i) => (i + 1).toString());
+
 module.exports = {
     name: "cartoon",
     category: 1,
-    description: "Search and download Sinhala cartoons via Non-Prefix Number Reply",
-    commands: ["cartoon"],
-    on: "body", // 🔥 Prefix නැතුව එන මැසේජ් අල්ලගන්න මේක උදව් වෙනවා
+    description: "Search and download Sinhala cartoons via Number Reply",
+    commands: ["cartoon", ...numberCommands], // 🔥 ඉලක්කම් ටික ආයෙත් දැම්මා!
     
     handler: async ({ socket, msg, sender, command, args, reply, body }) => {
         const API_KEY = "zan_FIAO7Ayh_eo1vllkep6";
         const BASE_API = "https://api.zanta-mini.store/api/slcartoons";
 
-        // 🔥 මැසේජ් එකේ තියෙන අකුරු/ඉලක්කම් (Prefix තිබ්බත් නැතත්) හරියටම ගන්නවා
-        const rawText = (msg.message?.extendedTextMessage?.text || msg.message?.conversation || body || command || "").trim();
+        // 🔥 Prefix එක්ක ආවත්, නැතුව ආවත් මැසේජ් එකේ තියෙන ඇත්තම අකුරු/ඉලක්කම් ටික ගන්නවා
+        let rawText = "";
+        if (msg.message?.extendedTextMessage?.text) {
+            rawText = msg.message.extendedTextMessage.text;
+        } else if (msg.message?.conversation) {
+            rawText = msg.message.conversation;
+        } else if (body) {
+            rawText = body;
+        } else if (command) {
+            rawText = command;
+        }
+        
+        // Prefix එකක් (. , / !) තිබ්බොත් ඒක අයින් කරලා තනිකරම ඉලක්කම විතරක් ගන්නවා
+        rawText = rawText.trim().replace(/^[.#/!]/, '');
 
         // ==============================================================
-        // 1. NON-PREFIX NUMBER REPLY HANDLER (ඉලක්කමක් විතරක් Reply කළාම)
+        // 1. NUMBER REPLY HANDLER (ඉලක්කමක් විතරක් Reply කළාම)
         // ==============================================================
-        // මැසේජ් එක තනිකරම ඉලක්කමක් නම් පමණක් (උදා: "1", "12")
         if (/^\d+$/.test(rawText)) {
             const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
             
-            // ඒක Reply කරපු මැසේජ් එකක් නම්
             if (contextInfo && contextInfo.stanzaId) {
                 const repliedMsgId = contextInfo.stanzaId;
                 const session = global.slcSession[repliedMsgId];
 
-                // ඒ Reply කරලා තියෙන්නේ අපේ බොට්ගේ Session මැසේජ් එකකට නම් විතරක් වැඩ කරනවා
+                // ඒ Reply කරලා තියෙන්නේ අපේ බොට්ගේ ලිස්ට් එකකට නම් විතරක් වැඩ කරනවා
                 if (session) {
                     // විනාඩි 5 පැනලද කියලා බලනවා
                     if (Date.now() > session.expiresAt) {
@@ -115,7 +127,7 @@ module.exports = {
                             console.error("Details Error:", e.message);
                             reply(`❌ *තොරතුරු ලබාගැනීමට නොහැකි විය!*`);
                         }
-                        return; // පල්ලෙහාට රන් වෙන එක නවත්තන්න අනිවාර්යයි!
+                        return; 
                     }
                     
                     // --- 1.2 EPISODE LIST එකට අංකයක් රිප්ලයි කළාම (DOWNLOAD කිරීම) ---
@@ -170,7 +182,7 @@ module.exports = {
                             await socket.sendMessage(sender, { react: { text: '❌', key: msg.key } });
                             reply(`❌ *බාගත කිරීම අසාර්ථක විය!*`);
                         }
-                        return; // පල්ලෙහාට රන් වෙන එක නවත්තන්න අනිවාර්යයි!
+                        return; 
                     }
                 }
             }
