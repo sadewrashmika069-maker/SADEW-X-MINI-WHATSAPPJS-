@@ -21,14 +21,9 @@ jobs:
 
     - name: Start Bot and Expose Port 8000
       run: |
-        # 1. Pinggy එක Background එකේ රන් කරලා පෝට් එක එළියට දෙමු (අගට & දාලා තියෙන්නේ ඒකයි)
-        ssh -p 443 -R0:localhost:8000 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 a.pinggy.io &
-        
-        # 2. තත්පර 5ක් Pinggy එක කනෙක්ට් වෙනකන් ඉමු
+        # බොට් එක Background එකේ රන් කරනවා
+        node index.js &
         sleep 15
-        
-        # 3. බොට් එක Foreground (කෙලින්ම) රන් කරනවා!
-        node index.js
         
         # Pinggy හරහා Port 8000 එළියට දෙනවා (8080 නෙමෙයි)
         ssh -p 443 -R0:localhost:8000 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 a.pinggy.io
